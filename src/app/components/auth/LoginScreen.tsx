@@ -3,7 +3,6 @@ import { motion } from 'motion/react';
 import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight } from 'lucide-react';
 import type { Role } from '../../types';
 import logo from '../../../imports/image-1.png';
-import mascot from '../../../imports/image.png';
 
 interface LoginScreenProps {
   onLogin: (role: Role) => void;
@@ -28,7 +27,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col max-w-md mx-auto relative overflow-hidden"
+      className="min-h-screen flex flex-col max-w-md lg:max-w-6xl mx-auto relative overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 100%)' }}
     >
       {/* Background decorative circles */}
@@ -59,16 +58,6 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <p className="text-white/60 text-sm tracking-widest uppercase">Tu delivery de confianza</p>
         </motion.div>
       </div>
-
-      {/* Mascot */}
-      <motion.div
-        className="flex justify-end pr-0 relative z-10"
-        initial={{ x: 120, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.7, type: 'spring' }}
-      >
-        <img src={mascot} alt="Repartidor Rayo" className="w-56 h-auto drop-shadow-2xl" />
-      </motion.div>
 
       {/* Login Card */}
       <motion.div
