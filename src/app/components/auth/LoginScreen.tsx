@@ -28,7 +28,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   return (
     <div
-      className="min-h-screen flex flex-col max-w-md mx-auto relative overflow-hidden"
+      className="min-h-screen flex flex-col max-w-md lg:max-w-6xl mx-auto relative overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 100%)' }}
     >
       {/* Background decorative circles */}

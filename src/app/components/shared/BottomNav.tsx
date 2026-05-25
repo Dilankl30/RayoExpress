@@ -17,7 +17,7 @@ const items = [
 
 export function BottomNav({ active, onNavigate, cartCount = 0 }: BottomNavProps) {
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50 max-w-md mx-auto" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50 max-w-md lg:max-w-6xl mx-auto lg:hidden" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = active === item.id;

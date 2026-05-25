@@ -67,7 +67,7 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
   const totalInCart = Object.values(quantities).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto">
+    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto">
       {/* Store Banner */}
       <div
         className="relative h-48 flex items-end"
@@ -268,7 +268,7 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
       {/* Bottom CTA */}
       {totalInCart > 0 && (
         <motion.div
-          className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md mx-auto"
+          className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md lg:max-w-6xl mx-auto"
           style={{ background: 'linear-gradient(to top, white 80%, transparent)' }}
           initial={{ y: 80 }}
           animate={{ y: 0 }}
