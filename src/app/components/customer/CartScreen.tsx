@@ -55,7 +55,7 @@ export function CartScreen({ cart, setCart, onNavigate, onPlaceOrder }: CartScre
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto flex flex-col">
+    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
       {/* Header */}
       <div
         className="pt-10 pb-4 px-4 flex items-center gap-3"
@@ -286,7 +286,7 @@ export function CartScreen({ cart, setCart, onNavigate, onPlaceOrder }: CartScre
       {/* Bottom CTA */}
       {cart.length > 0 && (
         <div
-          className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md mx-auto"
+          className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md lg:max-w-6xl mx-auto"
           style={{ background: 'linear-gradient(to top, white 80%, transparent)' }}
         >
           <motion.button
