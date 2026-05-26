@@ -30,14 +30,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [isRegister, setIsRegister] = useState(false);
 
   const loginWithProvider = async (provider: 'google' | 'facebook') => {
+    if (!supabase) return alert('Configura Supabase en .env');
     await supabase.auth.signInWithOAuth({ provider });
   };
 
   const loginWithEmail = async () => {
     if (isRegister) {
+      if (!supabase) return alert('Configura Supabase en .env');
       const { error } = await supabase.auth.signUp({ email, password, options: { data: { role: selectedRole } } });
       if (error) return alert(error.message);
     } else {
+      if (!supabase) return alert('Configura Supabase en .env');
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) return alert(error.message);
     }
@@ -45,12 +48,14 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   const sendOtp = async () => {
+    if (!supabase) return alert('Configura Supabase en .env');
     const { error } = await supabase.auth.signInWithOtp({ phone: `+593${phone.replace(/\D/g, '')}` });
     if (error) return alert(error.message);
     setOtpSent(true);
   };
 
   const verifyOtp = async () => {
+    if (!supabase) return alert('Configura Supabase en .env');
     const { error } = await supabase.auth.verifyOtp({
       phone: `+593${phone.replace(/\D/g, '')}`,
       token: otp,
@@ -62,6 +67,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   const resetPassword = async () => {
     if (!email) return;
+    if (!supabase) return alert('Configura Supabase en .env');
     const { error } = await supabase.auth.resetPasswordForEmail(email);
     if (error) return alert(error.message);
     alert('Correo de recuperación enviado');

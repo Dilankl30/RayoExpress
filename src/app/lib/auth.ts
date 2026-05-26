@@ -19,11 +19,13 @@ export async function upsertProfile(userId: string, role: Role, data?: Partial<P
     updated_at: new Date().toISOString(),
   };
 
+  if (!supabase) return;
   const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
   if (error) throw error;
 }
 
 export async function getProfile(userId: string): Promise<Profile | null> {
+  if (!supabase) return null;
   const { data, error } = await supabase
     .from('profiles')
     .select('id, full_name, phone, role, avatar_url')
