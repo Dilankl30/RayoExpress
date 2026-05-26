@@ -1,3 +1,47 @@
+-- RayoExpress | Reset completo + recreación de esquema
+-- ADVERTENCIA: este script elimina TODOS los objetos funcionales del dominio.
+
+begin;
+
+-- Extensiones necesarias
+create extension if not exists pgcrypto;
+
+-- Eliminar policies (si existen)
+drop policy if exists "profiles-self-read" on public.profiles;
+drop policy if exists "profiles-self-upsert" on public.profiles;
+drop policy if exists "password-recovery-self-read" on public.password_recovery_questions;
+drop policy if exists "password-recovery-self-upsert" on public.password_recovery_questions;
+drop policy if exists "orders-role-access" on public.orders;
+drop policy if exists "orders-customer-create" on public.orders;
+drop policy if exists "messages-chat-members" on public.messages;
+drop policy if exists "notifications-owner" on public.notifications;
+
+-- Eliminar tablas (orden seguro por dependencias)
+drop table if exists public.locations cascade;
+drop table if exists public.delivery_evidence cascade;
+drop table if exists public.store_schedules cascade;
+drop table if exists public.messages cascade;
+drop table if exists public.chats cascade;
+drop table if exists public.notifications cascade;
+drop table if exists public.driver_documents cascade;
+drop table if exists public.delivery_codes cascade;
+drop table if exists public.payments cascade;
+drop table if exists public.order_status_history cascade;
+drop table if exists public.order_items cascade;
+drop table if exists public.orders cascade;
+drop table if exists public.promotions cascade;
+drop table if exists public.products cascade;
+drop table if exists public.categories cascade;
+drop table if exists public.stores cascade;
+drop table if exists public.drivers cascade;
+drop table if exists public.customers cascade;
+drop table if exists public.password_recovery_questions cascade;
+drop table if exists public.profiles cascade;
+
+-- Eliminar enums
+ drop type if exists public.order_status cascade;
+ drop type if exists public.app_role cascade;
+
 -- Core enums
 create type public.app_role as enum ('customer','driver','store','admin');
 create type public.order_status as enum ('pending','accepted','preparing','picked_up','on_the_way','arrived','delivered','cancelled');
@@ -15,7 +59,6 @@ create table if not exists public.profiles (
   updated_at timestamptz default now()
 );
 
--- Guarda la pregunta/respuesta de recuperación por usuario.
 create table if not exists public.password_recovery_questions (
   user_id uuid primary key references public.profiles(id) on delete cascade,
   question text not null,
@@ -77,3 +120,5 @@ create policy "messages-chat-members" on public.messages for select using (
   exists (select 1 from public.chats c where c.id = chat_id and (c.customer_id = auth.uid() or c.driver_id = auth.uid()))
 );
 create policy "notifications-owner" on public.notifications for select using (auth.uid() = user_id);
+
+commit;
