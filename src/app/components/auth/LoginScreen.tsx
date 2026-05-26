@@ -25,9 +25,24 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
-
-
   const [isRegister, setIsRegister] = useState(false);
+  const [fullName, setFullName] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState('¿Cuál es el nombre de tu primera mascota?');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [recoveryMode, setRecoveryMode] = useState(false);
+  const [recoveryEmail, setRecoveryEmail] = useState('');
+  const [recoveryQuestion, setRecoveryQuestion] = useState('');
+  const [recoveryAnswer, setRecoveryAnswer] = useState('');
+
+  const isSecurePassword = (value: string) =>
+    value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
+  const securityStorageKey = (userEmail: string) => `rayo_security_${userEmail.trim().toLowerCase()}`;
+  const hashText = async (value: string) => {
+    const encoded = new TextEncoder().encode(value.trim().toLowerCase());
+    const digest = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
 
   const loginWithProvider = async (provider: 'google' | 'facebook') => {
     if (!supabase) return alert('Configura Supabase en .env');
@@ -36,9 +51,19 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
 
   const loginWithEmail = async () => {
     if (isRegister) {
+      if (!fullName.trim()) return alert('Ingresa tu nombre completo');
+      if (password !== confirmPassword) return alert('Las contraseñas no coinciden');
+      if (!isSecurePassword(password)) return alert('La contraseña debe tener 8+ caracteres, mayúscula, minúscula y número');
+      if (!securityAnswer.trim()) return alert('Responde tu pregunta de seguridad');
       if (!supabase) return alert('Configura Supabase en .env');
-      const { error } = await supabase.auth.signUp({ email, password, options: { data: { role: selectedRole } } });
+      const answerHash = await hashText(securityAnswer);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { data: { role: selectedRole, full_name: fullName, security_question: securityQuestion, security_answer_hash: answerHash } },
+      });
       if (error) return alert(error.message);
+      localStorage.setItem(securityStorageKey(email), JSON.stringify({ question: securityQuestion, answerHash }));
     } else {
       if (!supabase) return alert('Configura Supabase en .env');
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -66,11 +91,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   const resetPassword = async () => {
-    if (!email) return;
+    if (!recoveryEmail) return;
+    const raw = localStorage.getItem(securityStorageKey(recoveryEmail));
+    if (!raw) return alert('No hay pregunta de seguridad guardada para este correo');
+    const saved = JSON.parse(raw) as { question: string; answerHash: string };
+    const answerHash = await hashText(recoveryAnswer);
+    if (saved.answerHash !== answerHash) return alert('Respuesta de seguridad incorrecta');
     if (!supabase) return alert('Configura Supabase en .env');
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail);
     if (error) return alert(error.message);
     alert('Correo de recuperación enviado');
+    setRecoveryMode(false);
   };
   return (
     <div
@@ -130,7 +161,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           ))}
         </div>
 
-        <h2 className="text-gray-900 mb-1">{isRegister ? 'Crear cuenta' : 'Iniciar sesión'}</h2>
+        <h2 className="text-gray-900 mb-1">{recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}</h2>
         <p className="text-gray-400 text-sm mb-5">
           {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
         </p>
@@ -178,8 +209,29 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </button>
         </div>
 
-        {tab === 'email' ? (
+        {recoveryMode ? (
           <div className="space-y-3">
+            <div className="bg-gray-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
+              <input type="email" value={recoveryEmail} onChange={(e) => {
+                const next = e.target.value;
+                setRecoveryEmail(next);
+                const raw = localStorage.getItem(securityStorageKey(next));
+                setRecoveryQuestion(raw ? (JSON.parse(raw) as { question: string }).question : '');
+              }} placeholder="correo@ejemplo.com" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+            </div>
+            {recoveryQuestion && <div className="bg-gray-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-400 mb-1">{recoveryQuestion}</p>
+              <input type="text" value={recoveryAnswer} onChange={(e) => setRecoveryAnswer(e.target.value)} placeholder="Tu respuesta" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+            </div>}
+            <button onClick={resetPassword} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: '#6D28D9' }}>Validar y recuperar</button>
+          </div>
+        ) : tab === 'email' ? (
+          <div className="space-y-3">
+            {isRegister && <div className="bg-gray-50 rounded-xl px-4 py-3">
+              <p className="text-xs text-gray-400 mb-1">Nombre completo</p>
+              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre completo" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+            </div>}
             <div className="bg-gray-50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
               <input
@@ -205,8 +257,26 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
+            {isRegister && <>
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Confirmar contraseña</p>
+                <input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+              </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Pregunta de seguridad</p>
+                <select value={securityQuestion} onChange={(e) => setSecurityQuestion(e.target.value)} className="w-full bg-transparent text-gray-900 outline-none text-sm">
+                  <option>¿Cuál es el nombre de tu primera mascota?</option>
+                  <option>¿En qué ciudad naciste?</option>
+                  <option>¿Cuál fue tu primera escuela?</option>
+                </select>
+              </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Respuesta de seguridad</p>
+                <input type="text" value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} placeholder="Tu respuesta" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+              </div>
+            </>}
             <div className="flex justify-end">
-              <button onClick={resetPassword} className="text-sm" style={{ color: '#6D28D9' }}>
+              <button onClick={() => setRecoveryMode(true)} className="text-sm" style={{ color: '#6D28D9' }}>
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
@@ -248,7 +318,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </div>
         )}
 
-        <motion.button
+        {!recoveryMode && <motion.button
           onClick={tab === 'email' ? loginWithEmail : verifyOtp}
           className="w-full mt-5 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2"
           style={{ backgroundColor: '#6D28D9' }}
@@ -256,9 +326,9 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           whileHover={{ backgroundColor: '#5B21B6' }}
         >
           <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-          Ingresar como {roles.find((r) => r.id === selectedRole)?.label}
+          {isRegister ? 'Registrarse gratis' : `Ingresar como ${roles.find((r) => r.id === selectedRole)?.label}`}
           <ArrowRight size={16} />
-        </motion.button>
+        </motion.button>}
 
 
 
@@ -267,17 +337,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <p className="text-xs text-gray-400">cliente.test@rayoexpress.app · repartidor.test@rayoexpress.app</p>
           <p className="text-xs text-gray-400">tienda.test@rayoexpress.app · admin.test@rayoexpress.app</p>
         </div>
-        <p className="text-center text-sm text-gray-500 mt-4">
+        {!recoveryMode && <p className="text-center text-sm text-gray-500 mt-4">
           ¿No tienes cuenta?{' '}
           <button
             type="button"
-            onClick={() => setIsRegister(true)}
+            onClick={() => setIsRegister((prev) => !prev)}
             className="cursor-pointer font-medium"
             style={{ color: '#6D28D9' }}
           >
-            Regístrate gratis
+            {isRegister ? 'Volver a iniciar sesión' : 'Regístrate gratis'}
           </button>
-        </p>
+        </p>}
 
         <p className="text-center text-xs text-gray-400 mt-4">
           Al continuar aceptas nuestros{' '}
