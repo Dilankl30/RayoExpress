@@ -52,7 +52,7 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
   const isDelivered = currentStep === orderStatuses.length - 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto flex flex-col">
+    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
       {/* Header */}
       <div
         className="pt-10 pb-4 px-4 flex items-center justify-between"
