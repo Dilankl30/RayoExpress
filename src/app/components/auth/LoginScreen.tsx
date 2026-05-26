@@ -130,7 +130,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           ))}
         </div>
 
-        <h2 className="text-gray-900 mb-1">Iniciar sesión</h2>
+        <h2 className="text-gray-900 mb-1">{isRegister ? 'Crear cuenta' : 'Iniciar sesión'}</h2>
         <p className="text-gray-400 text-sm mb-5">
           {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
         </p>
@@ -260,11 +260,23 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <ArrowRight size={16} />
         </motion.button>
 
+
+
+        <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2">
+          <p className="text-xs text-gray-500">Cuentas de prueba (email):</p>
+          <p className="text-xs text-gray-400">cliente.test@rayoexpress.app · repartidor.test@rayoexpress.app</p>
+          <p className="text-xs text-gray-400">tienda.test@rayoexpress.app · admin.test@rayoexpress.app</p>
+        </div>
         <p className="text-center text-sm text-gray-500 mt-4">
           ¿No tienes cuenta?{' '}
-          <span className="cursor-pointer font-medium" style={{ color: '#6D28D9' }}>
+          <button
+            type="button"
+            onClick={() => setIsRegister(true)}
+            className="cursor-pointer font-medium"
+            style={{ color: '#6D28D9' }}
+          >
             Regístrate gratis
-          </span>
+          </button>
         </p>
 
         <p className="text-center text-xs text-gray-400 mt-4">
