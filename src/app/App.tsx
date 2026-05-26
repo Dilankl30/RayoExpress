@@ -24,6 +24,7 @@ export default function App() {
 
   useEffect(() => {
     const boot = async () => {
+      if (!supabase) return;
       const { data } = await supabase.auth.getSession();
       const user = data.session?.user;
       if (!user) return;
@@ -34,6 +35,8 @@ export default function App() {
     };
 
     boot();
+
+    if (!supabase) return;
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
@@ -50,6 +53,7 @@ export default function App() {
   }, []);
 
   const handleLogin = async (r: Role) => {
+    if (!supabase) return;
     const user = (await supabase.auth.getUser()).data.user;
     if (!user) return;
     await upsertProfile(user.id, r, { full_name: user.user_metadata?.full_name ?? user.email ?? null, phone: user.phone ?? null });
