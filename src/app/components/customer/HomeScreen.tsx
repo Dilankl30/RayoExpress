@@ -77,7 +77,7 @@ export function HomeScreen({ onNavigate, cartCount, onSelectStore }: HomeScreenP
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto relative">
+    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto relative">
       {/* Header */}
       <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}>
         {/* Top row */}
