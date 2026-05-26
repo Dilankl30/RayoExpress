@@ -55,7 +55,7 @@ export function StoreDashboard({ onNavigate }: StoreDashboardProps) {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md mx-auto flex flex-col">
+    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
       {/* Header */}
       <div
         className="pt-10 pb-5 px-4"
@@ -306,7 +306,7 @@ export function StoreDashboard({ onNavigate }: StoreDashboardProps) {
 
       {/* Bottom Nav */}
       <div
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 max-w-md mx-auto"
+        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 max-w-md lg:max-w-6xl mx-auto"
         style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}
       >
         {tabs.map((tab) => {
