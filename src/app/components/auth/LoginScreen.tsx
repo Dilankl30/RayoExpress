@@ -96,6 +96,52 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
     alert('Correo de recuperación enviado.');
   };
 
+
+  const [isRegister, setIsRegister] = useState(false);
+
+  const loginWithProvider = async (provider: 'google' | 'facebook') => {
+    if (!supabase) return alert('Configura Supabase en .env');
+    await supabase.auth.signInWithOAuth({ provider });
+  };
+
+  const loginWithEmail = async () => {
+    if (isRegister) {
+      if (!supabase) return alert('Configura Supabase en .env');
+      const { error } = await supabase.auth.signUp({ email, password, options: { data: { role: selectedRole } } });
+      if (error) return alert(error.message);
+    } else {
+      if (!supabase) return alert('Configura Supabase en .env');
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) return alert(error.message);
+    }
+    await onLogin(selectedRole);
+  };
+
+  const sendOtp = async () => {
+    if (!supabase) return alert('Configura Supabase en .env');
+    const { error } = await supabase.auth.signInWithOtp({ phone: `+593${phone.replace(/\D/g, '')}` });
+    if (error) return alert(error.message);
+    setOtpSent(true);
+  };
+
+  const verifyOtp = async () => {
+    if (!supabase) return alert('Configura Supabase en .env');
+    const { error } = await supabase.auth.verifyOtp({
+      phone: `+593${phone.replace(/\D/g, '')}`,
+      token: otp,
+      type: 'sms',
+    });
+    if (error) return alert(error.message);
+    await onLogin(selectedRole);
+  };
+
+  const resetPassword = async () => {
+    if (!email) return;
+    if (!supabase) return alert('Configura Supabase en .env');
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
+    if (error) return alert(error.message);
+    alert('Correo de recuperación enviado');
+  };
   return (
     <div className="min-h-screen flex flex-col max-w-md lg:max-w-6xl mx-auto relative overflow-hidden" style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 100%)' }}>
       <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-20" style={{ background: 'radial-gradient(circle, #FFD400, transparent)', transform: 'translate(30%, -30%)' }} />
