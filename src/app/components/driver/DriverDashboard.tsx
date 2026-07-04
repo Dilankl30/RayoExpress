@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Zap, Bell, MapPin, Star, DollarSign, Package, Clock,
-  CheckCircle, XCircle, Phone, Navigation, ToggleLeft, ToggleRight,
-  TrendingUp, Wallet, History, User, ChevronRight,
+  Bell, MapPin, Star, DollarSign, Package, Clock,
+  CheckCircle, XCircle, ToggleLeft, ToggleRight,
+  TrendingUp, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import logo from '../../../imports/image-1.png';
@@ -36,10 +36,10 @@ const weeklyData = [
 const maxEarnings = Math.max(...weeklyData.map((d) => d.earnings));
 
 export function DriverDashboard() {
-  const { navigate, logout } = useAuth();
+  const { logout } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
+  const [activeTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
   const [todayEarnings, setTodayEarnings] = useState(18.50);
   const [acceptCountdown, setAcceptCountdown] = useState(30);
 
@@ -60,13 +60,6 @@ export function DriverDashboard() {
     setShowOrder(false);
     setTodayEarnings((p) => p + 3.8);
   };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Inicio', icon: Zap },
-    { id: 'orders', label: 'Pedidos', icon: Package },
-    { id: 'wallet', label: 'Wallet', icon: Wallet },
-    { id: 'profile', label: 'Perfil', icon: User },
-  ] as const;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">

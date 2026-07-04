@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MapPin, Bell, ShoppingCart, Search, ChevronRight, Star, Clock,
-  Truck, Flame, Tag, ChevronDown, Zap, Filter, TrendingUp,
+  MapPin, Bell, ShoppingCart, Search, ChevronRight,
+  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';

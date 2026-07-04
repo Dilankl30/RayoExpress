@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -6,7 +6,7 @@ import {
 } from 'recharts';
 import {
   Bell, TrendingUp, Users, Store, Bike, Package, DollarSign,
-  Settings, BarChart2, Map, Shield, Zap, ArrowUpRight, ChevronRight,
+  Shield, ArrowUpRight, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import logo from '../../../imports/image-1.png';
@@ -54,8 +54,8 @@ const statusInfo: Record<string, { bg: string; text: string; label: string }> = 
 };
 
 export function AdminDashboard() {
-  const { navigate, logout } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'map' | 'settings'>('dashboard');
+  const { logout } = useAuth();
+  const [activeTab] = useState<'dashboard' | 'users' | 'map' | 'settings'>('dashboard');
 
   const kpis = [
     { label: 'Ventas hoy', value: '$3,847', change: '+12%', icon: DollarSign, color: '#22C55E', bg: '#F0FDF4' },
@@ -65,13 +65,6 @@ export function AdminDashboard() {
     { label: 'Repartidores online', value: '23', change: '+4', icon: Bike, color: '#EC4899', bg: '#FDF2F8' },
     { label: 'Ingresos plataforma', value: '$384', change: '+10%', icon: TrendingUp, color: '#06B6D4', bg: '#F0FDFA' },
   ];
-
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart2 },
-    { id: 'users', label: 'Usuarios', icon: Users },
-    { id: 'map', label: 'Mapa', icon: Map },
-    { id: 'settings', label: 'Config', icon: Settings },
-  ] as const;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">

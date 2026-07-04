@@ -5,7 +5,7 @@ import { isSupabaseReady } from '../../../services/supabase';
 import { useAuth } from '../../../context/AuthContext';
 import { supabase } from '../../../services/supabase';
 import { sendPasswordReset } from '../../../services/auth';
-import { hashText, isSecurePassword, isValidEmail } from '../../../services/validation';
+import { hashText, isSecurePassword } from '../../../services/validation';
 import type { Role } from '../../types';
 import logo from '../../../imports/image-1.png';
 

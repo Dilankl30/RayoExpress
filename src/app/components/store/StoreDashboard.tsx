@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { motion } from 'motion/react';
 import {
-  Bell, TrendingUp, Package, ShoppingBag, Users,
-  Clock, CheckCircle, AlertCircle, Plus, Settings,
-  BarChart2, Star, Zap, ChevronRight,
+  Bell, TrendingUp, Clock, CheckCircle, AlertCircle, Plus, Settings,
+  ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import logo from '../../../imports/image-1.png';
@@ -28,8 +26,8 @@ const statusColors: Record<string, { bg: string; text: string; label: string }> 
 };
 
 export function StoreDashboard() {
-  const { navigate, logout, user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'catalog' | 'settings'>('dashboard');
+  const { logout } = useAuth();
+  const [activeTab] = useState<'dashboard' | 'orders' | 'catalog' | 'settings'>('dashboard');
   const [isOpen, setIsOpen] = useState(true);
   const [orderStatuses, setOrderStatuses] = useState<Record<string, string>>(
     Object.fromEntries(pendingOrders.map((o) => [o.id, o.status]))
@@ -43,13 +41,6 @@ export function StoreDashboard() {
       return next ? { ...prev, [id]: next } : prev;
     });
   };
-
-  const tabs = [
-    { id: 'dashboard', label: 'Resumen', icon: BarChart2 },
-    { id: 'orders', label: 'Pedidos', icon: Package },
-    { id: 'catalog', label: 'Catálogo', icon: ShoppingBag },
-    { id: 'settings', label: 'Config', icon: Settings },
-  ] as const;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">

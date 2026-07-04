@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  ArrowLeft, Plus, Minus, Trash2, Tag, ChevronRight,
+  ArrowLeft, Plus, Minus, Trash2, Tag,
   CreditCard, Banknote, Smartphone, Zap, CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { createOrder } from '../../../services/orders';
-import type { Screen } from '../../types';
 
 const paymentMethods = [
   { id: 'cash', label: 'Efectivo', icon: Banknote, color: '#22C55E' },
@@ -47,7 +46,7 @@ export function CartScreen() {
     setError('');
     setPlacing(true);
     try {
-      const result = await createOrder({
+      await createOrder({
         storeId: cart[0].storeId || '',
         productIds: cart.map((i) => i.id),
         quantities: cart.map((i) => i.quantity),

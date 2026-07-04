@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Star, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart, Tag } from 'lucide-react';
+import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { getStoreById, getProductsByStore } from '../../../services/stores';
-import type { Screen } from '../../types';
 
 export function StoreDetailScreen() {
   const { navigate, navigationParams } = useAuth();
