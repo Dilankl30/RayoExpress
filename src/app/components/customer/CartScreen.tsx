@@ -4,9 +4,9 @@ import {
   ArrowLeft, Plus, Minus, Trash2, Tag,
   CreditCard, Banknote, Smartphone, Zap, CheckCircle, Upload,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { useCart } from '../../../context/CartContext';
-import { createOrder } from '../../../services/orders';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { useCart } from '../../../modules/cart/context/CartContext';
+import { createOrder } from '../../../modules/orders/application/order-service';
 import { uploadReceipt, savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 
 const paymentMethods = [

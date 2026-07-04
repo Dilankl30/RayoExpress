@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
 import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
-import { getStoreInfo } from '../../../modules/stores/application/store-settings.service';
-import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
+import { getStoreInfo, toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
+import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { PaymentVerification } from '../../../modules/payments/ui/PaymentVerification';
 import { FinancialReport } from '../../../modules/payments/ui/FinancialReport';
 
@@ -15,24 +15,30 @@ export function StoreDashboard() {
   const [storeName, setStoreName] = useState('Mi Tienda');
   const [isOpen, setIsOpen] = useState(true);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ salesToday: 0, activeOrders: 0, productCount: 0, rating: 0 });
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
+      setError(null);
       try {
-        const mockStoreId = 'store-1';
-        setStoreId(mockStoreId);
-        const info = await getStoreInfo(mockStoreId);
-        if (info) {
-          setStoreName(info.name);
-          setIsOpen(info.is_open);
-        }
+        if (!user) throw new Error('Usuario no autenticado');
+        const store = await getStoreByOwner(user.id);
+        if (!store) throw new Error('No tienes una tienda registrada');
+        setStoreId(store.id);
+        setStoreName(store.name);
+        setIsOpen(store.is_open);
+        const s = await getStoreDashboardStats(store.id);
+        setStats(s);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Error al cargar');
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, []);
+  }, [user]);
 
   const handleToggleOpen = async () => {
     const next = !isOpen;
@@ -44,6 +50,18 @@ export function StoreDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white rounded-2xl p-8 shadow-sm text-center max-w-sm">
+          <p style={{ fontSize: 40 }}>🏪</p>
+          <p className="text-gray-900 font-bold mt-3">Error</p>
+          <p className="text-sm text-gray-500 mt-1">{error}</p>
+        </div>
       </div>
     );
   }
@@ -92,10 +110,10 @@ export function StoreDashboard() {
           <div className="px-4 pt-4 space-y-3">
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Ventas hoy', value: '$347.20', icon: '💰' },
-                { label: 'Pedidos activos', value: '3', icon: '⏳' },
-                { label: 'Productos', value: '24', icon: '📦' },
-                { label: 'Calificación', value: '4.8 ⭐', icon: '⭐' },
+                { label: 'Ventas hoy', value: `$${stats.salesToday.toFixed(2)}`, icon: '💰' },
+                { label: 'Pedidos activos', value: String(stats.activeOrders), icon: '⏳' },
+                { label: 'Productos', value: String(stats.productCount), icon: '📦' },
+                { label: 'Calificación', value: stats.rating > 0 ? `${stats.rating.toFixed(1)} ⭐` : '—', icon: '⭐' },
               ].map((s) => (
                 <div key={s.label} className="bg-white rounded-2xl p-4 shadow-sm">
                   <p style={{ fontSize: 20 }}>{s.icon}</p>

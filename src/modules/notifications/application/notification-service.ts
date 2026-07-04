@@ -1,5 +1,5 @@
-import { getSupabase, isSupabaseReady } from './supabase';
-import { mockNotifications } from './mockData';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
+import { mockNotifications } from '../../../shared/lib/mockData';
 
 export async function getNotifications(userId: string) {
   if (!isSupabaseReady) return mockNotifications[userId] || [];

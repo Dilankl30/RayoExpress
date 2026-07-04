@@ -51,7 +51,7 @@ declare
   raw_security_question text;
   raw_security_answer_hash text;
 begin
-  raw_role := coalesce(new.raw_user_meta_data ->> 'role', 'customer');
+  raw_role := 'customer';
   raw_full_name := new.raw_user_meta_data ->> 'full_name';
   raw_security_question := new.raw_user_meta_data ->> 'security_question';
   raw_security_answer_hash := new.raw_user_meta_data ->> 'security_answer_hash';

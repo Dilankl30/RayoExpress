@@ -5,8 +5,8 @@ import {
   Shield, Bike, ArrowRight, Sparkles,
   ShoppingBag, Package, Users,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { getStores, getCategories } from '../../../services/stores';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { getStores, getCategories } from '../../../modules/stores/application/store-service';
 import logo from '../../../imports/image-1.png';
 
 const banners = [

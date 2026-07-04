@@ -1,6 +1,6 @@
-import { getSupabase, isSupabaseReady } from './supabase';
-import { hashText } from './validation';
-import type { Role } from '../app/types';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
+import { hashText } from '../../../shared/validation';
+import type { Role } from '../../../shared/types';
 
 export type Profile = {
   id: string;
@@ -23,18 +23,27 @@ export async function getProfile(userId: string): Promise<Profile | null> {
   return data as Profile | null;
 }
 
-export async function upsertProfile(userId: string, role: Role, data?: Partial<Profile>) {
+export async function upsertProfile(userId: string, data?: Partial<Profile>) {
   if (!isSupabaseReady) return;
   const supabase = getSupabase();
-  const payload = {
+  const payload: Record<string, unknown> = {
     id: userId,
-    role,
     full_name: data?.full_name ?? null,
     phone: data?.phone ?? null,
     avatar_url: data?.avatar_url ?? null,
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function updateUserRole(userId: string, newRole: Role): Promise<void> {
+  if (!isSupabaseReady) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.rpc('admin_set_user_role', {
+    p_user_id: userId,
+    p_new_role: newRole,
+  });
   if (error) throw error;
 }
 

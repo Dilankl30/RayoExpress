@@ -3,7 +3,8 @@ import { motion } from 'motion/react';
 import { User, Save, ArrowLeft, Camera } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { updateProfile } from '../../../modules/auth/application/update-profile.use-case';
-import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
+import { uploadFileWithUpsert, getPublicUrl } from '../../../shared/storage/storage.service';
+import { isSupabaseReady } from '../../../integrations/supabase/client';
 
 export function ProfileScreen() {
   const { user, setUser, navigate, logout } = useAuth();
@@ -35,7 +36,6 @@ export function ProfileScreen() {
 
   const handleAvatarUpload = async () => {
     if (!isSupabaseReady) return;
-    const supabase = getSupabase();
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'image/*';
@@ -44,12 +44,8 @@ export function ProfileScreen() {
       if (!file) return;
       setSaving(true);
       try {
-        const ext = file.name.split('.').pop();
-        const path = `avatars/${user.id}.${ext}`;
-        const { error: uploadError } = await supabase.storage.from('avatars').upload(path, file, { upsert: true });
-        if (uploadError) throw uploadError;
-        const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(path);
-        const avatarUrl = urlData.publicUrl;
+        const { path } = await uploadFileWithUpsert('avatars', user.id, file);
+        const avatarUrl = await getPublicUrl('avatars', path);
         await updateProfile(user.id, { avatar_url: avatarUrl });
         setUser({ ...user, avatar_url: avatarUrl });
       } catch (err: unknown) {

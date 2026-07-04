@@ -1,7 +1,7 @@
-import { getSupabase, isSupabaseReady } from './supabase';
-import { createMockOrder, getMockOrders } from './mockData';
-import { validateOrderInput, validateOrderStatus } from '../shared/validation/service-validators';
-import { logAuditEvent } from '../modules/audit/application/audit.service';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
+import { createMockOrder, getMockOrders } from '../../../shared/lib/mockData';
+import { validateOrderInput, validateOrderStatus } from '../../../shared/validation/service-validators';
+import { logAuditEvent } from '../../audit/application/audit.service';
 
 export interface CreateOrderParams {
   storeId: string;

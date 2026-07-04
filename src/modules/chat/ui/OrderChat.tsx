@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, X } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../auth/context/AuthContext';
 import { getOrCreateChat, getMessages, sendMessage, markMessagesAsRead } from '../application/chat.service';
 import { isSupabaseReady, getSupabase } from '../../../integrations/supabase/client';
 import type { Message } from '../domain/chat.types';

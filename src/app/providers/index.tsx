@@ -1,7 +1,7 @@
 import { AuthProvider } from '../../modules/auth/context/AuthContext';
 import { CartProvider } from '../../modules/cart/context/CartContext';
 import { NotificationProvider } from '../../modules/notifications/context/NotificationContext';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../modules/auth/context/AuthContext';
 import type { ReactNode } from 'react';
 
 function NotificationsLayer({ children }: { children: ReactNode }) {

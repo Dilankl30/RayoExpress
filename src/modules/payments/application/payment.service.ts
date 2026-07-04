@@ -1,5 +1,6 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
-import { validatePaymentMethod, validateFile } from '../../../shared/validation/service-validators';
+import { uploadFile } from '../../../shared/storage/storage.service';
+import { validatePaymentMethod } from '../../../shared/validation/service-validators';
 import { isPositiveNumber } from '../../../shared/validation';
 import { logAuditEvent } from '../../audit/application/audit.service';
 
@@ -17,16 +18,9 @@ export interface PaymentTransaction {
 const mockTransactions: PaymentTransaction[] = [];
 
 export async function uploadReceipt(orderId: string, file: File): Promise<string> {
-  const fileError = validateFile(file);
-  if (fileError) throw new Error(fileError);
-  if (!isSupabaseReady) return URL.createObjectURL(file);
-  const supabase = getSupabase();
-  const ext = file.name.split('.').pop();
-  const path = `receipts/${orderId}/${Date.now()}.${ext}`;
-  const { error } = await supabase.storage.from('receipts').upload(path, file);
-  if (error) throw error;
-  const { data: urlData } = supabase.storage.from('receipts').getPublicUrl(path);
-  return urlData.publicUrl;
+  const { path } = await uploadFile('receipts', orderId, file);
+  if (!isSupabaseReady) return path;
+  return path;
 }
 
 export async function savePaymentReceipt(orderId: string, method: string, amount: number, receiptUrl: string | null) {

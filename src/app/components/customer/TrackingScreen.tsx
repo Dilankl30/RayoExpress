@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Star, CheckCircle, Clock, MessageCircle } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
-import { getMyOrders } from '../../../services/orders';
+import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 

@@ -4,10 +4,10 @@ import {
   MapPin, ShoppingCart, Search, ChevronRight,
   Truck, Flame, ChevronDown, Zap, Filter, TrendingUp,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { useCart } from '../../../context/CartContext';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
-import { getStores, getCategories } from '../../../services/stores';
+import { getStores, getCategories } from '../../../modules/stores/application/store-service';
 import logo from '../../../imports/image-1.png';
 
 const banners = [

@@ -5,44 +5,60 @@ import {
   CheckCircle, XCircle, ToggleLeft, ToggleRight,
   TrendingUp, ChevronRight, Camera, MessageCircle,
 } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
-import { getDriverEarnings, setDriverOnline, getDriverProfile } from '../../../modules/delivery/application/driver.service';
+import {
+  getDriverEarnings, setDriverOnline, getDriverProfile,
+  getDriverWeeklyHistory, getDriverOrdersToday, getDriverTripCount,
+} from '../../../modules/delivery/application/driver.service';
 import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
 import { uploadDeliveryEvidence } from '../../../modules/delivery/application/driver.service';
-import { updateOrderStatus } from '../../../services/orders';
+import { updateOrderStatus } from '../../../modules/orders/application/order-service';
 import logo from '../../../imports/image-1.png';
 import mascot from '../../../imports/image.png';
-
-const weeklyData = [
-  { day: 'L', earnings: 24, orders: 8 },
-  { day: 'M', earnings: 31, orders: 11 },
-  { day: 'X', earnings: 28, orders: 9 },
-  { day: 'J', earnings: 38, orders: 13 },
-  { day: 'V', earnings: 45, orders: 16 },
-  { day: 'S', earnings: 52, orders: 18 },
-  { day: 'D', earnings: 18, orders: 6 },
-];
-
-const maxEarnings = Math.max(...weeklyData.map((d) => d.earnings));
 
 export function DriverDashboard() {
   const { user, logout } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
-
   const [acceptCountdown, setAcceptCountdown] = useState(30);
-  const [earnings, setEarnings] = useState({ today: 18.50, week: 236.50, month: 892.30, balance: 127.40 });
+  const [earnings, setEarnings] = useState({ today: 0, week: 0, month: 0, balance: 0 });
+  const [weeklyHistory, setWeeklyHistory] = useState<{ day: string; earnings: number; orders: number }[]>([]);
+  const [todayOrders, setTodayOrders] = useState<{ id: string; store_name: string; store_emoji: string; total: number; status: string; created_at: string }[]>([]);
+  const [tripCount, setTripCount] = useState(0);
+  const [driverRating, setDriverRating] = useState(0);
   const [showEvidence, setShowEvidence] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatOrder, setChatOrder] = useState<{ orderId: string; storeId: string; storeName: string; storeEmoji: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
-    getDriverEarnings(user.id).then(setEarnings).catch(() => {});
-    getDriverProfile(user.id).then((p) => { if (p) setIsOnline(p.is_online); }).catch(() => {});
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [profile, earns, history, orders, trips] = await Promise.all([
+          getDriverProfile(user.id),
+          getDriverEarnings(user.id),
+          getDriverWeeklyHistory(user.id),
+          getDriverOrdersToday(user.id),
+          getDriverTripCount(user.id),
+        ]);
+        if (profile) setIsOnline(profile.is_online);
+        setDriverRating(profile?.rating ?? 0);
+        setEarnings(earns);
+        setWeeklyHistory(history);
+        setTodayOrders(orders);
+        setTripCount(trips);
+      } catch {
+        /* noop */
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
   }, [user]);
 
   useEffect(() => {
@@ -75,6 +91,16 @@ export function DriverDashboard() {
     await updateOrderStatus('order-1', 'delivered', user?.id);
     setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
   };
+
+  const maxEarnings = Math.max(...weeklyHistory.map((d) => d.earnings), 1);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
@@ -132,8 +158,8 @@ export function DriverDashboard() {
             <div className="px-4 pt-4 grid grid-cols-2 gap-3">
               {[
                 { label: 'Ganancias hoy', value: `$${earnings.today.toFixed(2)}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4' },
-                { label: 'Pedidos hoy', value: '6', icon: Package, color: '#6D28D9', bg: '#EDE9FE' },
-                { label: 'Calificación', value: '4.92 ⭐', icon: Star, color: '#F59E0B', bg: '#FFFBEB' },
+                { label: 'Pedidos hoy', value: String(todayOrders.length), icon: Package, color: '#6D28D9', bg: '#EDE9FE' },
+                { label: 'Calificación', value: driverRating > 0 ? `${driverRating.toFixed(2)} ⭐` : '—', icon: Star, color: '#F59E0B', bg: '#FFFBEB' },
                 { label: 'Balance', value: `$${earnings.balance.toFixed(2)}`, icon: DollarSign, color: '#3B82F6', bg: '#EFF6FF' },
               ].map((stat) => {
                 const Icon = stat.icon;
@@ -157,20 +183,24 @@ export function DriverDashboard() {
                   <span>${earnings.week.toFixed(2)}</span>
                 </div>
               </div>
-              <div className="flex items-end gap-2 h-24">
-                {weeklyData.map((d, i) => (
-                  <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
-                    <motion.div
-                      className="w-full rounded-t-lg"
-                      style={{ backgroundColor: i === 4 ? '#6D28D9' : '#EDE9FE', height: `${(d.earnings / maxEarnings) * 80}px` }}
-                      initial={{ scaleY: 0 }}
-                      animate={{ scaleY: 1 }}
-                      transition={{ delay: i * 0.05, duration: 0.4 }}
-                    />
-                    <span style={{ fontSize: 10, color: i === 4 ? '#6D28D9' : '#9CA3AF' }}>{d.day}</span>
-                  </div>
-                ))}
-              </div>
+              {weeklyHistory.length > 0 ? (
+                <div className="flex items-end gap-2 h-24">
+                  {weeklyHistory.map((d, i) => (
+                    <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
+                      <motion.div
+                        className="w-full rounded-t-lg"
+                        style={{ backgroundColor: i === 4 ? '#6D28D9' : '#EDE9FE', height: `${(d.earnings / maxEarnings) * 80}px` }}
+                        initial={{ scaleY: 0 }}
+                        animate={{ scaleY: 1 }}
+                        transition={{ delay: i * 0.05, duration: 0.4 }}
+                      />
+                      <span style={{ fontSize: 10, color: i === 4 ? '#6D28D9' : '#9CA3AF' }}>{d.day}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-gray-400 text-center py-6">Sin datos esta semana</p>
+              )}
             </div>
 
             {!isOnline && (
@@ -202,10 +232,12 @@ export function DriverDashboard() {
               </button>
               <button
                 onClick={() => {
-                  setChatOrder({ orderId: 'order-1', storeId: 'store-1', storeName: 'Burger King', storeEmoji: '👑' });
-                  setShowChat(true);
+                  if (todayOrders.length > 0) {
+                    setChatOrder({ orderId: todayOrders[0].id, storeId: '', storeName: todayOrders[0].store_name, storeEmoji: todayOrders[0].store_emoji });
+                    setShowChat(true);
+                  }
                 }}
-                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2 mt-2"
                 style={{ backgroundColor: '#6D28D9' }}
               >
                 <MessageCircle size={16} /> Chat del pedido
@@ -217,28 +249,31 @@ export function DriverDashboard() {
         {activeTab === 'orders' && (
           <div className="px-4 pt-4 space-y-3">
             <h3 className="text-gray-900 font-semibold">Historial de hoy</h3>
-            {[
-              { id: 'ORD-2844', store: 'KFC', emoji: '🍗', earnings: '$4.20', time: '14:32', status: 'delivered', distance: '1.8 km' },
-              { id: 'ORD-2840', store: 'Subway', emoji: '🥪', earnings: '$3.50', time: '13:15', status: 'delivered', distance: '2.1 km' },
-              { id: 'ORD-2835', store: 'Pizza Hut', emoji: '🍕', earnings: '$5.10', time: '12:00', status: 'delivered', distance: '3.2 km' },
-            ].map((order) => (
+            {todayOrders.length > 0 ? todayOrders.map((order) => (
               <div key={order.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9FAFB', fontSize: 24 }}>
-                  {order.emoji}
+                  {order.store_emoji || '📦'}
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between">
-                    <p className="text-gray-900 font-medium text-sm">{order.store}</p>
-                    <p className="font-bold text-sm" style={{ color: '#22C55E' }}>{order.earnings}</p>
+                    <p className="text-gray-900 font-medium text-sm">{order.store_name || 'Tienda'}</p>
+                    <p className="font-bold text-sm" style={{ color: '#22C55E' }}>${order.total.toFixed(2)}</p>
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="text-xs text-gray-400">{order.id}</span>
-                    <span className="text-xs text-gray-400">{order.time}</span>
-                    <span className="text-xs text-gray-400">{order.distance}</span>
+                    <span className="text-xs text-gray-400">{order.id.slice(0, 8)}</span>
+                    <span className="text-xs text-gray-400">{new Date(order.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                      order.status === 'delivered' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                    }`}>{order.status}</span>
                   </div>
                 </div>
               </div>
-            ))}
+            )) : (
+              <div className="bg-white rounded-2xl p-8 shadow-sm text-center">
+                <p style={{ fontSize: 32 }}>🛵</p>
+                <p className="text-gray-500 text-sm mt-2">Sin pedidos hoy</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -283,8 +318,8 @@ export function DriverDashboard() {
               <p className="text-sm text-gray-500 mt-0.5">Repartidor</p>
               <div className="flex items-center justify-center gap-1 mt-2">
                 <Star size={15} fill="#FFD400" stroke="#FFD400" />
-                <span className="text-sm font-medium">4.92</span>
-                <span className="text-xs text-gray-400">(1,247 entregas)</span>
+                <span className="text-sm font-medium">{driverRating > 0 ? driverRating.toFixed(2) : '—'}</span>
+                <span className="text-xs text-gray-400">({tripCount.toLocaleString()} entregas)</span>
               </div>
             </div>
             {[
