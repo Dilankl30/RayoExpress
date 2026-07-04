@@ -157,7 +157,7 @@ export function LoginScreen() {
   return (
     <div
       className="min-h-screen flex flex-col md:flex-row md:items-center md:justify-center relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 100%)' }}
+      style={{ background: 'linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%)' }}
     >
       <div
         className="absolute top-0 right-0 w-48 h-48 md:w-96 md:h-96 rounded-full opacity-20"
@@ -187,7 +187,7 @@ export function LoginScreen() {
       </div>
 
       <motion.div
-        className="flex-1 md:flex-none md:w-[480px] bg-white rounded-t-3xl md:rounded-3xl px-5 pt-6 pb-8 md:pb-6 relative z-10 md:shadow-2xl md:max-h-[90vh] md:overflow-y-auto"
+        className="flex-1 md:flex-none md:w-[480px] bg-card rounded-t-3xl md:rounded-3xl px-5 pt-6 pb-8 md:pb-6 relative z-10 md:shadow-2xl md:max-h-[90vh] md:overflow-y-auto"
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
@@ -198,9 +198,9 @@ export function LoginScreen() {
               key={r.id}
               onClick={() => setSelectedRole(r.id)}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm whitespace-nowrap flex-shrink-0 transition-all ${
-                selectedRole === r.id ? 'text-white shadow-md' : 'bg-gray-100 text-gray-600'
+                selectedRole === r.id ? 'text-white shadow-md' : 'bg-surface-hover text-text-secondary'
               }`}
-              style={selectedRole === r.id ? { backgroundColor: '#6D28D9' } : {}}
+              style={selectedRole === r.id ? { backgroundColor: 'var(--brand)' } : {}}
             >
               <span>{r.icon}</span>
               <span>{r.label}</span>
@@ -208,22 +208,22 @@ export function LoginScreen() {
           ))}
         </div>
 
-        <h2 className="text-gray-900 mb-1">
+        <h2 className="text-text-primary mb-1">
           {recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}
         </h2>
-        <p className="text-gray-400 text-sm mb-3">
+        <p className="text-text-secondary text-sm mb-3">
           {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
         </p>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
-            <p className="text-red-600 text-sm">{error}</p>
+          <div className="bg-danger-light border border-red-200 rounded-xl px-4 py-3 mb-4">
+            <p className="text-danger text-sm">{error}</p>
           </div>
         )}
 
         {/* Demo mode banner */}
         {!isSupabaseReady && !recoveryMode && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
+          <div className="bg-warning-light border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
             <Info size={15} className="text-amber-600 mt-0.5 flex-shrink-0" />
             <div className="text-xs text-amber-800">
               <p className="font-semibold mb-1">Modo demo — Sin base de datos</p>
@@ -235,28 +235,28 @@ export function LoginScreen() {
         {!isSupabaseReady ? (
           <>
             <div className="space-y-3 mb-4">
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
+              <div className="bg-surface rounded-xl px-4 py-3">
+                <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="correo@ejemplo.com"
-                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                 />
               </div>
-              <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+              <div className="bg-surface rounded-xl px-4 py-3 flex items-center">
                 <div className="flex-1">
-                  <p className="text-xs text-gray-400 mb-1">Contraseña</p>
+                  <p className="text-xs text-text-secondary mb-1">Contraseña</p>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                   />
                 </div>
-                <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 ml-2 flex-shrink-0">
+                <button onClick={() => setShowPassword(!showPassword)} className="text-text-secondary ml-2 flex-shrink-0">
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -265,7 +265,7 @@ export function LoginScreen() {
                 onClick={loginWithEmail}
                 disabled={loading}
                 className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ backgroundColor: '#6D28D9' }}
+                style={{ backgroundColor: 'var(--brand)' }}
                 whileTap={{ scale: 0.98 }}
               >
                 <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
@@ -274,8 +274,8 @@ export function LoginScreen() {
               </motion.button>
             </div>
 
-            <div className="border-t border-gray-100 pt-4">
-              <p className="text-xs text-gray-500 text-center mb-3 font-medium">CUENTAS DE DEMO</p>
+            <div className="border-t border-border-light pt-4">
+              <p className="text-xs text-text-secondary text-center mb-3 font-medium">CUENTAS DE DEMO</p>
               <div className="grid grid-cols-2 gap-2">
                 {mockDemoAccounts.map((acc) => (
                   <button
@@ -286,24 +286,24 @@ export function LoginScreen() {
                       setSelectedRole(acc.role);
                     }}
                     className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs transition-all ${
-                      selectedRole === acc.role ? 'ring-2 ring-purple-600 bg-purple-50' : 'bg-gray-50 hover:bg-gray-100'
+                      selectedRole === acc.role ? 'ring-2 ring-brand bg-brand-light' : 'bg-surface hover:bg-surface-hover'
                     }`}
                   >
                     <span className="text-lg">{acc.icon}</span>
                     <div>
-                      <p className="font-semibold text-gray-800">{acc.label}</p>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{acc.email}</p>
+                      <p className="font-semibold text-text-primary">{acc.label}</p>
+                      <p className="text-[10px] text-text-secondary mt-0.5">{acc.email}</p>
                     </div>
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-gray-400 text-center mt-2">Selecciona una cuenta y presiona Ingresar</p>
+              <p className="text-[10px] text-text-secondary text-center mt-2">Selecciona una cuenta y presiona Ingresar</p>
             </div>
           </>
         ) : (
           <>
         <div className="flex gap-3 mb-5">
-          <button onClick={() => loginWithProvider('google')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
+          <button onClick={() => loginWithProvider('google')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-3 hover:bg-surface-hover transition-colors text-sm text-text-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -312,7 +312,7 @@ export function LoginScreen() {
             </svg>
             Google
           </button>
-          <button onClick={() => loginWithProvider('facebook')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
+          <button onClick={() => loginWithProvider('facebook')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-3 hover:bg-surface-hover transition-colors text-sm text-text-secondary">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
@@ -321,22 +321,22 @@ export function LoginScreen() {
         </div>
 
         <div className="flex items-center gap-3 mb-5">
-          <div className="flex-1 h-px bg-gray-200" />
-          <span className="text-gray-400 text-xs">o continúa con</span>
-          <div className="flex-1 h-px bg-gray-200" />
+          <div className="flex-1 h-px bg-border" />
+          <span className="text-text-secondary text-xs">o continúa con</span>
+          <div className="flex-1 h-px bg-border" />
         </div>
 
-        <div className="flex bg-gray-100 rounded-xl p-1 mb-4">
+        <div className="flex bg-surface-hover rounded-xl p-1 mb-4">
           <button
             onClick={() => setTab('email')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'email' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'email' ? 'bg-card shadow-sm text-text-primary' : 'text-text-secondary'}`}
           >
             <Mail size={14} />
             Email
           </button>
           <button
             onClick={() => setTab('phone')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'phone' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'phone' ? 'bg-card shadow-sm text-text-primary' : 'text-text-secondary'}`}
           >
             <Phone size={14} />
             Teléfono
@@ -345,21 +345,21 @@ export function LoginScreen() {
 
         {recoveryMode ? (
           <div className="space-y-3">
-            <div className="bg-gray-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
+            <div className="bg-surface rounded-xl px-4 py-3">
+              <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
               <input
                 type="email"
                 value={recoveryEmail}
                 onChange={(e) => setRecoveryEmail(e.target.value)}
                 placeholder="correo@ejemplo.com"
-                className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
               />
             </div>
             <button
               onClick={resetPassword}
               disabled={loading}
               className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              style={{ backgroundColor: '#6D28D9' }}
+              style={{ backgroundColor: 'var(--brand)' }}
             >
               {loading ? 'Enviando...' : 'Enviar correo de recuperación'}
             </button>
@@ -367,95 +367,95 @@ export function LoginScreen() {
         ) : tab === 'email' ? (
           <div className="space-y-3">
             {isRegister && (
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Nombre completo</p>
+              <div className="bg-surface rounded-xl px-4 py-3">
+                <p className="text-xs text-text-secondary mb-1">Nombre completo</p>
                 <input
                   type="text"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="Tu nombre completo"
-                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                 />
               </div>
             )}
-            <div className="bg-gray-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
+            <div className="bg-surface rounded-xl px-4 py-3">
+              <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="correo@ejemplo.com"
-                className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
               />
             </div>
-            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+            <div className="bg-surface rounded-xl px-4 py-3 flex items-center">
               <div className="flex-1">
-                <p className="text-xs text-gray-400 mb-1">Contraseña</p>
+                <p className="text-xs text-text-secondary mb-1">Contraseña</p>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                 />
               </div>
-              <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 ml-2 flex-shrink-0">
+              <button onClick={() => setShowPassword(!showPassword)} className="text-text-secondary ml-2 flex-shrink-0">
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
             {isRegister && (
               <>
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-xs text-gray-400 mb-1">Confirmar contraseña</p>
+                <div className="bg-surface rounded-xl px-4 py-3">
+                  <p className="text-xs text-text-secondary mb-1">Confirmar contraseña</p>
                   <input
                     type={showPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                   />
                 </div>
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-xs text-gray-400 mb-1">Pregunta de seguridad</p>
+                <div className="bg-surface rounded-xl px-4 py-3">
+                  <p className="text-xs text-text-secondary mb-1">Pregunta de seguridad</p>
                   <select
                     value={securityQuestion}
                     onChange={(e) => setSecurityQuestion(e.target.value)}
-                    className="w-full bg-transparent text-gray-900 outline-none text-sm"
+                    className="w-full bg-transparent text-text-primary outline-none text-sm"
                   >
                     <option>¿Cuál es el nombre de tu primera mascota?</option>
                     <option>¿En qué ciudad naciste?</option>
                     <option>¿Cuál fue tu primera escuela?</option>
                   </select>
                 </div>
-                <div className="bg-gray-50 rounded-xl px-4 py-3">
-                  <p className="text-xs text-gray-400 mb-1">Respuesta de seguridad</p>
+                <div className="bg-surface rounded-xl px-4 py-3">
+                  <p className="text-xs text-text-secondary mb-1">Respuesta de seguridad</p>
                   <input
                     type="text"
                     value={securityAnswer}
                     onChange={(e) => setSecurityAnswer(e.target.value)}
                     placeholder="Tu respuesta"
-                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
                   />
                 </div>
               </>
             )}
             <div className="flex justify-end">
-              <button onClick={() => setRecoveryMode(true)} className="text-sm" style={{ color: '#6D28D9' }}>
+              <button onClick={() => setRecoveryMode(true)} className="text-sm" style={{ color: 'var(--brand)' }}>
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
           </div>
         ) : (
           <div className="space-y-3">
-            <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center gap-2">
-              <span className="text-sm text-gray-600 flex-shrink-0">🇪🇨 +593</span>
-              <div className="w-px h-5 bg-gray-200 flex-shrink-0" />
+            <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-2">
+              <span className="text-sm text-text-secondary flex-shrink-0">🇪🇨 +593</span>
+              <div className="w-px h-5 bg-border flex-shrink-0" />
               <input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="98 765 4321"
-                className="flex-1 bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                className="flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
               />
             </div>
             {!otpSent ? (
@@ -463,20 +463,20 @@ export function LoginScreen() {
                 onClick={sendOtp}
                 disabled={loading}
                 className="w-full py-3 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-50"
-                style={{ borderColor: '#6D28D9', color: '#6D28D9' }}
+                style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
               >
                 {loading ? 'Enviando...' : 'Enviar código OTP'}
               </button>
             ) : (
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Código OTP</p>
+              <div className="bg-surface rounded-xl px-4 py-3">
+                <p className="text-xs text-text-secondary mb-1">Código OTP</p>
                 <input
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   placeholder="123456"
                   maxLength={6}
-                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm tracking-widest"
+                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm tracking-widest"
                 />
               </div>
             )}
@@ -488,7 +488,7 @@ export function LoginScreen() {
             onClick={tab === 'email' ? loginWithEmail : verifyOtp}
             disabled={loading}
             className="w-full mt-5 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
             whileTap={{ scale: 0.98 }}
           >
             <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
@@ -500,9 +500,9 @@ export function LoginScreen() {
         )}
 
         {isSupabaseReady && (
-        <p className="text-center text-sm text-gray-500 mt-4">
+        <p className="text-center text-sm text-text-secondary mt-4">
           {recoveryMode ? (
-            <button onClick={() => setRecoveryMode(false)} className="font-medium" style={{ color: '#6D28D9' }}>
+            <button onClick={() => setRecoveryMode(false)} className="font-medium" style={{ color: 'var(--brand)' }}>
               Volver a inicio de sesión
             </button>
           ) : (
@@ -512,7 +512,7 @@ export function LoginScreen() {
                 type="button"
                 onClick={() => setIsRegister((prev) => !prev)}
                 className="cursor-pointer font-medium"
-                style={{ color: '#6D28D9' }}
+                style={{ color: 'var(--brand)' }}
               >
                 {isRegister ? 'Volver a iniciar sesión' : 'Regístrate gratis'}
               </button>
@@ -521,7 +521,7 @@ export function LoginScreen() {
         </p>
         )}
 
-        <p className="text-center text-xs text-gray-400 mt-4">
+        <p className="text-center text-xs text-text-secondary mt-4">
           Al continuar aceptas nuestros{' '}
           <span className="underline cursor-pointer">Términos de uso</span> y{' '}
           <span className="underline cursor-pointer">Política de privacidad</span>

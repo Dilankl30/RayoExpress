@@ -100,27 +100,27 @@ export function LandingScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-card">
       {/* ===== NAVBAR ===== */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-100">
+      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md border-b border-border-light">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <img src={logo} alt="RayoExpress" className="w-9 h-9 object-contain rounded-lg" />
-              <span className="font-bold text-xl" style={{ color: '#6D28D9' }}>RayoExpress</span>
+              <span className="font-bold text-xl" style={{ color: 'var(--brand)' }}>RayoExpress</span>
             </div>
 
             <div className="hidden md:flex items-center gap-8 text-sm">
-              <button className="text-gray-600 hover:text-purple-700 font-medium transition-colors">Ofertas</button>
-              <button className="text-gray-600 hover:text-purple-700 font-medium transition-colors">Tiendas</button>
-              <button className="text-gray-600 hover:text-purple-700 font-medium transition-colors">Cómo funciona</button>
-              <button className="text-gray-600 hover:text-purple-700 font-medium transition-colors">Contacto</button>
+              <button className="text-text-secondary hover:text-brand font-medium transition-colors">Ofertas</button>
+              <button className="text-text-secondary hover:text-brand font-medium transition-colors">Tiendas</button>
+              <button className="text-text-secondary hover:text-brand font-medium transition-colors">Cómo funciona</button>
+              <button className="text-text-secondary hover:text-brand font-medium transition-colors">Contacto</button>
             </div>
 
             <div className="flex items-center gap-3">
               <button
                 onClick={() => navigate('login')}
-                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-purple-700 transition-colors"
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-brand transition-colors"
               >
                 <Users size={16} />
                 Iniciar sesión
@@ -128,7 +128,7 @@ export function LandingScreen() {
               <button
                 onClick={() => navigate('login')}
                 className="px-5 py-2 rounded-full text-sm font-semibold text-white shadow-lg hover:shadow-xl transition-all"
-                style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
+                style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
               >
                 Registrarse
               </button>
@@ -146,16 +146,16 @@ export function LandingScreen() {
           <AnimatePresence>
             {showMobileMenu && (
               <motion.div
-                className="md:hidden pb-4 border-t border-gray-100 pt-3 space-y-3"
+                className="md:hidden pb-4 border-t border-border-light pt-3 space-y-3"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
               >
-                <button className="block w-full text-left py-2 text-gray-600 font-medium">Ofertas</button>
-                <button className="block w-full text-left py-2 text-gray-600 font-medium">Tiendas</button>
-                <button className="block w-full text-left py-2 text-gray-600 font-medium">Cómo funciona</button>
-                <button className="block w-full text-left py-2 text-gray-600 font-medium">Contacto</button>
-                <button onClick={() => navigate('login')} className="block w-full text-left py-2 text-purple-700 font-semibold">
+                <button className="block w-full text-left py-2 text-text-secondary font-medium">Ofertas</button>
+                <button className="block w-full text-left py-2 text-text-secondary font-medium">Tiendas</button>
+                <button className="block w-full text-left py-2 text-text-secondary font-medium">Cómo funciona</button>
+                <button className="block w-full text-left py-2 text-text-secondary font-medium">Contacto</button>
+                <button onClick={() => navigate('login')} className="block w-full text-left py-2 text-brand font-semibold">
                   Iniciar sesión
                 </button>
               </motion.div>
@@ -166,7 +166,7 @@ export function LandingScreen() {
 
       {/* ===== HERO ===== */}
       <section className="relative pt-16 overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 50%, #1E0A3C 100%)' }} />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 50%, #1E0A3C 100%)' }} />
         <div className="absolute inset-0 opacity-10">
           <svg className="w-full h-full" viewBox="0 0 1440 800" preserveAspectRatio="none">
             <circle cx="1200" cy="100" r="300" fill="white" />
@@ -196,20 +196,20 @@ export function LandingScreen() {
                   Pide de tus restaurantes, supermercados y farmacias favoritos. Entrega en minutos.
                 </p>
 
-                <form onSubmit={handleSearch} className="bg-white rounded-2xl p-2 flex items-center gap-2 shadow-2xl mb-4 max-w-lg">
+                <form onSubmit={handleSearch} className="bg-card rounded-2xl p-2 flex items-center gap-2 shadow-2xl mb-4 max-w-lg">
                   <div className="flex items-center gap-2 flex-1 pl-3">
-                    <Search size={18} className="text-gray-400 flex-shrink-0" />
+                    <Search size={18} className="text-text-secondary flex-shrink-0" />
                     <input
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       placeholder="¿Qué se te antoja hoy?"
-                      className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent py-2"
+                      className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent py-2"
                     />
                   </div>
                   <button
                     type="submit"
                     className="px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105"
-                    style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
+                    style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
                   >
                     Buscar
                   </button>
@@ -252,24 +252,24 @@ export function LandingScreen() {
                       transition={{ delay: 0.3 + i * 0.1 }}
                     >
                       <span className="text-4xl block mb-1">{s.emoji}</span>
-                      <p className="text-xs font-semibold text-gray-800">{s.name}</p>
+                      <p className="text-xs font-semibold text-text-primary">{s.name}</p>
                       <div className="flex items-center justify-center gap-1 mt-1">
                         <Star size={10} fill="#FFD400" stroke="#FFD400" />
-                        <span className="text-[10px] text-gray-500">{s.rating}</span>
+                        <span className="text-[10px] text-text-secondary">{s.rating}</span>
                       </div>
                     </motion.div>
                   ))}
                 </div>
                 <motion.div
-                  className="absolute -bottom-4 -right-4 bg-white rounded-2xl px-5 py-3 shadow-xl"
+                  className="absolute -bottom-4 -right-4 bg-card rounded-2xl px-5 py-3 shadow-xl"
                   animate={{ y: [0, -5, 0] }}
                   transition={{ repeat: Infinity, duration: 3 }}
                 >
                   <div className="flex items-center gap-2">
-                    <Bike size={20} style={{ color: '#6D28D9' }} />
+                    <Bike size={20} style={{ color: 'var(--brand)' }} />
                     <div>
-                      <p className="text-xs text-gray-400">Entrega en</p>
-                      <p className="font-bold text-sm" style={{ color: '#6D28D9' }}>12 min</p>
+                      <p className="text-xs text-text-secondary">Entrega en</p>
+                      <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>12 min</p>
                     </div>
                   </div>
                 </motion.div>
@@ -280,10 +280,10 @@ export function LandingScreen() {
       </section>
 
       {/* ===== MARQUEE STRIP ===== */}
-      <div className="py-3 bg-gray-50 border-y border-gray-100 overflow-hidden">
+      <div className="py-3 bg-surface border-y border-border-light overflow-hidden">
         <div className="flex gap-8 animate-[scroll_30s_linear_infinite] whitespace-nowrap" style={{ animation: 'scroll 30s linear infinite' }}>
           {[...banners, ...banners].map((b, i) => (
-            <span key={i} className="flex items-center gap-2 text-sm text-gray-600">
+            <span key={i} className="flex items-center gap-2 text-sm text-text-secondary">
               <span className="text-lg">{b.emoji}</span>
               {b.title} — {b.sub}
             </span>
@@ -296,10 +296,10 @@ export function LandingScreen() {
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Ofertas del día</h2>
-              <p className="text-gray-500 mt-1">Aprovecha estos descuentos exclusivos</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-text-primary">Ofertas del día</h2>
+              <p className="text-text-secondary mt-1">Aprovecha estos descuentos exclusivos</p>
             </div>
-            <button onClick={() => navigate('login')} className="hidden sm:flex items-center gap-1 text-sm font-semibold" style={{ color: '#6D28D9' }}>
+            <button onClick={() => navigate('login')} className="hidden sm:flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--brand)' }}>
               Ver todas <ChevronRight size={16} />
             </button>
           </div>
@@ -331,12 +331,12 @@ export function LandingScreen() {
       </section>
 
       {/* ===== CATEGORIES ===== */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-surface">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">¿Qué se te antoja?</h2>
-              <p className="text-gray-500 mt-1">Explora por categorías</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-text-primary">¿Qué se te antoja?</h2>
+              <p className="text-text-secondary mt-1">Explora por categorías</p>
             </div>
           </div>
 
@@ -345,7 +345,7 @@ export function LandingScreen() {
               <motion.button
                 key={cat.id || cat.name}
                 onClick={() => navigate('login')}
-                className="flex flex-col items-center gap-3 p-4 md:p-6 bg-white rounded-2xl shadow-sm hover:shadow-md transition-all"
+                className="flex flex-col items-center gap-3 p-4 md:p-6 bg-card rounded-2xl shadow-sm hover:shadow-md transition-all"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -359,7 +359,7 @@ export function LandingScreen() {
                 >
                   <span className="text-3xl md:text-4xl">{cat.emoji || '📦'}</span>
                 </div>
-                <span className="text-xs md:text-sm font-medium text-gray-700 text-center">{cat.name}</span>
+                <span className="text-xs md:text-sm font-medium text-text-primary text-center">{cat.name}</span>
               </motion.button>
             ))}
           </div>
@@ -370,8 +370,8 @@ export function LandingScreen() {
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Así de fácil funciona</h2>
-            <p className="text-gray-500 mt-2">Tres pasos y tienes todo en tu puerta</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-text-primary">Así de fácil funciona</h2>
+            <p className="text-text-secondary mt-2">Tres pasos y tienes todo en tu puerta</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
@@ -384,12 +384,12 @@ export function LandingScreen() {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.15 }}
               >
-                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg" style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}>
+                <div className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-5 shadow-lg" style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}>
                   <step.icon size={32} className="text-white" />
                 </div>
-                <p className="text-2xl font-bold mb-1" style={{ color: '#6D28D9' }}>0{i + 1}</p>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{step.title}</h3>
-                <p className="text-gray-500 max-w-xs mx-auto">{step.desc}</p>
+                <p className="text-2xl font-bold mb-1" style={{ color: 'var(--brand)' }}>0{i + 1}</p>
+                <h3 className="text-xl font-bold text-text-primary mb-2">{step.title}</h3>
+                <p className="text-text-secondary max-w-xs mx-auto">{step.desc}</p>
               </motion.div>
             ))}
           </div>
@@ -397,14 +397,14 @@ export function LandingScreen() {
       </section>
 
       {/* ===== FEATURED STORES ===== */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-12 bg-surface">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Tiendas destacadas</h2>
-              <p className="text-gray-500 mt-1">Las favoritas de tu zona</p>
+              <h2 className="text-2xl md:text-3xl font-bold text-text-primary">Tiendas destacadas</h2>
+              <p className="text-text-secondary mt-1">Las favoritas de tu zona</p>
             </div>
-            <button onClick={() => navigate('login')} className="hidden sm:flex items-center gap-1 text-sm font-semibold" style={{ color: '#6D28D9' }}>
+            <button onClick={() => navigate('login')} className="hidden sm:flex items-center gap-1 text-sm font-semibold" style={{ color: 'var(--brand)' }}>
               Ver todo <ChevronRight size={16} />
             </button>
           </div>
@@ -414,7 +414,7 @@ export function LandingScreen() {
               <motion.button
                 key={store.id || store.name}
                 onClick={() => navigate('login')}
-                className="bg-white rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-center"
+                className="bg-card rounded-2xl p-4 shadow-sm hover:shadow-md transition-all text-center"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -428,15 +428,15 @@ export function LandingScreen() {
                 >
                   {store.emoji || '🏪'}
                 </div>
-                <p className="font-semibold text-gray-900 text-sm truncate">{store.name}</p>
+                <p className="font-semibold text-text-primary text-sm truncate">{store.name}</p>
                 <div className="flex items-center justify-center gap-1 mt-1">
                   <Star size={11} fill="#FFD400" stroke="#FFD400" />
-                  <span className="text-xs text-gray-500">{store.rating || '4.5'}</span>
-                  <span className="text-xs text-gray-300 mx-1">·</span>
-                  <Clock size={11} className="text-gray-400" />
-                  <span className="text-xs text-gray-500">{store.delivery || '15-20'}</span>
+                  <span className="text-xs text-text-secondary">{store.rating || '4.5'}</span>
+                  <span className="text-xs text-text-secondary mx-1">·</span>
+                  <Clock size={11} className="text-text-secondary" />
+                  <span className="text-xs text-text-secondary">{store.delivery || '15-20'}</span>
                 </div>
-                <div className="mt-2 text-xs font-medium" style={{ color: store.fee === 0 || store.delivery_fee === 0 ? '#22C55E' : '#6B7280' }}>
+                <div className="mt-2 text-xs font-medium" style={{ color: store.fee === 0 || store.delivery_fee === 0 ? 'var(--success)' : '#6B7280' }}>
                   {store.fee === 0 || store.delivery_fee === 0 ? '🚚 Envío gratis' : `$${store.delivery_fee?.toFixed(1) || '1.5'} envío`}
                 </div>
               </motion.button>
@@ -449,15 +449,15 @@ export function LandingScreen() {
       <section className="py-12 md:py-16">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Lo que dicen nuestros usuarios</h2>
-            <p className="text-gray-500 mt-2">Más de 50,000 pedidos entregados con éxito</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-text-primary">Lo que dicen nuestros usuarios</h2>
+            <p className="text-text-secondary mt-2">Más de 50,000 pedidos entregados con éxito</p>
           </div>
 
           <div className="grid md:grid-cols-3 gap-6">
             {testimonials.map((t, i) => (
               <motion.div
                 key={t.name}
-                className="bg-gray-50 rounded-2xl p-6"
+                className="bg-surface rounded-2xl p-6"
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
@@ -468,8 +468,8 @@ export function LandingScreen() {
                     <Star key={s} size={14} fill={s < t.rating ? '#FFD400' : '#E5E7EB'} stroke={s < t.rating ? '#FFD400' : '#E5E7EB'} />
                   ))}
                 </div>
-                <p className="text-gray-700 text-sm mb-3">"{t.text}"</p>
-                <p className="font-semibold text-gray-900 text-sm">{t.name}</p>
+                <p className="text-text-primary text-sm mb-3">"{t.text}"</p>
+                <p className="font-semibold text-text-primary text-sm">{t.name}</p>
               </motion.div>
             ))}
           </div>
@@ -477,7 +477,7 @@ export function LandingScreen() {
       </section>
 
       {/* ===== CTA BANNER ===== */}
-      <section className="py-12 md:py-16" style={{ background: 'linear-gradient(135deg, #6D28D9 0%, #4C1D95 50%, #1E0A3C 100%)' }}>
+      <section className="py-12 md:py-16" style={{ background: 'linear-gradient(135deg, var(--brand) 0%, var(--brand-dark) 50%, #1E0A3C 100%)' }}>
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -510,7 +510,7 @@ export function LandingScreen() {
       </section>
 
       {/* ===== FOOTER ===== */}
-      <footer className="bg-gray-900 text-gray-400 py-12">
+      <footer className="bg-gray-900 text-text-secondary py-12">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="col-span-2 md:col-span-1">

@@ -22,7 +22,7 @@ export function ResponsiveLayout({ children }: { children: ReactNode }) {
   const contentMargin = collapsed ? 'lg:ml-20' : 'lg:ml-64';
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-surface">
       <DesktopSidebar
         mobileOpen={sidebarOpen}
         onMobileClose={() => setSidebarOpen(false)}

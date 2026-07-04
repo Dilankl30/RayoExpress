@@ -133,11 +133,11 @@ export function CatalogManager({ storeId }: Props) {
   return (
     <div className="px-4 pt-4 pb-24">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-gray-900 font-semibold">Mi catálogo</h3>
+        <h3 className="text-text-primary font-semibold">Mi catálogo</h3>
         <button
           onClick={() => resetForm()}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm shadow-lg"
-          style={{ backgroundColor: '#6D28D9' }}
+          style={{ backgroundColor: 'var(--brand)' }}
         >
           <Plus size={14} />
           Nuevo producto
@@ -146,65 +146,65 @@ export function CatalogManager({ storeId }: Props) {
 
       {showForm && (
         <motion.div
-          className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-4 space-y-3"
+          className="bg-card rounded-2xl p-4 shadow-sm border border-border-light mb-4 space-y-3"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-900">{editingId ? 'Editar producto' : 'Nuevo producto'}</p>
-            <button onClick={resetForm} className="text-gray-400"><X size={16} /></button>
+            <p className="text-sm font-semibold text-text-primary">{editingId ? 'Editar producto' : 'Nuevo producto'}</p>
+            <button onClick={resetForm} className="text-text-secondary"><X size={16} /></button>
           </div>
 
           <div className="flex gap-2">
             <div className="flex-1 space-y-2">
-              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre" className="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none" />
-              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Precio" step="0.01" className="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none" />
+              <input type="text" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nombre" className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none" />
+              <input type="number" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} placeholder="Precio" step="0.01" className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none" />
             </div>
             <div className="flex flex-col items-center gap-1">
               <div className="text-3xl">{form.emoji}</div>
-              <select value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} className="text-xs bg-gray-50 rounded-lg px-1 py-1 outline-none">
+              <select value={form.emoji} onChange={(e) => setForm({ ...form, emoji: e.target.value })} className="text-xs bg-surface rounded-lg px-1 py-1 outline-none">
                 {defaultEmojis.map((e) => <option key={e} value={e}>{e}</option>)}
               </select>
             </div>
           </div>
 
-          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción" rows={2} className="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none resize-none" />
+          <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Descripción" rows={2} className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none resize-none" />
 
-          <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className="w-full bg-gray-50 rounded-xl px-3 py-2 text-sm outline-none">
+          <select value={form.category_id} onChange={(e) => setForm({ ...form, category_id: e.target.value })} className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none">
             <option value="">Sin categoría</option>
             {categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
           </select>
 
           <div>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Imagen del producto</p>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Imagen del producto</p>
             {(imagePreview || existingImage) ? (
-              <div className="relative bg-gray-50 rounded-xl overflow-hidden mb-2">
+              <div className="relative bg-surface rounded-xl overflow-hidden mb-2">
                 <img src={imagePreview || existingImage || ''} alt="Producto" className="w-full h-32 object-contain" />
-                <button onClick={() => { setImageFile(null); setImagePreview(null); setExistingImage(null); }} className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center">
-                  <X size={12} className="text-gray-500" />
+                <button onClick={() => { setImageFile(null); setImagePreview(null); setExistingImage(null); }} className="absolute top-1 right-1 w-6 h-6 bg-card rounded-full shadow flex items-center justify-center">
+                  <X size={12} className="text-text-secondary" />
                 </button>
               </div>
             ) : (
               <button
                 onClick={() => imageInputRef.current?.click()}
-                className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
+                className="w-full py-4 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
               >
-                <Camera size={18} className="text-gray-400" />
-                <span className="text-xs text-gray-400">Subir imagen</span>
+                <Camera size={18} className="text-text-secondary" />
+                <span className="text-xs text-text-secondary">Subir imagen</span>
               </button>
             )}
             <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(f); }} />
           </div>
 
-          <button onClick={handleSave} className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2" style={{ backgroundColor: '#6D28D9' }}>
+          <button onClick={handleSave} className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--brand)' }}>
             <Save size={14} /> {editingId ? 'Guardar cambios' : 'Crear producto'}
           </button>
         </motion.div>
       )}
 
       <div className="flex items-center gap-2 mb-4">
-        <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="Nueva categoría..." className="flex-1 bg-white rounded-xl px-3 py-2 text-sm outline-none border border-gray-200" />
-        <button onClick={handleAddCategory} className="px-3 py-2 rounded-xl text-white text-xs" style={{ backgroundColor: '#6D28D9' }}><Plus size={14} /></button>
+        <input type="text" value={newCatName} onChange={(e) => setNewCatName(e.target.value)} placeholder="Nueva categoría..." className="flex-1 bg-card rounded-xl px-3 py-2 text-sm outline-none border border-border" />
+        <button onClick={handleAddCategory} className="px-3 py-2 rounded-xl text-white text-xs" style={{ backgroundColor: 'var(--brand)' }}><Plus size={14} /></button>
       </div>
 
       {categories.length > 0 && (
@@ -213,7 +213,7 @@ export function CatalogManager({ storeId }: Props) {
             <div key={cat.id} className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium" style={{ backgroundColor: cat.bg_color }}>
               <span>{cat.emoji}</span>
               <span>{cat.name}</span>
-              <button onClick={() => handleDeleteCategory(cat.id!)} className="ml-1 text-gray-400 hover:text-red-500"><X size={12} /></button>
+              <button onClick={() => handleDeleteCategory(cat.id!)} className="ml-1 text-text-secondary hover:text-danger"><X size={12} /></button>
             </div>
           ))}
         </div>
@@ -223,11 +223,11 @@ export function CatalogManager({ storeId }: Props) {
         <div key={cat.id} className="mb-4">
           {cat.products.length > 0 && (
             <>
-              <p className="text-sm font-medium text-gray-700 mb-2">{cat.emoji} {cat.name}</p>
+              <p className="text-sm font-medium text-text-primary mb-2">{cat.emoji} {cat.name}</p>
               <div className="space-y-2">
                 {cat.products.map((p) => (
-                  <div key={p.id} className="bg-white rounded-2xl p-3 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl overflow-hidden">
+                  <div key={p.id} className="bg-card rounded-2xl p-3 shadow-sm flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface text-xl overflow-hidden">
                       {p.image_url && resolvedImages.get(p.id!) ? (
                         <img src={resolvedImages.get(p.id!)!} alt="" className="w-full h-full object-cover" />
                       ) : (
@@ -235,12 +235,12 @@ export function CatalogManager({ storeId }: Props) {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                      <p className="text-xs text-gray-400">${p.price.toFixed(2)}</p>
+                      <p className="text-sm font-medium text-text-primary truncate">{p.name}</p>
+                      <p className="text-xs text-text-secondary">${p.price.toFixed(2)}</p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center"><Settings size={13} className="text-gray-500" /></button>
-                      <button onClick={() => handleDelete(p.id!)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><Trash2 size={13} className="text-red-400" /></button>
+                      <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center"><Settings size={13} className="text-text-secondary" /></button>
+                      <button onClick={() => handleDelete(p.id!)} className="w-8 h-8 rounded-lg bg-danger-light flex items-center justify-center"><Trash2 size={13} className="text-red-400" /></button>
                     </div>
                   </div>
                 ))}
@@ -252,11 +252,11 @@ export function CatalogManager({ storeId }: Props) {
 
       {uncategorized.length > 0 && (
         <div className="mb-4">
-          <p className="text-sm font-medium text-gray-400 mb-2">📦 Sin categoría</p>
+          <p className="text-sm font-medium text-text-secondary mb-2">📦 Sin categoría</p>
           <div className="space-y-2">
             {uncategorized.map((p) => (
-              <div key={p.id} className="bg-white rounded-2xl p-3 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl overflow-hidden">
+              <div key={p.id} className="bg-card rounded-2xl p-3 shadow-sm flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-surface text-xl overflow-hidden">
                   {p.image_url && resolvedImages.get(p.id!) ? (
                     <img src={resolvedImages.get(p.id!)!} alt="" className="w-full h-full object-cover" />
                   ) : (
@@ -264,12 +264,12 @@ export function CatalogManager({ storeId }: Props) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
-                  <p className="text-xs text-gray-400">${p.price.toFixed(2)}</p>
+                  <p className="text-sm font-medium text-text-primary truncate">{p.name}</p>
+                  <p className="text-xs text-text-secondary">${p.price.toFixed(2)}</p>
                 </div>
                 <div className="flex gap-1">
-                  <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center"><Settings size={13} className="text-gray-500" /></button>
-                  <button onClick={() => handleDelete(p.id!)} className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center"><Trash2 size={13} className="text-red-400" /></button>
+                  <button onClick={() => handleEdit(p)} className="w-8 h-8 rounded-lg bg-surface-hover flex items-center justify-center"><Settings size={13} className="text-text-secondary" /></button>
+                  <button onClick={() => handleDelete(p.id!)} className="w-8 h-8 rounded-lg bg-danger-light flex items-center justify-center"><Trash2 size={13} className="text-red-400" /></button>
                 </div>
               </div>
             ))}

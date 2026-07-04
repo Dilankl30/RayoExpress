@@ -80,10 +80,10 @@ export function CartScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
+    <div className="min-h-screen bg-surface flex flex-col pb-16 lg:pb-0">
       <div
         className="pt-10 pb-4 px-4 flex items-center gap-3"
-        style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
+        style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}
       >
         <button
           onClick={() => navigate('home')}
@@ -103,12 +103,12 @@ export function CartScreen() {
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
             <span style={{ fontSize: 64 }}>🛒</span>
-            <h3 className="text-gray-700 mt-4">Tu carrito está vacío</h3>
-            <p className="text-gray-400 text-sm mt-2">Explora nuestras tiendas y agrega lo que quieras</p>
+            <h3 className="text-text-primary mt-4">Tu carrito está vacío</h3>
+            <p className="text-text-secondary text-sm mt-2">Explora nuestras tiendas y agrega lo que quieras</p>
             <button
               onClick={() => navigate('home')}
               className="mt-6 px-6 py-3 rounded-2xl text-white"
-              style={{ backgroundColor: '#6D28D9' }}
+              style={{ backgroundColor: 'var(--brand)' }}
             >
               Explorar tiendas
             </button>
@@ -116,16 +116,16 @@ export function CartScreen() {
         ) : (
           <>
             {error && (
-              <div className="mx-4 mt-3 bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+              <div className="mx-4 mt-3 bg-danger-light border border-red-200 rounded-xl px-4 py-3">
                 <p className="text-red-600 text-sm">{error}</p>
               </div>
             )}
 
-            <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm">
+            <div className="bg-card px-4 py-3 flex items-center gap-3 shadow-sm">
               <span style={{ fontSize: 28 }}>{cart[0]?.emoji || '🍔'}</span>
               <div>
-                <p className="text-gray-900 font-medium text-sm">{cart[0]?.storeName || 'Tienda'}</p>
-                <p className="text-xs text-gray-400">Entrega: 25-35 min</p>
+                <p className="text-text-primary font-medium text-sm">{cart[0]?.storeName || 'Tienda'}</p>
+                <p className="text-xs text-text-secondary">Entrega: 25-35 min</p>
               </div>
             </div>
 
@@ -142,7 +142,7 @@ export function CartScreen() {
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 20, height: 0 }}
-                    className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3"
+                    className="bg-card rounded-2xl p-4 shadow-sm flex items-center gap-3"
                   >
                     <div
                       className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -151,31 +151,31 @@ export function CartScreen() {
                       {item.emoji}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-gray-900 font-medium text-sm truncate">{item.name}</p>
-                      <p className="font-bold text-sm mt-0.5" style={{ color: '#6D28D9' }}>
+                      <p className="text-text-primary font-medium text-sm truncate">{item.name}</p>
+                      <p className="font-bold text-sm mt-0.5" style={{ color: 'var(--brand)' }}>
                         ${(item.price * item.quantity).toFixed(2)}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="w-8 h-8 rounded-xl border border-gray-200 flex items-center justify-center"
+                        className="w-8 h-8 rounded-xl border border-border flex items-center justify-center"
                       >
-                        <Minus size={13} className="text-gray-600" />
+                        <Minus size={13} className="text-text-secondary" />
                       </button>
                       <span className="w-5 text-center text-sm font-medium">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
                         className="w-8 h-8 rounded-xl flex items-center justify-center"
-                        style={{ backgroundColor: '#6D28D9' }}
+                        style={{ backgroundColor: 'var(--brand)' }}
                       >
                         <Plus size={13} className="text-white" />
                       </button>
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="w-8 h-8 rounded-xl bg-red-50 flex items-center justify-center ml-1"
+                        className="w-8 h-8 rounded-xl bg-danger-light flex items-center justify-center ml-1"
                       >
-                        <Trash2 size={13} className="text-red-500" />
+                        <Trash2 size={13} className="text-danger" />
                       </button>
                     </div>
                   </motion.div>
@@ -183,48 +183,48 @@ export function CartScreen() {
               </AnimatePresence>
             </div>
 
-            <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-gray-700 font-medium mb-2">Dirección de entrega</p>
+            <div className="mx-4 mt-4 bg-card rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-text-primary font-medium mb-2">Dirección de entrega</p>
               <input
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Tu dirección"
-                className="w-full bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none placeholder:text-gray-400"
+                className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-secondary"
               />
             </div>
 
-            <div className="mx-4 mt-3 bg-white rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-gray-700 font-medium mb-2">Nota para el restaurante</p>
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-text-primary font-medium mb-2">Nota para el restaurante</p>
               <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Sin cebolla, extra salsa..."
-                className="w-full bg-gray-50 rounded-xl px-3 py-2.5 text-sm text-gray-700 outline-none resize-none placeholder:text-gray-400"
+                className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-text-primary outline-none resize-none placeholder:text-text-secondary"
                 rows={2}
               />
             </div>
 
-            <div className="mx-4 mt-3 bg-white rounded-2xl p-4 shadow-sm">
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
               {couponApplied ? (
-                <div className="flex items-center gap-2" style={{ color: '#22C55E' }}>
+                <div className="flex items-center gap-2" style={{ color: 'var(--success)' }}>
                   <CheckCircle size={18} />
                   <p className="text-sm font-medium">Cupón aplicado · 15% descuento</p>
                 </div>
               ) : (
                 <div className="flex gap-2">
-                  <div className="flex-1 bg-gray-50 rounded-xl flex items-center gap-2 px-3 py-2.5">
-                    <Tag size={15} className="text-gray-400" />
+                  <div className="flex-1 bg-surface rounded-xl flex items-center gap-2 px-3 py-2.5">
+                    <Tag size={15} className="text-text-secondary" />
                     <input
                       value={coupon}
                       onChange={(e) => setCoupon(e.target.value)}
                       placeholder="Código de descuento"
-                      className="flex-1 bg-transparent text-gray-700 text-sm outline-none placeholder:text-gray-400"
+                      className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder:text-text-secondary"
                     />
                   </div>
                   <button
                     onClick={applyCoupon}
                     className="px-4 rounded-xl text-white text-sm"
-                    style={{ backgroundColor: '#6D28D9' }}
+                    style={{ backgroundColor: 'var(--brand)' }}
                   >
                     Aplicar
                   </button>
@@ -232,8 +232,8 @@ export function CartScreen() {
               )}
             </div>
 
-            <div className="mx-4 mt-3 bg-white rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-gray-700 font-medium mb-3">Propina para el repartidor</p>
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-text-primary font-medium mb-3">Propina para el repartidor</p>
               <div className="flex gap-2">
                 {[0, 0.5, 1, 1.5, 2].map((t) => (
                   <button
@@ -241,7 +241,7 @@ export function CartScreen() {
                     onClick={() => setTip(t)}
                     className="flex-1 py-2 rounded-xl text-sm transition-all"
                     style={{
-                      backgroundColor: tip === t ? '#6D28D9' : '#F3F4F6',
+                      backgroundColor: tip === t ? 'var(--brand)' : '#F3F4F6',
                       color: tip === t ? '#FFFFFF' : '#6B7280',
                     }}
                   >
@@ -250,14 +250,13 @@ export function CartScreen() {
                 ))}
               </div>
             </div>
-
             </div>
 
               {/* Right column: summary + payment */}
               <div className="lg:w-96 lg:flex-shrink-0 lg:space-y-3">
 
-            <div className="mx-4 mt-3 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-gray-700 font-medium mb-3">Método de pago</p>
+            <div className="mx-4 mt-3 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-text-primary font-medium mb-3">Método de pago</p>
               <div className="flex gap-2">
                 {paymentMethods.map((pm) => {
                   const Icon = pm.icon;
@@ -268,12 +267,12 @@ export function CartScreen() {
                       onClick={() => setPayMethod(pm.id)}
                       className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl text-sm transition-all"
                       style={{
-                        backgroundColor: isActive ? '#EDE9FE' : '#F9FAFB',
-                        border: isActive ? '2px solid #6D28D9' : '2px solid transparent',
+                        backgroundColor: isActive ? 'var(--brand)' : '#F9FAFB',
+                        border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
                       }}
                     >
-                      <Icon size={20} style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }} />
-                      <span style={{ color: isActive ? '#6D28D9' : '#6B7280', fontSize: 10 }}>{pm.label}</span>
+                      <Icon size={20} style={{ color: isActive ? 'var(--brand)' : '#9CA3AF' }} />
+                      <span style={{ color: isActive ? 'var(--brand)' : '#6B7280', fontSize: 10 }}>{pm.label}</span>
                     </button>
                   );
                 })}
@@ -283,23 +282,23 @@ export function CartScreen() {
                 <div className="mt-3">
                   {receiptPreview ? (
                     <div className="space-y-2">
-                      <div className="relative bg-gray-50 rounded-xl overflow-hidden">
+                      <div className="relative bg-surface rounded-xl overflow-hidden">
                         <img src={receiptPreview} alt="Comprobante" className="w-full h-32 object-contain" />
-                        <button onClick={() => { setReceiptFile(null); setReceiptPreview(null); }} className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center">
+                        <button onClick={() => { setReceiptFile(null); setReceiptPreview(null); }} className="absolute top-1 right-1 w-6 h-6 bg-card rounded-full shadow flex items-center justify-center">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
                         </button>
                       </div>
-                      <div className="flex items-center gap-2 text-green-600 text-xs">
+                      <div className="flex items-center gap-2 text-success text-xs">
                         <CheckCircle size={14} /> {receiptFile?.name}
                       </div>
                     </div>
                   ) : (
                     <button
                       onClick={() => receiptRef.current?.click()}
-                      className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
+                      className="w-full py-4 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
                     >
-                      <Upload size={18} className="text-gray-400" />
-                      <span className="text-xs text-gray-500">Subir comprobante</span>
+                      <Upload size={18} className="text-text-secondary" />
+                      <span className="text-xs text-text-secondary">Subir comprobante</span>
                     </button>
                   )}
                   <input
@@ -316,35 +315,35 @@ export function CartScreen() {
               )}
             </div>
 
-            <div className="mx-4 mt-3 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-gray-700 font-medium mb-3">Resumen</p>
+            <div className="mx-4 mt-3 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm">
+              <p className="text-sm text-text-primary font-medium mb-3">Resumen</p>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-text-secondary">
                   <span>Subtotal</span>
                   <span>${cartTotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-text-secondary">
                   <span>Envío</span>
                   <span>${delivery.toFixed(2)}</span>
                 </div>
                 {discount > 0 && (
-                  <div className="flex justify-between" style={{ color: '#22C55E' }}>
+                  <div className="flex justify-between" style={{ color: 'var(--success)' }}>
                     <span>Descuento</span>
                     <span>-${discount.toFixed(2)}</span>
                   </div>
                 )}
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-text-secondary">
                   <span>IVA (12%)</span>
                   <span>${tax.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-text-secondary">
                   <span>Propina</span>
                   <span>${tip.toFixed(2)}</span>
                 </div>
-                <div className="h-px bg-gray-200 my-1" />
-                <div className="flex justify-between font-bold text-gray-900">
+                <div className="h-px bg-border my-1" />
+                <div className="flex justify-between font-bold text-text-primary">
                   <span>Total</span>
-                  <span style={{ color: '#6D28D9' }}>${total.toFixed(2)}</span>
+                  <span style={{ color: 'var(--brand)' }}>${total.toFixed(2)}</span>
                 </div>
               </div>
               {/* Desktop confirm button */}
@@ -352,7 +351,7 @@ export function CartScreen() {
                 onClick={handlePlaceOrder}
                 disabled={placing}
                 className="hidden lg:flex w-full mt-3 py-4 rounded-2xl text-white shadow-lg items-center justify-center gap-2 disabled:opacity-50"
-                style={{ backgroundColor: '#6D28D9' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
                 {placing ? 'Procesando...' : `Confirmar pedido`}
@@ -370,7 +369,7 @@ export function CartScreen() {
             onClick={handlePlaceOrder}
             disabled={placing}
             className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
           >
             <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
             {placing ? 'Procesando...' : `Confirmar pedido · $${total.toFixed(2)}`}

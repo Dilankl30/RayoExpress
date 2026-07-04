@@ -35,8 +35,8 @@ export function PaymentVerification({ storeId, userId }: Props) {
 
   if (payments.length === 0) {
     return (
-      <div className="bg-white rounded-2xl p-6 text-center shadow-sm border border-gray-100">
-        <p className="text-gray-400 text-sm">Sin pagos pendientes</p>
+      <div className="bg-card rounded-2xl p-6 text-center shadow-sm border border-border-light">
+        <p className="text-text-secondary text-sm">Sin pagos pendientes</p>
       </div>
     );
   }
@@ -44,23 +44,23 @@ export function PaymentVerification({ storeId, userId }: Props) {
   return (
     <div className="space-y-2">
       {payments.map((p) => (
-        <div key={p.id} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+        <div key={p.id} className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-lg">{p.method === 'cash' ? '💵' : p.method === 'transfer' ? '📱' : '💳'}</span>
-              <p className="text-sm font-medium text-gray-900 capitalize">{p.method}</p>
+              <p className="text-sm font-medium text-text-primary capitalize">{p.method}</p>
             </div>
-            <span className={`text-xs px-2 py-0.5 rounded-full ${p.verified ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+            <span className={`text-xs px-2 py-0.5 rounded-full ${p.verified ? 'bg-success-light text-success' : 'bg-warning-light text-warning'}`}>
               {p.verified ? 'Verificado' : 'Pendiente'}
             </span>
           </div>
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-500">${p.amount.toFixed(2)}</span>
-            <span className="text-gray-400 text-xs">{new Date(p.created_at).toLocaleDateString()}</span>
+            <span className="text-text-secondary">${p.amount.toFixed(2)}</span>
+            <span className="text-text-secondary text-xs">{new Date(p.created_at).toLocaleDateString()}</span>
           </div>
           {p.receipt_url && (
             <div className="mt-2 flex items-center gap-2">
-              <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-purple-600 flex items-center gap-1">
+              <a href={p.receipt_url} target="_blank" rel="noopener noreferrer" className="text-xs text-brand flex items-center gap-1">
                 <ExternalLink size={12} /> Ver comprobante
               </a>
             </div>
@@ -69,13 +69,13 @@ export function PaymentVerification({ storeId, userId }: Props) {
             <div className="flex gap-2 mt-3">
               <button
                 onClick={() => handleVerify(p.id, true)}
-                className="flex-1 py-2 rounded-xl text-xs font-medium bg-green-50 text-green-700 flex items-center justify-center gap-1"
+                className="flex-1 py-2 rounded-xl text-xs font-medium bg-success-light text-success flex items-center justify-center gap-1"
               >
                 <CheckCircle size={14} /> Aprobar
               </button>
               <button
                 onClick={() => handleVerify(p.id, false)}
-                className="flex-1 py-2 rounded-xl text-xs font-medium bg-red-50 text-red-700 flex items-center justify-center gap-1"
+                className="flex-1 py-2 rounded-xl text-xs font-medium bg-danger-light text-danger flex items-center justify-center gap-1"
               >
                 <XCircle size={14} /> Rechazar
               </button>

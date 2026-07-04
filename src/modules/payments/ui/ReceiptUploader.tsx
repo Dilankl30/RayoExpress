@@ -36,8 +36,8 @@ export function ReceiptUploader({ onUpload }: Props) {
   };
 
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
-      <p className="text-sm text-gray-700 font-medium mb-3">Comprobante de pago</p>
+    <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+      <p className="text-sm text-text-primary font-medium mb-3">Comprobante de pago</p>
 
       {done ? (
         <div className="flex items-center gap-2 text-green-600 bg-green-50 rounded-xl px-4 py-3">
@@ -46,24 +46,24 @@ export function ReceiptUploader({ onUpload }: Props) {
         </div>
       ) : preview ? (
         <div className="space-y-3">
-          <div className="relative bg-gray-50 rounded-xl overflow-hidden">
+          <div className="relative bg-surface rounded-xl overflow-hidden">
             {preview.match(/\.(pdf)$/i) ? (
               <div className="flex items-center gap-3 px-4 py-6">
-                <FileText size={24} className="text-gray-400" />
-                <span className="text-sm text-gray-600">{file?.name}</span>
+                <FileText size={24} className="text-text-secondary" />
+                <span className="text-sm text-text-secondary">{file?.name}</span>
               </div>
             ) : (
               <img src={preview} alt="Comprobante" className="w-full h-40 object-contain" />
             )}
-            <button onClick={reset} className="absolute top-2 right-2 w-7 h-7 bg-white rounded-full shadow flex items-center justify-center">
-              <X size={14} className="text-gray-500" />
+            <button onClick={reset} className="absolute top-2 right-2 w-7 h-7 bg-card rounded-full shadow flex items-center justify-center">
+              <X size={14} className="text-text-secondary" />
             </button>
           </div>
           <button
             onClick={handleUpload}
             disabled={uploading}
             className="w-full py-2.5 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
           >
             {uploading ? 'Subiendo...' : 'Subir comprobante'}
           </button>
@@ -71,11 +71,11 @@ export function ReceiptUploader({ onUpload }: Props) {
       ) : (
         <button
           onClick={() => inputRef.current?.click()}
-          className="w-full py-6 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center gap-2 hover:border-purple-300 transition-colors"
+          className="w-full py-6 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-2 hover:border-purple-300 transition-colors"
         >
-          <Upload size={20} className="text-gray-400" />
-          <span className="text-sm text-gray-500">Toca para seleccionar comprobante</span>
-          <span className="text-xs text-gray-400">PDF o imagen</span>
+          <Upload size={20} className="text-text-secondary" />
+          <span className="text-sm text-text-secondary">Toca para seleccionar comprobante</span>
+          <span className="text-xs text-text-secondary">PDF o imagen</span>
         </button>
       )}
 

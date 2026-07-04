@@ -48,17 +48,17 @@ function SidebarContent({
   const isActive = (id: string) => screen === id;
 
   return (
-    <div className={`h-full bg-white flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>
-      <div className="flex items-center gap-3 px-4 h-20 border-b border-gray-100 flex-shrink-0">
+    <div className={`h-full bg-card flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>
+      <div className="flex items-center gap-3 px-4 h-20 border-b border-border-light flex-shrink-0">
         <img src={logo} alt="Rayo" className="w-10 h-10 object-contain rounded-xl" />
         {!collapsed && (
           <div className="flex-1 min-w-0">
-            <p className="font-bold text-gray-900 text-sm truncate">RayoExpress</p>
-            <p className="text-xs text-gray-400 truncate">{user.full_name || user.role}</p>
+            <p className="font-bold text-text-primary text-sm truncate">RayoExpress</p>
+            <p className="text-xs text-text-secondary truncate">{user.full_name || user.role}</p>
           </div>
         )}
         {showClose && (
-          <button onClick={onClose} className="lg:hidden text-gray-400 hover:text-gray-600 ml-auto">
+          <button onClick={onClose} className="lg:hidden text-text-secondary hover:text-text-secondary ml-auto">
             <X size={20} />
           </button>
         )}
@@ -71,14 +71,14 @@ function SidebarContent({
             onClick={() => onNavigate(item.id)}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all ${
               isActive(item.id)
-                ? 'bg-purple-100 text-purple-700 font-semibold'
-                : 'hover:bg-purple-50 text-gray-700 hover:text-purple-700'
+                ? 'bg-brand-light text-brand font-semibold'
+                : 'hover:bg-brand-light text-text-primary hover:text-brand'
             }`}
           >
             <span className="text-xl flex-shrink-0">{item.icon}</span>
             {!collapsed && <span className="font-medium truncate">{item.label}</span>}
             {item.id === 'cart' && cartCount > 0 && (
-              <span className="ml-auto bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto bg-yellow-400 text-text-primary text-xs font-bold px-2 py-0.5 rounded-full">
                 {cartCount}
               </span>
             )}
@@ -86,17 +86,17 @@ function SidebarContent({
         ))}
       </nav>
 
-      <div className="border-t border-gray-100 p-3 flex-shrink-0 space-y-1">
+      <div className="border-t border-border-light p-3 flex-shrink-0 space-y-1">
         <button
           onClick={() => { logout(); onClose(); }}
-          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-all"
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-danger hover:bg-danger-light transition-all"
         >
           <span className="text-xl flex-shrink-0">🚪</span>
           {!collapsed && <span className="font-medium">Cerrar sesión</span>}
         </button>
         <button
           onClick={onToggleCollapse}
-          className="hidden lg:flex w-full items-center justify-center py-2 text-gray-400 hover:text-gray-600 transition-all"
+          className="hidden lg:flex w-full items-center justify-center py-2 text-text-secondary hover:text-text-secondary transition-all"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>
@@ -144,7 +144,7 @@ export function DesktopSidebar({ mobileOpen, onMobileClose, collapsed, onToggleC
       </AnimatePresence>
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block fixed left-0 top-0 h-full z-30 border-r border-gray-200">
+      <div className="hidden lg:block fixed left-0 top-0 h-full z-30 border-r border-border">
         <SidebarContent {...commonProps} showClose={false} />
       </div>
     </>

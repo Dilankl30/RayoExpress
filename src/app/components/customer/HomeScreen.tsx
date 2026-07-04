@@ -77,9 +77,9 @@ export function HomeScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 relative pb-16 lg:pb-0">
+    <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
       {/* Header */}
-      <div className="pt-10 pb-5 px-4 md:px-6 lg:px-8" style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}>
+      <div className="pt-10 pb-5 px-4 md:px-6 lg:px-8" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <div className="max-w-7xl mx-auto">
           {/* Top row */}
           <div className="flex items-center justify-between mb-3">
@@ -110,15 +110,15 @@ export function HomeScreen() {
           </div>
 
           {/* Search */}
-          <div className="bg-white rounded-2xl flex items-center gap-2 px-4 py-3">
-            <Search size={17} className="text-gray-400 flex-shrink-0" />
+          <div className="bg-card rounded-2xl flex items-center gap-2 px-4 py-3">
+            <Search size={17} className="text-text-secondary flex-shrink-0" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar tiendas..."
-              className="flex-1 outline-none text-gray-700 placeholder:text-gray-400 text-sm bg-transparent"
+              className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent"
             />
-            <button className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#6D28D9' }}>
+            <button className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand)' }}>
               <Filter size={14} className="text-white" />
             </button>
           </div>
@@ -172,8 +172,8 @@ export function HomeScreen() {
         {/* Categories */}
         <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-900">Categorías</h3>
-            <button className="text-sm flex items-center gap-1" style={{ color: '#6D28D9' }}>
+            <h3 className="text-text-primary">Categorías</h3>
+            <button className="text-sm flex items-center gap-1" style={{ color: 'var(--brand)' }}>
               Ver todo <ChevronRight size={14} />
             </button>
           </div>
@@ -189,14 +189,14 @@ export function HomeScreen() {
                   <motion.div
                     className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-sm"
                     style={{
-                      backgroundColor: isActive ? '#6D28D9' : (cat.bg_color || '#F3F4F6'),
-                      border: isActive ? '2px solid #6D28D9' : '2px solid transparent',
+                      backgroundColor: isActive ? 'var(--brand)' : (cat.bg_color || '#F3F4F6'),
+                      border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
                     }}
                     whileTap={{ scale: 0.9 }}
                   >
                     <span className="text-2xl md:text-3xl">{cat.emoji || '📦'}</span>
                   </motion.div>
-                  <span className="text-center text-[10px] md:text-xs" style={{ color: isActive ? '#6D28D9' : '#6B7280' }}>
+                  <span className="text-center text-[10px] md:text-xs" style={{ color: isActive ? 'var(--brand)' : '#6B7280' }}>
                     {cat.name}
                   </span>
                 </button>
@@ -210,11 +210,11 @@ export function HomeScreen() {
           <div>
             <div className="flex items-center gap-1.5">
               <Zap size={16} fill="#4C1D95" style={{ color: '#4C1D95' }} />
-              <p className="font-bold text-gray-900">RAYO PASS</p>
+              <p className="font-bold text-text-primary">RAYO PASS</p>
             </div>
-            <p className="text-sm text-gray-800 mt-0.5">Envíos ilimitados todo el mes</p>
+            <p className="text-sm text-text-primary mt-0.5">Envíos ilimitados todo el mes</p>
           </div>
-          <button className="bg-white px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0" style={{ color: '#6D28D9' }}>
+          <button className="bg-card px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0" style={{ color: 'var(--brand)' }}>
             $4.99/mes
           </button>
         </div>
@@ -222,18 +222,18 @@ export function HomeScreen() {
         {/* Stores */}
         <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-gray-900 flex items-center gap-2">
+            <h3 className="text-text-primary flex items-center gap-2">
               {search ? (
-                <><Search size={16} className="text-gray-500" />Resultados</>
+                <><Search size={16} className="text-text-secondary" />Resultados</>
               ) : (
                 <><Flame size={16} style={{ color: '#FF4500' }} />Populares ahora</>
               )}
             </h3>
-            <span className="text-xs text-gray-400">{filteredStores.length} tiendas</span>
+            <span className="text-xs text-text-secondary">{filteredStores.length} tiendas</span>
           </div>
 
           {filteredStores.length === 0 ? (
-            <div className="py-10 text-center text-gray-400">
+            <div className="py-10 text-center text-text-secondary">
               <p className="text-3xl mb-2">🔍</p>
               <p>No encontramos resultados</p>
             </div>
@@ -243,7 +243,7 @@ export function HomeScreen() {
                 <motion.button
                   key={store.id}
                   onClick={() => handleSelectStore(store.id)}
-                  className="w-full bg-white rounded-2xl p-4 flex items-center gap-3 shadow-sm text-left"
+                  className="w-full bg-card rounded-2xl p-4 flex items-center gap-3 shadow-sm text-left"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: i * 0.05 }}
@@ -253,16 +253,16 @@ export function HomeScreen() {
                     {store.emoji || '🏪'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-gray-900 font-medium truncate">{store.name}</p>
-                    <p className="text-xs text-gray-400 mt-0.5 truncate">{store.description || ''}</p>
+                    <p className="text-text-primary font-medium truncate">{store.name}</p>
+                    <p className="text-xs text-text-secondary mt-0.5 truncate">{store.description || ''}</p>
                     {store.delivery_fee !== undefined && (
-                      <span className="flex items-center gap-1 text-xs mt-1" style={{ color: store.delivery_fee === 0 ? '#22C55E' : '#6B7280' }}>
+                      <span className="flex items-center gap-1 text-xs mt-1" style={{ color: store.delivery_fee === 0 ? 'var(--success)' : '#6B7280' }}>
                         <Truck size={11} />
                         {store.delivery_fee === 0 ? 'Gratis' : `$${store.delivery_fee.toFixed(2)}`}
                       </span>
                     )}
                   </div>
-                  <ChevronRight size={16} className="text-gray-400 flex-shrink-0" />
+                  <ChevronRight size={16} className="text-text-secondary flex-shrink-0" />
                 </motion.button>
               ))}
             </div>
@@ -272,12 +272,12 @@ export function HomeScreen() {
         {/* Trending */}
         <div className="mt-5 mb-8">
           <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={16} style={{ color: '#6D28D9' }} />
-            <h3 className="text-gray-900">Tendencias</h3>
+            <TrendingUp size={16} style={{ color: 'var(--brand)' }} />
+            <h3 className="text-text-primary">Tendencias</h3>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
             {['Sushi 🍱', 'Smoothies 🥤', 'Tacos 🌮', 'Helados 🍦', 'Pizzas 🍕', 'Burgers 🍔'].map((item) => (
-              <button key={item} className="bg-white px-4 py-2 rounded-full text-sm text-gray-700 flex-shrink-0 shadow-sm border border-gray-100">
+              <button key={item} className="bg-card px-4 py-2 rounded-full text-sm text-text-primary flex-shrink-0 shadow-sm border border-border-light">
                 {item}
               </button>
             ))}

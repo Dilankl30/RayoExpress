@@ -66,17 +66,17 @@ export function StoreDetailScreen() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-surface flex items-center justify-center">
         <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-16 lg:pb-0">
+    <div className="min-h-screen bg-surface pb-16 lg:pb-0">
       <div
         className="relative h-48 md:h-56 lg:h-64 flex items-end"
-        style={{ backgroundColor: store?.cover_color || '#6D28D9' }}
+        style={{ backgroundColor: store?.cover_color || 'var(--brand)' }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
           <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
@@ -88,21 +88,21 @@ export function StoreDetailScreen() {
             onClick={() => navigate('home')}
             className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
           >
-            <ArrowLeft size={18} className="text-gray-700" />
+            <ArrowLeft size={18} className="text-text-primary" />
           </button>
           <div className="flex items-center gap-2">
             <button
               onClick={() => setLiked(!liked)}
               className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
             >
-              <Heart size={18} fill={liked ? '#EF4444' : 'none'} style={{ color: liked ? '#EF4444' : '#374151' }} />
+              <Heart size={18} fill={liked ? 'var(--danger)' : 'none'} style={{ color: liked ? 'var(--danger)' : '#374151' }} />
             </button>
             <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
-              <Share2 size={18} className="text-gray-700" />
+              <Share2 size={18} className="text-text-primary" />
             </button>
             <button className="relative" onClick={() => navigate('cart')}>
               <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
-                <ShoppingCart size={18} className="text-gray-700" />
+                <ShoppingCart size={18} className="text-text-primary" />
               </div>
               {cartCount > 0 && (
                 <span
@@ -117,39 +117,39 @@ export function StoreDetailScreen() {
         </div>
       </div>
 
-      <div className="bg-white px-4 py-4 shadow-sm">
-        <h2 className="text-gray-900 mb-1">{store?.name || 'Tienda'}</h2>
-        <p className="text-sm text-gray-500 mb-3">{store?.description || ''}</p>
+      <div className="bg-card px-4 py-4 shadow-sm">
+        <h2 className="text-text-primary mb-1">{store?.name || 'Tienda'}</h2>
+        <p className="text-sm text-text-secondary mb-3">{store?.description || ''}</p>
         <div className="flex items-center gap-4 flex-wrap">
-          <span className="flex items-center gap-1 text-sm text-gray-600">
+          <span className="flex items-center gap-1 text-sm text-text-secondary">
             <Clock size={14} />
             {store?.delivery_time || '25-35 min'}
           </span>
-          <span className="flex items-center gap-1 text-sm" style={{ color: store?.delivery_fee === 0 ? '#22C55E' : '#6B7280' }}>
+          <span className="flex items-center gap-1 text-sm" style={{ color: store?.delivery_fee === 0 ? 'var(--success)' : '#6B7280' }}>
             <Truck size={14} />
             Envío {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
           </span>
           {store?.min_order > 0 && (
-            <span className="text-sm text-gray-500">Mínimo ${store.min_order.toFixed(2)}</span>
+            <span className="text-sm text-text-secondary">Mínimo ${store.min_order.toFixed(2)}</span>
           )}
         </div>
       </div>
 
-      <div className="px-4 md:px-0 pt-4 md:pt-0 pb-2 bg-white md:bg-transparent border-b md:border-0 border-gray-100">
+      <div className="px-4 md:px-0 pt-4 md:pt-0 pb-2 bg-card md:bg-transparent border-b md:border-0 border-border-light">
         <div className="md:max-w-7xl md:mx-auto md:px-6 lg:px-8">
-          <div className="bg-gray-100 rounded-xl flex items-center gap-2 px-3 py-2.5 md:mt-4">
-            <Search size={15} className="text-gray-400" />
+          <div className="bg-surface-hover rounded-xl flex items-center gap-2 px-3 py-2.5 md:mt-4">
+            <Search size={15} className="text-text-secondary" />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar en el menú..."
-              className="flex-1 bg-transparent text-gray-700 placeholder:text-gray-400 text-sm outline-none"
+              className="flex-1 bg-transparent text-text-primary placeholder:text-text-secondary text-sm outline-none"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+      <div className="bg-card border-b border-border-light sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="flex gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {categories.map((cat) => (
@@ -157,14 +157,14 @@ export function StoreDetailScreen() {
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
                 className="px-4 py-3 text-sm whitespace-nowrap flex-shrink-0 transition-all relative"
-                style={{ color: activeCategory === cat ? '#6D28D9' : '#6B7280' }}
+                style={{ color: activeCategory === cat ? 'var(--brand)' : '#6B7280' }}
               >
                 {cat}
                 {activeCategory === cat && (
                   <motion.div
                     layoutId="category-indicator"
                     className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                    style={{ backgroundColor: '#6D28D9' }}
+                    style={{ backgroundColor: 'var(--brand)' }}
                   />
                 )}
               </button>
@@ -175,7 +175,7 @@ export function StoreDetailScreen() {
 
       <div className="px-4 md:px-6 lg:px-8 py-4 pb-32 max-w-7xl mx-auto">
         {filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400">
+          <div className="py-10 text-center text-text-secondary">
             <p className="text-3xl mb-2">🍽️</p>
             <p>No hay productos disponibles</p>
           </div>
@@ -184,7 +184,7 @@ export function StoreDetailScreen() {
             {filtered.map((item, i) => (
               <motion.div
                 key={item.id}
-                className="bg-white rounded-2xl p-4 shadow-sm flex items-start gap-3"
+                className="bg-card rounded-2xl p-4 shadow-sm flex items-start gap-3"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.04 }}
@@ -197,25 +197,25 @@ export function StoreDetailScreen() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">
-                    <p className="text-gray-900 font-medium flex-1">{item.name}</p>
+                    <p className="text-text-primary font-medium flex-1">{item.name}</p>
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.description || ''}</p>
+                  <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{item.description || ''}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <p className="font-bold" style={{ color: '#6D28D9' }}>${item.price?.toFixed(2)}</p>
+                    <p className="font-bold" style={{ color: 'var(--brand)' }}>${item.price?.toFixed(2)}</p>
                     <div className="flex items-center gap-2">
                       {getQty(item.id) > 0 ? (
-                        <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-1">
+                        <div className="flex items-center gap-2 rounded-xl border border-border px-1">
                           <button
                             onClick={() => decrement(item.id)}
                             className="w-7 h-7 flex items-center justify-center rounded-lg"
                           >
-                            <Minus size={14} className="text-gray-600" />
+                            <Minus size={14} className="text-text-secondary" />
                           </button>
-                          <span className="text-sm text-gray-900 w-4 text-center font-medium">{getQty(item.id)}</span>
+                          <span className="text-sm text-text-primary w-4 text-center font-medium">{getQty(item.id)}</span>
                           <button
                             onClick={() => increment(item)}
                             className="w-7 h-7 flex items-center justify-center rounded-lg"
-                            style={{ backgroundColor: '#6D28D9' }}
+                            style={{ backgroundColor: 'var(--brand)' }}
                           >
                             <Plus size={14} className="text-white" />
                           </button>
@@ -224,7 +224,7 @@ export function StoreDetailScreen() {
                         <motion.button
                           onClick={() => increment(item)}
                           className="w-9 h-9 rounded-xl flex items-center justify-center"
-                          style={{ backgroundColor: '#6D28D9' }}
+                          style={{ backgroundColor: 'var(--brand)' }}
                           whileTap={{ scale: 0.9 }}
                         >
                           <Plus size={18} className="text-white" />
@@ -250,7 +250,7 @@ export function StoreDetailScreen() {
           <button
             onClick={() => navigate('cart')}
             className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-between px-5"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
           >
             <span
               className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-sm"

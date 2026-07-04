@@ -93,15 +93,15 @@ export function TrackingScreen() {
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => setView('active')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'active' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
-          style={view === 'active' ? { backgroundColor: '#6D28D9' } : {}}
+          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'active' ? 'text-white' : 'bg-surface-hover text-text-secondary'}`}
+          style={view === 'active' ? { backgroundColor: 'var(--brand)' } : {}}
         >
           Activo
         </button>
         <button
           onClick={() => setView('history')}
-          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'history' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
-          style={view === 'history' ? { backgroundColor: '#6D28D9' } : {}}
+          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'history' ? 'text-white' : 'bg-surface-hover text-text-secondary'}`}
+          style={view === 'history' ? { backgroundColor: 'var(--brand)' } : {}}
         >
           Historial
         </button>
@@ -114,11 +114,11 @@ export function TrackingScreen() {
       ) : orders.length === 0 ? (
         <div className="text-center py-12">
           <span style={{ fontSize: 48 }}>📦</span>
-          <p className="text-gray-500 mt-3">No tienes pedidos aún</p>
+          <p className="text-text-secondary mt-3">No tienes pedidos aún</p>
           <button
             onClick={() => navigate('home')}
             className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
           >
             Explorar tiendas
           </button>
@@ -130,26 +130,26 @@ export function TrackingScreen() {
             const items = (o.order_items as Record<string, unknown>[]) || [];
             const store = o.store as Record<string, unknown> | undefined;
             return (
-              <div key={o.id as string} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+              <div key={o.id as string} className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <span style={{ fontSize: 20 }}>{store?.emoji as string || '🍔'}</span>
-                    <p className="font-medium text-gray-900 text-sm">{store?.name as string || 'Tienda'}</p>
+                    <p className="font-medium text-text-primary text-sm">{store?.name as string || 'Tienda'}</p>
                   </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-medium">
                     {STATUS_LABELS[(o.status as OrderStatus)] || o.status as string}
                   </span>
                 </div>
                 <div className="space-y-1">
                   {(items as Array<{ product_name?: string; quantity?: number; unit_price?: number }>).slice(0, 3).map((item, i) => (
-                    <p key={i} className="text-xs text-gray-500">
+                    <p key={i} className="text-xs text-text-secondary">
                       {item.quantity}x {item.product_name}
                     </p>
                   ))}
                 </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
-                  <p className="text-xs text-gray-400">{new Date(o.created_at as string).toLocaleDateString()}</p>
-                  <p className="font-bold text-sm" style={{ color: '#6D28D9' }}>${(o.total as number)?.toFixed(2)}</p>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
+                  <p className="text-xs text-text-secondary">{new Date(o.created_at as string).toLocaleDateString()}</p>
+                  <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>${(o.total as number)?.toFixed(2)}</p>
                 </div>
               </div>
             );
@@ -162,10 +162,10 @@ export function TrackingScreen() {
   if (view === 'history') return orderHistory;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
+    <div className="min-h-screen bg-surface flex flex-col pb-16 lg:pb-0">
       <div
         className="pt-10 pb-4 px-4 flex items-center justify-between"
-        style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
+        style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}
       >
         <button onClick={() => navigate('home')} className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
           <ArrowLeft size={18} className="text-white" />
@@ -194,10 +194,10 @@ export function TrackingScreen() {
           </svg>
 
           <div className="absolute flex flex-col items-center" style={{ left: '75%', top: '72%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#22C55E' }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: 'var(--success)' }}>
               <span style={{ fontSize: 16 }}>🍔</span>
             </div>
-            <div className="bg-white px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#22C55E' }}>
+            <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: 'var(--success)' }}>
               Tienda
             </div>
           </div>
@@ -206,7 +206,7 @@ export function TrackingScreen() {
             <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#3B82F6' }}>
               <span style={{ fontSize: 16 }}>🏠</span>
             </div>
-            <div className="bg-white px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#3B82F6' }}>
+            <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#3B82F6' }}>
               Tú
             </div>
           </div>
@@ -217,20 +217,20 @@ export function TrackingScreen() {
             animate={{ left: `${driverPos.x}%`, top: `${driverPos.y}%` }}
             transition={{ duration: 1.5, ease: 'easeInOut' }}
           >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-3 border-white" style={{ backgroundColor: '#6D28D9', border: '3px solid white' }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-3 border-white" style={{ backgroundColor: 'var(--brand)', border: '3px solid white' }}>
               <span style={{ fontSize: 18 }}>🛵</span>
             </div>
-            <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: '#6D28D9' }}>
+            <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: 'var(--brand)' }}>
               Rayo
             </div>
           </motion.div>
 
           {!isDelivered && (
-            <div className="absolute top-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
-              <Clock size={15} style={{ color: '#6D28D9' }} />
+            <div className="absolute top-3 left-3 bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
+              <Clock size={15} style={{ color: 'var(--brand)' }} />
               <div>
                 <p style={{ fontSize: 10, color: '#9CA3AF' }}>Llega en</p>
-                <p className="font-bold" style={{ color: '#6D28D9', fontSize: 16 }}>{eta} min</p>
+                <p className="font-bold" style={{ color: 'var(--brand)', fontSize: 16 }}>{eta} min</p>
               </div>
             </div>
           )}
@@ -238,7 +238,7 @@ export function TrackingScreen() {
 
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="lg:flex lg:gap-4 lg:mt-4">
-            <div className="bg-white px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
+            <div className="bg-card px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
               <div className="flex items-center gap-3">
                 <motion.div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -249,10 +249,10 @@ export function TrackingScreen() {
                   {STATUS_ICONS[activeStatus as OrderStatus] || '📋'}
                 </motion.div>
                 <div className="flex-1">
-                  <p className="text-gray-900 font-medium">{currentStatusLabel}</p>
-                  <p className="text-sm text-gray-500">{latestOrder ? (latestOrder.notes as string) || '' : ''}</p>
+                  <p className="text-text-primary font-medium">{currentStatusLabel}</p>
+                  <p className="text-sm text-text-secondary">{latestOrder ? (latestOrder.notes as string) || '' : ''}</p>
                 </div>
-                {isDelivered && <CheckCircle size={22} style={{ color: '#22C55E' }} />}
+                {isDelivered && <CheckCircle size={22} style={{ color: 'var(--success)' }} />}
               </div>
 
               <div className="flex items-center gap-1 mt-4">
@@ -260,26 +260,26 @@ export function TrackingScreen() {
                   <div
                     key={i}
                     className="flex-1 h-1.5 rounded-full transition-all duration-500"
-                    style={{ backgroundColor: i <= currentStep ? '#6D28D9' : '#E5E7EB' }}
+                    style={{ backgroundColor: i <= currentStep ? 'var(--brand)' : '#E5E7EB' }}
                   />
                 ))}
               </div>
             </div>
 
             {latestOrder && (
-              <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm lg:w-80">
-                <p className="text-gray-900 font-medium text-sm mb-3">Tu pedido</p>
+              <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm lg:w-80">
+                <p className="text-text-primary font-medium text-sm mb-3">Tu pedido</p>
                 <div className="space-y-2">
                   {(latestOrder.order_items as Array<{ product_name?: string; quantity?: number; unit_price?: number }> | undefined)?.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                      <span className="text-gray-600">{item.quantity}x {item.product_name}</span>
-                      <span className="text-gray-900">${(item.unit_price ?? 0).toFixed(2)}</span>
+                      <span className="text-text-secondary">{item.quantity}x {item.product_name}</span>
+                      <span className="text-text-primary">${(item.unit_price ?? 0).toFixed(2)}</span>
                     </div>
                   ))}
-                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="h-px bg-surface-hover my-1" />
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total</span>
-                    <span style={{ color: '#6D28D9' }}>${(latestOrder.total as number)?.toFixed(2)}</span>
+                    <span style={{ color: 'var(--brand)' }}>${(latestOrder.total as number)?.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -291,7 +291,7 @@ export function TrackingScreen() {
               <button
                 onClick={() => setShowChat(true)}
                 className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#6D28D9' }}
+                style={{ backgroundColor: 'var(--brand)' }}
               >
                 <MessageCircle size={16} /> Chat del pedido
               </button>
@@ -301,7 +301,7 @@ export function TrackingScreen() {
           {showRating && (
             <motion.div
               className="mx-4 mt-4 rounded-2xl p-5 text-center"
-              style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
+              style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >

@@ -88,8 +88,8 @@ export function StoreSettings({ storeId }: Props) {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === t ? 'text-white shadow-md' : 'bg-gray-100 text-gray-600'}`}
-            style={tab === t ? { backgroundColor: '#6D28D9' } : {}}
+            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${tab === t ? 'text-white shadow-md' : 'bg-surface-hover text-text-secondary'}`}
+            style={tab === t ? { backgroundColor: 'var(--brand)' } : {}}
           >
             {t === 'info' ? '🏪 Info' : t === 'hours' ? '🕐 Horarios' : '📦 Inventario'}
           </button>
@@ -97,83 +97,83 @@ export function StoreSettings({ storeId }: Props) {
       </div>
 
       {saved && (
-        <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-2 mb-3">
-          <p className="text-green-600 text-sm">Guardado</p>
+        <div className="bg-success-light border border-green-200 rounded-xl px-4 py-2 mb-3">
+          <p className="text-success text-sm">Guardado</p>
         </div>
       )}
 
       {tab === 'info' && info && (
-        <div className="bg-white rounded-2xl p-5 space-y-4 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 space-y-4 shadow-sm border border-border-light">
           <div>
-            <p className="text-xs text-gray-400 mb-1">Nombre</p>
-            <input type="text" value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none" />
+            <p className="text-xs text-text-secondary mb-1">Nombre</p>
+            <input type="text" value={info.name} onChange={(e) => setInfo({ ...info, name: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" />
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Descripción</p>
-            <textarea value={info.description || ''} onChange={(e) => setInfo({ ...info, description: e.target.value })} rows={3} className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none resize-none" />
+            <p className="text-xs text-text-secondary mb-1">Descripción</p>
+            <textarea value={info.description || ''} onChange={(e) => setInfo({ ...info, description: e.target.value })} rows={3} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none resize-none" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs text-gray-400 mb-1">Pedido mínimo</p>
-              <input type="number" value={info.min_order} onChange={(e) => setInfo({ ...info, min_order: Number(e.target.value) })} step="0.5" className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none" />
+              <p className="text-xs text-text-secondary mb-1">Pedido mínimo</p>
+              <input type="number" value={info.min_order} onChange={(e) => setInfo({ ...info, min_order: Number(e.target.value) })} step="0.5" className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" />
             </div>
             <div>
-              <p className="text-xs text-gray-400 mb-1">Costo de envío</p>
-              <input type="number" value={info.delivery_fee} onChange={(e) => setInfo({ ...info, delivery_fee: Number(e.target.value) })} step="0.5" className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none" />
+              <p className="text-xs text-text-secondary mb-1">Costo de envío</p>
+              <input type="number" value={info.delivery_fee} onChange={(e) => setInfo({ ...info, delivery_fee: Number(e.target.value) })} step="0.5" className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" />
             </div>
           </div>
           <div>
-            <p className="text-xs text-gray-400 mb-1">Emoji</p>
-            <input type="text" value={info.emoji} onChange={(e) => setInfo({ ...info, emoji: e.target.value })} className="w-full bg-gray-50 rounded-xl px-4 py-3 text-sm outline-none" maxLength={2} />
+            <p className="text-xs text-text-secondary mb-1">Emoji</p>
+            <input type="text" value={info.emoji} onChange={(e) => setInfo({ ...info, emoji: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" maxLength={2} />
           </div>
-          <button onClick={handleSaveInfo} disabled={saving} className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: '#6D28D9' }}>
+          <button onClick={handleSaveInfo} disabled={saving} className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: 'var(--brand)' }}>
             <Save size={16} /> {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
       )}
 
       {tab === 'hours' && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border-light">
           <div className="space-y-2">
             {dayNames.map((name, day) => {
               const sched = schedules.find((s) => s.week_day === day);
               return (
-                <div key={day} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                <div key={day} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
                   <button
                     onClick={() => toggleDay(day)}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${sched ? 'border-purple-600 bg-purple-600' : 'border-gray-300'}`}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center ${sched ? 'border-brand bg-brand' : 'border-border'}`}
                   >
-                    {sched && <div className="w-2 h-2 rounded-sm bg-white" />}
+                    {sched && <div className="w-2 h-2 rounded-sm bg-card" />}
                   </button>
-                  <span className={`text-sm flex-1 ${sched ? 'text-gray-900' : 'text-gray-400'}`}>{name}</span>
+                  <span className={`text-sm flex-1 ${sched ? 'text-text-primary' : 'text-text-secondary'}`}>{name}</span>
                   {sched && (
                     <div className="flex items-center gap-2">
-                      <input type="time" value={sched.opens_at} onChange={(e) => updateSchedule(day, 'opens_at', e.target.value)} className="bg-gray-50 rounded-lg px-2 py-1 text-sm outline-none" />
-                      <span className="text-gray-400 text-xs">a</span>
-                      <input type="time" value={sched.closes_at} onChange={(e) => updateSchedule(day, 'closes_at', e.target.value)} className="bg-gray-50 rounded-lg px-2 py-1 text-sm outline-none" />
+                      <input type="time" value={sched.opens_at} onChange={(e) => updateSchedule(day, 'opens_at', e.target.value)} className="bg-surface rounded-lg px-2 py-1 text-sm outline-none" />
+                      <span className="text-text-secondary text-xs">a</span>
+                      <input type="time" value={sched.closes_at} onChange={(e) => updateSchedule(day, 'closes_at', e.target.value)} className="bg-surface rounded-lg px-2 py-1 text-sm outline-none" />
                     </div>
                   )}
                 </div>
               );
             })}
           </div>
-          <button onClick={handleSaveSchedule} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: '#6D28D9' }}>
+          <button onClick={handleSaveSchedule} disabled={saving} className="w-full mt-4 py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: 'var(--brand)' }}>
             <Clock size={16} /> {saving ? 'Guardando...' : 'Guardar horarios'}
           </button>
         </div>
       )}
 
       {tab === 'inventory' && (
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-3">
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border-light space-y-3">
           {inventory.length === 0 && (
-            <p className="text-sm text-gray-400 text-center py-4">
+            <p className="text-sm text-text-secondary text-center py-4">
               {products.length === 0 ? 'Crea productos primero para gestionar el inventario' : 'Sin inventario registrado'}
             </p>
           )}
           {inventory.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+            <div key={item.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
               <span className="text-xl">{item.product_emoji || '📦'}</span>
-              <span className="flex-1 text-sm text-gray-900">{item.product_name || 'Producto'}</span>
+              <span className="flex-1 text-sm text-text-primary">{item.product_name || 'Producto'}</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={async () => {
@@ -182,9 +182,9 @@ export function StoreSettings({ storeId }: Props) {
                       await load();
                     }
                   }}
-                  className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-bold"
+                  className="w-7 h-7 rounded-lg bg-surface-hover flex items-center justify-center text-text-secondary font-bold"
                 >−</button>
-                <span className={`text-sm font-bold w-8 text-center ${item.quantity <= item.low_stock_threshold ? 'text-red-500' : 'text-gray-900'}`}>
+                <span className={`text-sm font-bold w-8 text-center ${item.quantity <= item.low_stock_threshold ? 'text-danger' : 'text-text-primary'}`}>
                   {item.quantity}
                 </span>
                 <button
@@ -194,7 +194,7 @@ export function StoreSettings({ storeId }: Props) {
                       await load();
                     }
                   }}
-                  className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center text-gray-500 font-bold"
+                  className="w-7 h-7 rounded-lg bg-surface-hover flex items-center justify-center text-text-secondary font-bold"
                 >+</button>
               </div>
             </div>

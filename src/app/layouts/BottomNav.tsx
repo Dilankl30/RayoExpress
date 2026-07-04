@@ -47,7 +47,7 @@ export function BottomNav() {
   const items = itemsByRole[user.role] || itemsByRole.customer;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-50 lg:hidden shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border-light flex items-center justify-around px-2 py-2 z-50 lg:hidden shadow-lg">
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = screen === item.screen || (item.id === 'search' && screen === 'home');
@@ -60,7 +60,7 @@ export function BottomNav() {
             <div className="relative">
               <Icon
                 size={21}
-                style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }}
+                style={{ color: isActive ? 'var(--brand)' : '#9CA3AF' }}
                 strokeWidth={isActive ? 2.5 : 1.8}
               />
               {item.id === 'cart' && cartCount > 0 && (
@@ -72,11 +72,11 @@ export function BottomNav() {
                 </span>
               )}
             </div>
-            <span className="text-[10px] font-medium" style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }}>
+            <span className="text-[10px] font-medium" style={{ color: isActive ? 'var(--brand)' : '#9CA3AF' }}>
               {item.label}
             </span>
             {isActive && (
-              <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />
+              <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: 'var(--brand)' }} />
             )}
           </button>
         );

@@ -58,12 +58,12 @@ export function ProfileScreen() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-100 px-4 py-4 flex items-center gap-3">
-        <button onClick={() => navigate('home')} className="text-gray-600">
+    <div className="min-h-screen bg-surface">
+      <div className="bg-card border-b border-border-light px-4 py-4 flex items-center gap-3">
+        <button onClick={() => navigate('home')} className="text-text-secondary">
           <ArrowLeft size={20} />
         </button>
-        <h1 className="font-bold text-gray-900">Mi Perfil</h1>
+        <h1 className="font-bold text-text-primary">Mi Perfil</h1>
       </div>
 
       <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
@@ -73,63 +73,63 @@ export function ProfileScreen() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-purple-100 flex items-center justify-center text-4xl overflow-hidden">
+            <div className="w-24 h-24 rounded-full bg-brand-light flex items-center justify-center text-4xl overflow-hidden">
               {user.avatar_url ? (
                 <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
               ) : (
-                <User className="text-purple-600" size={36} />
+                <User className="text-brand" size={36} />
               )}
             </div>
             {isSupabaseReady && (
               <button
                 onClick={handleAvatarUpload}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-purple-600 text-white rounded-full flex items-center justify-center shadow-lg"
+                className="absolute bottom-0 right-0 w-8 h-8 bg-brand text-white rounded-full flex items-center justify-center shadow-lg"
               >
                 <Camera size={14} />
               </button>
             )}
           </div>
-          <p className="text-sm text-gray-500 mt-2 capitalize">{user.role}</p>
+          <p className="text-sm text-text-secondary mt-2 capitalize">{user.role}</p>
         </motion.div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+          <div className="bg-danger-light border border-red-200 rounded-xl px-4 py-3">
             <p className="text-red-600 text-sm">{error}</p>
           </div>
         )}
 
         {saved && (
           <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <p className="text-green-600 text-sm">Perfil actualizado</p>
+            <p className="text-success text-sm">Perfil actualizado</p>
           </div>
         )}
 
-        <div className="bg-white rounded-2xl p-5 space-y-4 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 space-y-4 shadow-sm border border-border-light">
           <div>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Nombre completo</p>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Nombre completo</p>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Tu nombre"
-              className="w-full bg-gray-50 rounded-xl px-4 py-3 text-gray-900 outline-none text-sm"
+              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
             />
           </div>
 
           <div>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Teléfono</p>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Teléfono</p>
             <input
               type="tel"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+593 99 999 9999"
-              className="w-full bg-gray-50 rounded-xl px-4 py-3 text-gray-900 outline-none text-sm"
+              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
             />
           </div>
 
           <div>
-            <p className="text-xs text-gray-400 mb-1 font-medium">Correo</p>
-            <p className="w-full bg-gray-50 rounded-xl px-4 py-3 text-gray-500 text-sm">
+            <p className="text-xs text-text-secondary mb-1 font-medium">Correo</p>
+            <p className="w-full bg-surface rounded-xl px-4 py-3 text-text-secondary text-sm">
               {user.id.startsWith('mock-') ? 'demo@rayoexpress.com' : 'Correo registrado'}
             </p>
           </div>
@@ -138,7 +138,7 @@ export function ProfileScreen() {
             onClick={handleSave}
             disabled={saving}
             className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: '#6D28D9' }}
+            style={{ backgroundColor: 'var(--brand)' }}
             whileTap={{ scale: 0.98 }}
           >
             <Save size={16} />
@@ -146,10 +146,10 @@ export function ProfileScreen() {
           </motion.button>
         </div>
 
-        <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
+        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border-light">
           <button
             onClick={logout}
-            className="w-full py-3 rounded-xl text-red-500 font-medium border border-red-200 hover:bg-red-50 transition-colors text-sm"
+            className="w-full py-3 rounded-xl text-danger font-medium border border-red-200 hover:bg-danger-light transition-colors text-sm"
           >
             Cerrar sesión
           </button>
