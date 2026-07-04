@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import logo from '../../../imports/image-1.png';
@@ -10,90 +12,141 @@ const navByRole: Record<string, Array<{ id: string; label: string; icon: string 
     { id: 'tracking', label: 'Pedidos', icon: '📦' },
   ],
   driver: [
-    { id: 'dashboard', label: 'Inicio', icon: '🏠' },
-    { id: 'orders', label: 'Pedidos', icon: '📋' },
+    { id: 'driver', label: 'Inicio', icon: '🏠' },
+    { id: 'tracking', label: 'Pedidos', icon: '📋' },
     { id: 'wallet', label: 'Ganancias', icon: '💰' },
     { id: 'profile', label: 'Perfil', icon: '👤' },
   ],
   store: [
-    { id: 'dashboard', label: 'Resumen', icon: '📊' },
+    { id: 'store-admin', label: 'Resumen', icon: '📊' },
     { id: 'orders', label: 'Pedidos', icon: '📋' },
     { id: 'catalog', label: 'Catálogo', icon: '📦' },
     { id: 'settings', label: 'Config', icon: '⚙️' },
   ],
   admin: [
-    { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+    { id: 'admin', label: 'Dashboard', icon: '📊' },
     { id: 'users', label: 'Usuarios', icon: '👥' },
     { id: 'map', label: 'Mapa', icon: '🗺️' },
     { id: 'settings', label: 'Config', icon: '⚙️' },
   ],
 };
 
-export function DesktopSidebar() {
-  const { user, navigate, logout } = useAuth();
-  const { cartCount } = useCart();
-  const [collapsed, setCollapsed] = useState(false);
+interface Props {
+  mobileOpen: boolean;
+  onMobileClose: () => void;
+  collapsed: boolean;
+  onToggleCollapse: () => void;
+}
 
+function SidebarContent({
+  user, navigate, screen, logout, cartCount,
+  collapsed, showClose, onClose, onNavigate, onToggleCollapse,
+}: {
+  user: any; navigate: any; screen: string; logout: () => void; cartCount: number;
+  collapsed: boolean; showClose: boolean; onClose: () => void; onNavigate: (id: string) => void; onToggleCollapse: () => void;
+}) {
+  const navItems = navByRole[user.role] || navByRole.customer;
+  const isActive = (id: string) => screen === id;
+
+  return (
+    <div className={`h-full bg-white flex flex-col ${collapsed ? 'w-20' : 'w-64'}`}>
+      <div className="flex items-center gap-3 px-4 h-20 border-b border-gray-100 flex-shrink-0">
+        <img src={logo} alt="Rayo" className="w-10 h-10 object-contain rounded-xl" />
+        {!collapsed && (
+          <div className="flex-1 min-w-0">
+            <p className="font-bold text-gray-900 text-sm truncate">RayoExpress</p>
+            <p className="text-xs text-gray-400 truncate">{user.full_name || user.role}</p>
+          </div>
+        )}
+        {showClose && (
+          <button onClick={onClose} className="lg:hidden text-gray-400 hover:text-gray-600 ml-auto">
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all ${
+              isActive(item.id)
+                ? 'bg-purple-100 text-purple-700 font-semibold'
+                : 'hover:bg-purple-50 text-gray-700 hover:text-purple-700'
+            }`}
+          >
+            <span className="text-xl flex-shrink-0">{item.icon}</span>
+            {!collapsed && <span className="font-medium truncate">{item.label}</span>}
+            {item.id === 'cart' && cartCount > 0 && (
+              <span className="ml-auto bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
+                {cartCount}
+              </span>
+            )}
+          </button>
+        ))}
+      </nav>
+
+      <div className="border-t border-gray-100 p-3 flex-shrink-0 space-y-1">
+        <button
+          onClick={() => { logout(); onClose(); }}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-all"
+        >
+          <span className="text-xl flex-shrink-0">🚪</span>
+          {!collapsed && <span className="font-medium">Cerrar sesión</span>}
+        </button>
+        <button
+          onClick={onToggleCollapse}
+          className="hidden lg:flex w-full items-center justify-center py-2 text-gray-400 hover:text-gray-600 transition-all"
+        >
+          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+export function DesktopSidebar({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }: Props) {
+  const { user, navigate, screen, logout } = useAuth();
+  const { cartCount } = useCart();
   if (!user) return null;
 
-  const navItems = navByRole[user.role] || navByRole.customer;
+  const onNavigate = (id: string) => {
+    navigate(id as any);
+    onMobileClose();
+  };
+
+  const commonProps = { user, navigate, screen, logout, cartCount, collapsed, onClose: onMobileClose, onNavigate, onToggleCollapse };
 
   return (
     <>
-      {/* Overlay for mobile when sidebar would be visible - hidden by default on mobile */}
-      <div className="hidden lg:block">
-        <aside
-          className={`fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 transition-all duration-300 flex flex-col ${
-            collapsed ? 'w-20' : 'w-64'
-          }`}
-        >
-          {/* Logo */}
-          <div className="flex items-center gap-3 px-4 h-20 border-b border-gray-100 flex-shrink-0">
-            <img src={logo} alt="Rayo" className="w-10 h-10 object-contain rounded-xl" />
-            {!collapsed && (
-              <div>
-                <p className="font-bold text-gray-900 text-sm">RayoExpress</p>
-                <p className="text-xs text-gray-400">{user.full_name || user.role}</p>
-              </div>
-            )}
-          </div>
-
-          {/* Nav */}
-          <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-            {navItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => navigate(item.id as any)}
-                className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all hover:bg-purple-50 text-gray-700 hover:text-purple-700"
-              >
-                <span className="text-xl flex-shrink-0">{item.icon}</span>
-                {!collapsed && <span className="font-medium truncate">{item.label}</span>}
-                {item.id === 'cart' && cartCount > 0 && (
-                  <span className="ml-auto bg-yellow-400 text-gray-900 text-xs font-bold px-2 py-0.5 rounded-full">
-                    {cartCount}
-                  </span>
-                )}
-              </button>
-            ))}
-          </nav>
-
-          {/* Bottom */}
-          <div className="border-t border-gray-100 p-3 flex-shrink-0">
-            <button
-              onClick={logout}
-              className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-red-500 hover:bg-red-50 transition-all"
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={onMobileClose}
+            />
+            <motion.div
+              className="fixed left-0 top-0 h-full z-50 lg:hidden"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
             >
-              <span className="text-xl flex-shrink-0">🚪</span>
-              {!collapsed && <span className="font-medium">Cerrar sesión</span>}
-            </button>
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-full flex items-center justify-center mt-1 py-2 text-gray-400 hover:text-gray-600 transition-all"
-            >
-              <span className="text-sm">{collapsed ? '→' : '←'}</span>
-            </button>
-          </div>
-        </aside>
+              <SidebarContent {...commonProps} showClose={true} />
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:block fixed left-0 top-0 h-full z-30 border-r border-gray-200">
+        <SidebarContent {...commonProps} showClose={false} />
       </div>
     </>
   );

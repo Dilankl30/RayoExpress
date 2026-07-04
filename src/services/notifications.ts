@@ -1,6 +1,8 @@
-import { getSupabase } from './supabase';
+import { getSupabase, isSupabaseReady } from './supabase';
+import { mockNotifications } from './mockData';
 
 export async function getNotifications(userId: string) {
+  if (!isSupabaseReady) return mockNotifications[userId] || [];
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('notifications')
@@ -13,6 +15,7 @@ export async function getNotifications(userId: string) {
 }
 
 export async function markAsRead(notificationId: string) {
+  if (!isSupabaseReady) return;
   const supabase = getSupabase();
   const { error } = await supabase
     .from('notifications')
@@ -22,6 +25,7 @@ export async function markAsRead(notificationId: string) {
 }
 
 export async function markAllAsRead(userId: string) {
+  if (!isSupabaseReady) return;
   const supabase = getSupabase();
   const { error } = await supabase
     .from('notifications')

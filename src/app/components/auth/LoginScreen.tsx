@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight } from 'lucide-react';
-import { supabase } from '../../../services/supabase';
+import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight, Info } from 'lucide-react';
+import { isSupabaseReady } from '../../../services/supabase';
 import { useAuth } from '../../../context/AuthContext';
+import { supabase } from '../../../services/supabase';
 import { sendPasswordReset } from '../../../services/auth';
 import { hashText, isSecurePassword, isValidEmail } from '../../../services/validation';
 import type { Role } from '../../types';
@@ -15,8 +16,15 @@ const roles: { id: Role; label: string; icon: string; desc: string }[] = [
   { id: 'admin', label: 'Admin', icon: '⚡', desc: 'Administra todo' },
 ];
 
+const mockDemoAccounts = [
+  { role: 'customer' as Role, email: 'customer@rayo.com', password: 'customer123', label: 'Cliente', icon: '👤' },
+  { role: 'driver' as Role, email: 'driver@rayo.com', password: 'driver123', label: 'Repartidor', icon: '🛵' },
+  { role: 'store' as Role, email: 'store@rayo.com', password: 'store123', label: 'Tienda', icon: '🏪' },
+  { role: 'admin' as Role, email: 'admin@rayo.com', password: 'admin123', label: 'Admin', icon: '⚡' },
+];
+
 export function LoginScreen() {
-  const { login } = useAuth();
+  const { login, mockLogin } = useAuth();
   const [tab, setTab] = useState<'email' | 'phone'>('email');
   const [selectedRole, setSelectedRole] = useState<Role>('customer');
   const [email, setEmail] = useState('');
@@ -36,15 +44,34 @@ export function LoginScreen() {
   const [loading, setLoading] = useState(false);
 
   const loginWithProvider = async (provider: 'google' | 'facebook') => {
-    if (!supabase) return setError('Configura Supabase en .env');
+    if (!supabase) return setError('No disponible en modo demo');
     setError('');
     await supabase.auth.signInWithOAuth({ provider });
+  };
+
+  const handleMockLogin = async (email: string, password: string) => {
+    setError('');
+    setLoading(true);
+    try {
+      const role = await mockLogin(email, password);
+      if (!role) {
+        setError('Credenciales inválidas. Usa las cuentas demo de abajo.');
+      }
+    } catch {
+      setError('Error al iniciar sesión');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const loginWithEmail = async () => {
     setError('');
     setLoading(true);
     try {
+      if (!isSupabaseReady) {
+        await handleMockLogin(email, password);
+        return;
+      }
       if (!supabase) throw new Error('Configura Supabase en .env');
 
       if (isRegister) {
@@ -81,6 +108,7 @@ export function LoginScreen() {
   };
 
   const sendOtp = async () => {
+    if (!isSupabaseReady) return setError('No disponible en modo demo. Usa email.');
     if (!supabase) return setError('Configura Supabase en .env');
     setError('');
     setLoading(true);
@@ -96,6 +124,7 @@ export function LoginScreen() {
   };
 
   const verifyOtp = async () => {
+    if (!isSupabaseReady) return setError('No disponible en modo demo');
     if (!supabase) return setError('Configura Supabase en .env');
     setError('');
     setLoading(true);
@@ -167,7 +196,7 @@ export function LoginScreen() {
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
       >
-        <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {roles.map((r) => (
             <button
               key={r.id}
@@ -186,7 +215,7 @@ export function LoginScreen() {
         <h2 className="text-gray-900 mb-1">
           {recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}
         </h2>
-        <p className="text-gray-400 text-sm mb-5">
+        <p className="text-gray-400 text-sm mb-3">
           {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
         </p>
 
@@ -196,6 +225,87 @@ export function LoginScreen() {
           </div>
         )}
 
+        {/* Demo mode banner */}
+        {!isSupabaseReady && !recoveryMode && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
+            <Info size={15} className="text-amber-600 mt-0.5 flex-shrink-0" />
+            <div className="text-xs text-amber-800">
+              <p className="font-semibold mb-1">Modo demo — Sin base de datos</p>
+              <p>Usa las cuentas demo de abajo para ingresar.</p>
+            </div>
+          </div>
+        )}
+
+        {!isSupabaseReady ? (
+          <>
+            <div className="space-y-3 mb-4">
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                />
+              </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3 flex items-center">
+                <div className="flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Contraseña</p>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  />
+                </div>
+                <button onClick={() => setShowPassword(!showPassword)} className="text-gray-400 ml-2 flex-shrink-0">
+                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                </button>
+              </div>
+
+              <motion.button
+                onClick={loginWithEmail}
+                disabled={loading}
+                className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+                style={{ backgroundColor: '#6D28D9' }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
+                {loading ? 'Ingresando...' : 'Ingresar'}
+                <ArrowRight size={16} />
+              </motion.button>
+            </div>
+
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs text-gray-500 text-center mb-3 font-medium">CUENTAS DE DEMO</p>
+              <div className="grid grid-cols-2 gap-2">
+                {mockDemoAccounts.map((acc) => (
+                  <button
+                    key={acc.role}
+                    onClick={() => {
+                      setEmail(acc.email);
+                      setPassword(acc.password);
+                      setSelectedRole(acc.role);
+                    }}
+                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs transition-all ${
+                      selectedRole === acc.role ? 'ring-2 ring-purple-600 bg-purple-50' : 'bg-gray-50 hover:bg-gray-100'
+                    }`}
+                  >
+                    <span className="text-lg">{acc.icon}</span>
+                    <div>
+                      <p className="font-semibold text-gray-800">{acc.label}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{acc.email}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              <p className="text-[10px] text-gray-400 text-center mt-2">Selecciona una cuenta y presiona Ingresar</p>
+            </div>
+          </>
+        ) : (
+          <>
         <div className="flex gap-3 mb-5">
           <button onClick={() => loginWithProvider('google')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
             <svg width="16" height="16" viewBox="0 0 24 24">
@@ -389,8 +499,11 @@ export function LoginScreen() {
             {loading ? 'Procesando...' : isRegister ? 'Registrarse gratis' : `Ingresar como ${roles.find((r) => r.id === selectedRole)?.label}`}
             <ArrowRight size={16} />
           </motion.button>
+        )} {/* end of !isSupabaseReady else block */}
+          </>
         )}
 
+        {isSupabaseReady && (
         <p className="text-center text-sm text-gray-500 mt-4">
           {recoveryMode ? (
             <button onClick={() => setRecoveryMode(false)} className="font-medium" style={{ color: '#6D28D9' }}>
@@ -410,6 +523,7 @@ export function LoginScreen() {
             </>
           )}
         </p>
+        )}
 
         <p className="text-center text-xs text-gray-400 mt-4">
           Al continuar aceptas nuestros{' '}

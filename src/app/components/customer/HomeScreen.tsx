@@ -8,7 +8,6 @@ import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { getStores, getCategories } from '../../../services/stores';
 import { getNotifications } from '../../../services/notifications';
-import { BottomNav } from '../shared/BottomNav';
 import logo from '../../../imports/image-1.png';
 
 const banners = [
@@ -298,7 +297,6 @@ export function HomeScreen() {
         </div>
       </div>
 
-      <BottomNav active="home" />
     </div>
   );
 }

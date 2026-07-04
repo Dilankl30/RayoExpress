@@ -397,23 +397,6 @@ export function DriverDashboard() {
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 lg:hidden" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className="flex flex-col items-center gap-0.5 flex-1 py-1 relative"
-            >
-              <Icon size={22} style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }} strokeWidth={isActive ? 2.5 : 1.8} />
-              <span style={{ fontSize: 10, color: isActive ? '#6D28D9' : '#9CA3AF' }}>{tab.label}</span>
-              {isActive && <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }

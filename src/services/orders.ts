@@ -1,4 +1,5 @@
-import { getSupabase } from './supabase';
+import { getSupabase, isSupabaseReady } from './supabase';
+import { createMockOrder, getMockOrders } from './mockData';
 
 export interface CreateOrderParams {
   storeId: string;
@@ -23,6 +24,19 @@ export interface CreateOrderResult {
 }
 
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
+  if (!isSupabaseReady) {
+    const order = createMockOrder(params, 'mock-customer');
+    return {
+      order_id: order.id,
+      subtotal: order.subtotal,
+      delivery_fee: order.delivery_fee,
+      discount: order.discount,
+      tax: order.tax,
+      tip: order.tip,
+      total: order.total,
+      status: order.status,
+    };
+  }
   const supabase = getSupabase();
   const { data, error } = await supabase.rpc('create_order', {
     p_store_id: params.storeId,
@@ -40,6 +54,20 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
 }
 
 export async function getOrderById(orderId: string) {
+  if (!isSupabaseReady) {
+    const all = Object.values(getMockOrders('')).flat();
+    const byId = Object.values(
+      Object.fromEntries(
+        Object.entries(
+          Object.groupBy(
+            ['mock-customer', 'mock-driver', 'mock-store', 'mock-admin'].flatMap(u => getMockOrders(u)),
+            o => o.id
+          )
+        )
+      )
+    ).flat();
+    return byId.find(o => o.id === orderId) || null;
+  }
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -51,6 +79,7 @@ export async function getOrderById(orderId: string) {
 }
 
 export async function getMyOrders(userId: string) {
+  if (!isSupabaseReady) return getMockOrders(userId);
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -62,6 +91,7 @@ export async function getMyOrders(userId: string) {
 }
 
 export async function getStoreOrders(storeId: string) {
+  if (!isSupabaseReady) return [];
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -73,6 +103,7 @@ export async function getStoreOrders(storeId: string) {
 }
 
 export async function getDriverOrders(driverId: string) {
+  if (!isSupabaseReady) return [];
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -84,6 +115,7 @@ export async function getDriverOrders(driverId: string) {
 }
 
 export async function updateOrderStatus(orderId: string, status: string) {
+  if (!isSupabaseReady) return { id: orderId, status };
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -96,6 +128,7 @@ export async function updateOrderStatus(orderId: string, status: string) {
 }
 
 export async function assignDriver(orderId: string, driverId: string) {
+  if (!isSupabaseReady) return { id: orderId, driver_id: driverId };
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')

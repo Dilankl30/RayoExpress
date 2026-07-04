@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { getSupabase } from '../services/supabase';
+import { getSupabase, isSupabaseReady, supabase } from '../services/supabase';
 import { getProfile, upsertProfile } from '../services/auth';
-import { supabase } from '../services/supabase';
+import { mockCredentials, mockUser } from '../services/mockData';
 import type { Screen, Role, UserProfile } from '../app/types';
 
 interface AuthContextType {
@@ -11,6 +11,7 @@ interface AuthContextType {
   navigate: (s: Screen, params?: Record<string, string>) => void;
   navigationParams: Record<string, string>;
   login: (role: Role) => Promise<void>;
+  mockLogin: (email: string, password: string) => Promise<Role | null>;
   logout: () => Promise<void>;
   setUser: (u: UserProfile | null) => void;
 }
@@ -31,8 +32,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const roleToScreen = (r: Role): Screen =>
     ({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' }[r]);
 
+  const mockLogin = async (email: string, password: string): Promise<Role | null> => {
+    const cred = mockCredentials[email.toLowerCase()];
+    if (!cred || cred.password !== password) return null;
+    const mu = mockUser(email.toLowerCase());
+    if (mu) setUser(mu);
+    setScreen(roleToScreen(cred.role));
+    return cred.role;
+  };
+
   useEffect(() => {
     const boot = async () => {
+      if (!isSupabaseReady) {
+        setLoading(false);
+        return;
+      }
       if (!supabase) {
         setLoading(false);
         return;
@@ -59,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     boot();
 
-    if (!supabase) return;
+    if (!isSupabaseReady || !supabase) return;
 
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
@@ -84,29 +98,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (role: Role) => {
-    if (!supabase) throw new Error('Supabase not configured');
-    const userData = (await supabase.auth.getUser()).data.user;
-    if (!userData) throw new Error('No user found');
-    await upsertProfile(userData.id, role, {
-      full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
-      phone: userData.phone ?? null,
-    });
-    const profile = await getProfile(userData.id);
-    if (profile) {
-      setUser(profile);
-      setScreen(roleToScreen(role));
+    if (isSupabaseReady && supabase) {
+      const userData = (await supabase.auth.getUser()).data.user;
+      if (!userData) throw new Error('No user found');
+      await upsertProfile(userData.id, role, {
+        full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
+        phone: userData.phone ?? null,
+      });
+      const profile = await getProfile(userData.id);
+      if (profile) {
+        setUser(profile);
+        setScreen(roleToScreen(role));
+      }
     }
   };
 
   const logout = async () => {
-    if (!supabase) return;
-    await supabase.auth.signOut();
+    if (isSupabaseReady && supabase) {
+      await supabase.auth.signOut();
+    }
     setUser(null);
     setScreen('landing');
   };
 
   return (
-      <AuthContext.Provider value={{ user, loading, screen, navigate, navigationParams, login, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, screen, navigate, navigationParams, login, mockLogin, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );
