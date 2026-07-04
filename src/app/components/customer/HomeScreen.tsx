@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MapPin, Bell, ShoppingCart, Search, ChevronRight,
+  MapPin, ShoppingCart, Search, ChevronRight,
   Truck, Flame, ChevronDown, Zap, Filter, TrendingUp,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
+import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { getStores, getCategories } from '../../../services/stores';
-import { getNotifications } from '../../../services/notifications';
 import logo from '../../../imports/image-1.png';
 
 const banners = [
@@ -35,14 +35,13 @@ const banners = [
 ];
 
 export function HomeScreen() {
-  const { navigate, user } = useAuth();
+  const { navigate } = useAuth();
   const { cartCount } = useCart();
   const [search, setSearch] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [stores, setStores] = useState<any[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
-  const [notifCount, setNotifCount] = useState(0);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -63,10 +62,6 @@ export function HomeScreen() {
       ]);
       setStores(storesData);
       setCategories(catsData);
-      if (user) {
-        const notifs = await getNotifications(user.id);
-        setNotifCount(notifs.filter((n) => !n.read_at).length);
-      }
     } catch (err) {
       console.warn('Error loading data:', err);
     }
@@ -102,14 +97,7 @@ export function HomeScreen() {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <button className="relative">
-                <Bell size={22} className="text-white" />
-                {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}>
-                    {notifCount}
-                  </span>
-                )}
-              </button>
+              <NotificationBell />
               <button className="relative" onClick={() => navigate('cart')}>
                 <ShoppingCart size={22} className="text-white" />
                 {cartCount > 0 && (

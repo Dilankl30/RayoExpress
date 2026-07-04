@@ -1,27 +1,19 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Bell, MapPin, Star, DollarSign, Package, Clock,
+  Star, DollarSign, Package,
   CheckCircle, XCircle, ToggleLeft, ToggleRight,
-  TrendingUp, ChevronRight,
+  TrendingUp, ChevronRight, Camera, MessageCircle,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
+import { OrderChat } from '../../../modules/chat/ui/OrderChat';
+import { getDriverEarnings, setDriverOnline, getDriverProfile } from '../../../modules/delivery/application/driver.service';
+import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
+import { uploadDeliveryEvidence } from '../../../modules/delivery/application/driver.service';
+import { updateOrderStatus } from '../../../services/orders';
 import logo from '../../../imports/image-1.png';
 import mascot from '../../../imports/image.png';
-
-const newOrder = {
-  id: 'ORD-2847',
-  store: 'Burger King',
-  storeEmoji: '🍔',
-  storeAddress: 'Av. Amazonas N21-147',
-  clientName: 'María García',
-  clientAddress: 'Calle República E7-123',
-  distance: '2.3 km',
-  earnings: '$3.80',
-  time: '15 min',
-  items: 3,
-  tip: '$1.00',
-};
 
 const weeklyData = [
   { day: 'L', earnings: 24, orders: 8 },
@@ -36,12 +28,22 @@ const weeklyData = [
 const maxEarnings = Math.max(...weeklyData.map((d) => d.earnings));
 
 export function DriverDashboard() {
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
-  const [activeTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
-  const [todayEarnings, setTodayEarnings] = useState(18.50);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
+
   const [acceptCountdown, setAcceptCountdown] = useState(30);
+  const [earnings, setEarnings] = useState({ today: 18.50, week: 236.50, month: 892.30, balance: 127.40 });
+  const [showEvidence, setShowEvidence] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  const [chatOrder, setChatOrder] = useState<{ orderId: string; storeId: string; storeName: string; storeEmoji: string } | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    getDriverEarnings(user.id).then(setEarnings).catch(() => {});
+    getDriverProfile(user.id).then((p) => { if (p) setIsOnline(p.is_online); }).catch(() => {});
+  }, [user]);
 
   useEffect(() => {
     if (!isOnline) return;
@@ -56,34 +58,37 @@ export function DriverDashboard() {
     return () => clearTimeout(t);
   }, [showOrder, acceptCountdown]);
 
+  const handleToggleOnline = async () => {
+    const next = !isOnline;
+    setIsOnline(next);
+    if (user) await setDriverOnline(user.id, next);
+  };
+
   const handleAccept = () => {
     setShowOrder(false);
-    setTodayEarnings((p) => p + 3.8);
+    setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
+  };
+
+  const handleDeliveryEvidence = async (file: File, notes: string) => {
+    if (!user) return;
+    await uploadDeliveryEvidence('order-1', user.id, file, notes);
+    await updateOrderStatus('order-1', 'delivered', user?.id);
+    setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
   };
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
-      <div
-        className="pt-10 pb-5 px-4"
-        style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
-      >
+      <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <img src={logo} alt="Rayo" className="w-8 h-8 object-contain rounded-lg" />
             <div>
               <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Bienvenido de vuelta</p>
-              <p className="text-white font-medium">Carlos Andrés M.</p>
+              <p className="text-white font-medium">{user?.full_name || 'Conductor'}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative">
-              <Bell size={22} className="text-white" />
-              {isOnline && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}>
-                  1
-                </span>
-              )}
-            </button>
+            <NotificationBell />
             <div className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: isOnline ? '#22C55E' : '#EF4444' }} />
               <span style={{ color: isOnline ? '#86EFAC' : '#FCA5A5', fontSize: 12 }}>
@@ -100,14 +105,25 @@ export function DriverDashboard() {
               {isOnline ? 'Recibiendo pedidos' : 'Actívate para recibir pedidos'}
             </p>
           </div>
-          <button onClick={() => setIsOnline(!isOnline)} className="flex-shrink-0">
-            {isOnline ? (
-              <ToggleRight size={44} style={{ color: '#FFD400' }} />
-            ) : (
-              <ToggleLeft size={44} style={{ color: 'rgba(255,255,255,0.4)' }} />
-            )}
+          <button onClick={handleToggleOnline} className="flex-shrink-0">
+            {isOnline ? <ToggleRight size={44} style={{ color: '#FFD400' }} /> : <ToggleLeft size={44} style={{ color: 'rgba(255,255,255,0.4)' }} />}
           </button>
         </div>
+      </div>
+
+      <div className="flex gap-1 px-4 py-3 bg-white border-b border-gray-100 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {(['dashboard', 'orders', 'wallet', 'profile'] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap ${
+              activeTab === tab ? 'text-white shadow-md' : 'text-gray-600 bg-gray-100'
+            }`}
+            style={activeTab === tab ? { backgroundColor: '#6D28D9' } : {}}
+          >
+            {tab === 'dashboard' ? '📊 Dashboard' : tab === 'orders' ? '📋 Pedidos' : tab === 'wallet' ? '💰 Cartera' : '👤 Perfil'}
+          </button>
+        ))}
       </div>
 
       <div className="flex-1 overflow-y-auto pb-24">
@@ -115,10 +131,10 @@ export function DriverDashboard() {
           <>
             <div className="px-4 pt-4 grid grid-cols-2 gap-3">
               {[
-                { label: 'Ganancias hoy', value: `$${todayEarnings.toFixed(2)}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4' },
+                { label: 'Ganancias hoy', value: `$${earnings.today.toFixed(2)}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4' },
                 { label: 'Pedidos hoy', value: '6', icon: Package, color: '#6D28D9', bg: '#EDE9FE' },
                 { label: 'Calificación', value: '4.92 ⭐', icon: Star, color: '#F59E0B', bg: '#FFFBEB' },
-                { label: 'Horas activo', value: '4.5 h', icon: Clock, color: '#3B82F6', bg: '#EFF6FF' },
+                { label: 'Balance', value: `$${earnings.balance.toFixed(2)}`, icon: DollarSign, color: '#3B82F6', bg: '#EFF6FF' },
               ].map((stat) => {
                 const Icon = stat.icon;
                 return (
@@ -138,7 +154,7 @@ export function DriverDashboard() {
                 <p className="text-gray-900 font-medium text-sm">Ganancias semana</p>
                 <div className="flex items-center gap-1 text-sm" style={{ color: '#22C55E' }}>
                   <TrendingUp size={14} />
-                  <span>+12%</span>
+                  <span>${earnings.week.toFixed(2)}</span>
                 </div>
               </div>
               <div className="flex items-end gap-2 h-24">
@@ -146,10 +162,7 @@ export function DriverDashboard() {
                   <div key={d.day} className="flex-1 flex flex-col items-center gap-1">
                     <motion.div
                       className="w-full rounded-t-lg"
-                      style={{
-                        backgroundColor: i === 4 ? '#6D28D9' : '#EDE9FE',
-                        height: `${(d.earnings / maxEarnings) * 80}px`,
-                      }}
+                      style={{ backgroundColor: i === 4 ? '#6D28D9' : '#EDE9FE', height: `${(d.earnings / maxEarnings) * 80}px` }}
                       initial={{ scaleY: 0 }}
                       animate={{ scaleY: 1 }}
                       transition={{ delay: i * 0.05, duration: 0.4 }}
@@ -157,40 +170,6 @@ export function DriverDashboard() {
                     <span style={{ fontSize: 10, color: i === 4 ? '#6D28D9' : '#9CA3AF' }}>{d.day}</span>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="mx-4 mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
-              <div className="h-32 flex items-center justify-center relative" style={{ backgroundColor: '#E8F0E8' }}>
-                <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 50" preserveAspectRatio="none">
-                  {[10, 20, 30, 40].map((v) => (
-                    <g key={v}>
-                      <line x1={v * 2.5} y1="0" x2={v * 2.5} y2="50" stroke="#6D28D9" strokeWidth="0.3" />
-                      <line x1="0" y1={v} x2="100" y2={v} stroke="#6D28D9" strokeWidth="0.3" />
-                    </g>
-                  ))}
-                </svg>
-                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 50" preserveAspectRatio="none">
-                  <path d="M0 30 Q40 28 70 32 Q85 34 100 30" stroke="white" strokeWidth="4" fill="none" />
-                  <path d="M30 0 Q32 20 35 50" stroke="white" strokeWidth="3" fill="none" />
-                  <path d="M70 0 Q72 25 75 50" stroke="white" strokeWidth="3" fill="none" />
-                </svg>
-                <div className="w-10 h-10 rounded-full flex items-center justify-center z-10 border-2 border-white shadow-lg" style={{ backgroundColor: '#6D28D9', fontSize: 20 }}>
-                  🛵
-                </div>
-                <div className="absolute top-2 right-3 bg-white rounded-xl px-3 py-1.5 shadow flex items-center gap-1.5">
-                  <MapPin size={12} style={{ color: '#6D28D9' }} />
-                  <span className="text-xs text-gray-700">Quito Centro</span>
-                </div>
-              </div>
-              <div className="px-4 py-3 flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-gray-700 font-medium">Zona activa</p>
-                  <p className="text-xs text-gray-400">3 pedidos disponibles cerca</p>
-                </div>
-                <button className="px-4 py-2 rounded-xl text-white text-sm" style={{ backgroundColor: '#6D28D9' }}>
-                  Ver mapa
-                </button>
               </div>
             </div>
 
@@ -203,29 +182,45 @@ export function DriverDashboard() {
               >
                 <div className="flex-1 p-4">
                   <p className="text-white font-bold">¡Actívate y gana!</p>
-                  <p className="text-white/70 text-sm mt-1">Hay 5 pedidos esperando en tu zona</p>
-                  <button
-                    onClick={() => setIsOnline(true)}
-                    className="mt-3 px-4 py-2 rounded-xl text-sm font-medium"
-                    style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-                  >
+                  <p className="text-white/70 text-sm mt-1">Hay pedidos esperando en tu zona</p>
+                  <button onClick={handleToggleOnline} className="mt-3 px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}>
                     Conectarme ahora
                   </button>
                 </div>
                 <img src={mascot} alt="Rayo" className="w-28 h-auto" />
               </motion.div>
             )}
+
+            <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
+              <p className="text-sm font-medium text-gray-900 mb-2">Acción rápida</p>
+              <button
+                onClick={() => setShowEvidence(true)}
+                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#22C55E' }}
+              >
+                <Camera size={16} /> Registrar entrega
+              </button>
+              <button
+                onClick={() => {
+                  setChatOrder({ orderId: 'order-1', storeId: 'store-1', storeName: 'Burger King', storeEmoji: '👑' });
+                  setShowChat(true);
+                }}
+                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#6D28D9' }}
+              >
+                <MessageCircle size={16} /> Chat del pedido
+              </button>
+            </div>
           </>
         )}
 
         {activeTab === 'orders' && (
           <div className="px-4 pt-4 space-y-3">
-            <h3 className="text-gray-900">Historial de hoy</h3>
+            <h3 className="text-gray-900 font-semibold">Historial de hoy</h3>
             {[
               { id: 'ORD-2844', store: 'KFC', emoji: '🍗', earnings: '$4.20', time: '14:32', status: 'delivered', distance: '1.8 km' },
               { id: 'ORD-2840', store: 'Subway', emoji: '🥪', earnings: '$3.50', time: '13:15', status: 'delivered', distance: '2.1 km' },
               { id: 'ORD-2835', store: 'Pizza Hut', emoji: '🍕', earnings: '$5.10', time: '12:00', status: 'delivered', distance: '3.2 km' },
-              { id: 'ORD-2830', store: 'McDonald\'s', emoji: '🍔', earnings: '$3.80', time: '11:10', status: 'cancelled', distance: '1.5 km' },
             ].map((order) => (
               <div key={order.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
                 <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9FAFB', fontSize: 24 }}>
@@ -234,9 +229,7 @@ export function DriverDashboard() {
                 <div className="flex-1">
                   <div className="flex justify-between">
                     <p className="text-gray-900 font-medium text-sm">{order.store}</p>
-                    <p className="font-bold text-sm" style={{ color: order.status === 'delivered' ? '#22C55E' : '#EF4444' }}>
-                      {order.status === 'delivered' ? order.earnings : 'Cancelado'}
-                    </p>
+                    <p className="font-bold text-sm" style={{ color: '#22C55E' }}>{order.earnings}</p>
                   </div>
                   <div className="flex items-center gap-3 mt-1">
                     <span className="text-xs text-gray-400">{order.id}</span>
@@ -253,7 +246,7 @@ export function DriverDashboard() {
           <div className="px-4 pt-4">
             <div className="rounded-2xl p-5 text-white mb-4" style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>Balance disponible</p>
-              <p className="font-bold mt-1" style={{ fontSize: 32 }}>$127.40</p>
+              <p className="font-bold mt-1" style={{ fontSize: 32 }}>${earnings.balance.toFixed(2)}</p>
               <div className="flex gap-4 mt-4">
                 <button className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}>
                   Retirar
@@ -265,10 +258,10 @@ export function DriverDashboard() {
             </div>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {[
-                { label: 'Esta semana', value: '$236.50', icon: '📅', color: '#EDE9FE' },
-                { label: 'Este mes', value: '$892.30', icon: '📆', color: '#F0FDF4' },
-                { label: 'Bonos', value: '$25.00', icon: '🎁', color: '#FFFBEB' },
-                { label: 'Comisión plat.', value: '-$89.23', icon: '📊', color: '#FEF2F2' },
+                { label: 'Esta semana', value: `$${earnings.week.toFixed(2)}`, icon: '📅', color: '#EDE9FE' },
+                { label: 'Este mes', value: `$${earnings.month.toFixed(2)}`, icon: '📆', color: '#F0FDF4' },
+                { label: 'Hoy', value: `$${earnings.today.toFixed(2)}`, icon: '💰', color: '#FFFBEB' },
+                { label: 'Comisión', value: `-$${(earnings.month * 0.15).toFixed(2)}`, icon: '📊', color: '#FEF2F2' },
               ].map((item) => (
                 <div key={item.label} className="bg-white rounded-2xl p-4 shadow-sm" style={{ backgroundColor: item.color }}>
                   <p style={{ fontSize: 20 }}>{item.icon}</p>
@@ -286,8 +279,8 @@ export function DriverDashboard() {
               <div className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: '#EDE9FE', fontSize: 36 }}>
                 🧑‍🦱
               </div>
-              <p className="text-gray-900 font-bold">Carlos Andrés Morales</p>
-              <p className="text-sm text-gray-500 mt-0.5">Repartidor · Quito</p>
+              <p className="text-gray-900 font-bold">{user?.full_name || 'Conductor'}</p>
+              <p className="text-sm text-gray-500 mt-0.5">Repartidor</p>
               <div className="flex items-center justify-center gap-1 mt-2">
                 <Star size={15} fill="#FFD400" stroke="#FFD400" />
                 <span className="text-sm font-medium">4.92</span>
@@ -298,7 +291,6 @@ export function DriverDashboard() {
               ['Mis documentos', '📄'],
               ['Vehículo', '🛵'],
               ['Configuración', '⚙️'],
-              ['Soporte', '💬'],
               ['Cerrar sesión', '🚪'],
             ].map(([label, icon]) => (
               <button
@@ -318,13 +310,13 @@ export function DriverDashboard() {
       <AnimatePresence>
         {showOrder && (
           <motion.div
-            className="fixed inset-0 bg-black/50 flex items-end z-50 max-w-md lg:max-w-6xl mx-auto"
+            className="fixed inset-0 bg-black/50 flex items-end z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-white w-full rounded-t-3xl p-5 pb-8"
+              className="bg-white w-full rounded-t-3xl p-5 pb-8 max-w-md mx-auto"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
@@ -340,13 +332,12 @@ export function DriverDashboard() {
                 </div>
               </div>
               <p className="text-xs text-gray-400 mb-4">Se asignará automáticamente o expirará</p>
-
               <div className="bg-gray-50 rounded-2xl p-4 mb-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <span style={{ fontSize: 28 }}>{newOrder.storeEmoji}</span>
+                  <span style={{ fontSize: 28 }}>🍔</span>
                   <div>
-                    <p className="text-gray-900 font-medium">{newOrder.store}</p>
-                    <p className="text-xs text-gray-500">{newOrder.storeAddress}</p>
+                    <p className="text-gray-900 font-medium">Burger King</p>
+                    <p className="text-xs text-gray-500">Av. Amazonas N21-147</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -354,42 +345,39 @@ export function DriverDashboard() {
                     <span style={{ fontSize: 14 }}>🏠</span>
                   </div>
                   <div>
-                    <p className="text-gray-700 text-sm">{newOrder.clientName}</p>
-                    <p className="text-xs text-gray-500">{newOrder.clientAddress}</p>
+                    <p className="text-gray-700 text-sm">Cliente</p>
+                    <p className="text-xs text-gray-500">Calle República E7-123</p>
                   </div>
                 </div>
               </div>
-
-              <div className="flex gap-4 mb-4">
-                {[
-                  { label: 'Distancia', value: newOrder.distance, icon: '📍' },
-                  { label: 'Tiempo', value: newOrder.time, icon: '⏱️' },
-                  { label: 'Ganancias', value: newOrder.earnings, icon: '💵' },
-                  { label: 'Propina', value: newOrder.tip, icon: '🎁' },
-                ].map((info) => (
-                  <div key={info.label} className="flex-1 text-center bg-gray-50 rounded-xl py-2">
-                    <p style={{ fontSize: 16 }}>{info.icon}</p>
-                    <p className="font-bold text-gray-900 text-sm">{info.value}</p>
-                    <p style={{ fontSize: 10, color: '#9CA3AF' }}>{info.label}</p>
-                  </div>
-                ))}
-              </div>
-
               <div className="flex gap-3">
                 <button onClick={() => setShowOrder(false)} className="flex-1 py-4 rounded-2xl border-2 flex items-center justify-center gap-2 text-red-500" style={{ borderColor: '#FEE2E2' }}>
-                  <XCircle size={20} />
-                  Rechazar
+                  <XCircle size={20} /> Rechazar
                 </button>
                 <button onClick={handleAccept} className="flex-1 py-4 rounded-2xl text-white flex items-center justify-center gap-2" style={{ backgroundColor: '#22C55E' }}>
-                  <CheckCircle size={20} />
-                  Aceptar
+                  <CheckCircle size={20} /> Aceptar
                 </button>
               </div>
             </motion.div>
           </motion.div>
         )}
-      </AnimatePresence>
 
+        {showEvidence && (
+          <DeliveryEvidenceModal
+            onSubmit={handleDeliveryEvidence}
+            onClose={() => setShowEvidence(false)}
+          />
+        )}
+        {showChat && chatOrder && (
+          <OrderChat
+            orderId={chatOrder.orderId}
+            storeId={chatOrder.storeId}
+            storeName={chatOrder.storeName}
+            storeEmoji={chatOrder.storeEmoji}
+            onClose={() => setShowChat(false)}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

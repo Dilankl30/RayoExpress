@@ -5,10 +5,11 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
 } from 'recharts';
 import {
-  Bell, TrendingUp, Users, Store, Bike, Package, DollarSign,
+  TrendingUp, Users, Store, Bike, Package, DollarSign,
   Shield, ArrowUpRight, ChevronRight,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import logo from '../../../imports/image-1.png';
 
 const salesData = [
@@ -78,12 +79,7 @@ export function AdminDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button className="relative">
-              <Bell size={22} className="text-white" />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}>
-                7
-              </span>
-            </button>
+            <NotificationBell />
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'rgba(255,212,0,0.2)' }}>
               <Shield size={12} style={{ color: '#FFD400' }} />
               <span style={{ color: '#FFD400', fontSize: 11 }}>Admin</span>
