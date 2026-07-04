@@ -1,5 +1,7 @@
 import { getSupabase, isSupabaseReady } from './supabase';
 import { createMockOrder, getMockOrders } from './mockData';
+import { validateOrderInput, validateOrderStatus } from '../shared/validation/service-validators';
+import { logAuditEvent } from '../modules/audit/application/audit.service';
 
 export interface CreateOrderParams {
   storeId: string;
@@ -24,6 +26,14 @@ export interface CreateOrderResult {
 }
 
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
+  const validationError = validateOrderInput({
+    storeId: params.storeId,
+    deliveryAddress: params.deliveryAddress,
+    paymentMethod: params.paymentMethod,
+    productIds: params.productIds,
+    quantities: params.quantities,
+  });
+  if (validationError) throw new Error(validationError);
   if (!isSupabaseReady) {
     const order = createMockOrder(params, 'mock-customer');
     return {
@@ -104,8 +114,12 @@ export async function getDriverOrders(driverId: string) {
   return data ?? [];
 }
 
-export async function updateOrderStatus(orderId: string, status: string) {
+export async function updateOrderStatus(orderId: string, status: string, userId?: string) {
+  if (!validateOrderStatus(status)) throw new Error(`Estado de pedido inválido: ${status}`);
   if (!isSupabaseReady) return { id: orderId, status };
+  if (userId) {
+    logAuditEvent({ userId, action: 'order_status_changed', entityType: 'order', entityId: orderId, details: { newStatus: status } }).catch(() => {});
+  }
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')

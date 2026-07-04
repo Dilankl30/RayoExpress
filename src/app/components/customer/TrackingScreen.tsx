@@ -1,29 +1,67 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Phone, MessageCircle, Star, CheckCircle, Clock, Bike } from 'lucide-react';
+import { ArrowLeft, Star, CheckCircle, Clock, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
+import { OrderChat } from '../../../modules/chat/ui/OrderChat';
+import { getMyOrders } from '../../../services/orders';
+import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
+import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 
-const orderStatuses = [
-  { id: 'pending', label: 'Pedido recibido', desc: 'Esperando confirmación de la tienda', icon: '📋' },
-  { id: 'accepted', label: 'Pedido aceptado', desc: 'La tienda está preparando tu pedido', icon: '✅' },
-  { id: 'preparing', label: 'Preparando', desc: 'Los cocineros están trabajando...', icon: '👨‍🍳' },
-  { id: 'ready', label: 'Listo para retirar', desc: 'El repartidor va a buscarlo', icon: '📦' },
-  { id: 'on_the_way', label: 'En camino', desc: 'Tu repartidor está cerca', icon: '🛵' },
-  { id: 'delivered', label: 'Entregado', desc: '¡Buen provecho!', icon: '🎉' },
-];
+const ORDER_HISTORY_KEY = 'rayoexpress-orders';
+
+function loadOrderHistory(): string[] {
+  try {
+    const raw = localStorage.getItem(ORDER_HISTORY_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveOrderHistory(orderId: string) {
+  try {
+    const existing = loadOrderHistory();
+    if (!existing.includes(orderId)) {
+      localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify([orderId, ...existing].slice(0, 10)));
+    }
+  } catch { /* noop */ }
+}
 
 export function TrackingScreen() {
-  const { navigate } = useAuth();
+  const { navigate, user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0);
   const [eta, setEta] = useState(18);
   const [driverPos, setDriverPos] = useState({ x: 30, y: 60 });
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
+  const [view, setView] = useState<'active' | 'history'>('active');
+  const [orders, setOrders] = useState<Record<string, unknown>[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(true);
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
-    if (currentStep >= orderStatuses.length - 1) return;
+    if (!user) return;
+    const load = async () => {
+      setLoadingOrders(true);
+      try {
+        const userId = user.id;
+        const data = await getMyOrders(userId);
+        if (data && data.length > 0) {
+          setOrders(data as Record<string, unknown>[]);
+          const latest = data[0] as Record<string, unknown>;
+          const status = (latest.status as string) || 'pending';
+          setCurrentStep(getStepIndex(status as OrderStatus));
+          saveOrderHistory(latest.id as string);
+        }
+      } finally {
+        setLoadingOrders(false);
+      }
+    };
+    load();
+  }, [user]);
+
+  useEffect(() => {
+    if (currentStep >= ORDER_FLOW.length - 1) return;
     const stepTimer = setTimeout(() => {
-      setCurrentStep((p) => Math.min(p + 1, orderStatuses.length - 1));
+      setCurrentStep((p) => Math.min(p + 1, ORDER_FLOW.length - 1));
       setEta((p) => Math.max(0, p - 5));
     }, 4000);
     return () => clearTimeout(stepTimer);
@@ -40,12 +78,88 @@ export function TrackingScreen() {
   }, []);
 
   useEffect(() => {
-    if (currentStep === orderStatuses.length - 1) {
+    if (currentStep === ORDER_FLOW.length - 1) {
       setTimeout(() => setShowRating(true), 1500);
     }
   }, [currentStep]);
 
-  const isDelivered = currentStep === orderStatuses.length - 1;
+  const isDelivered = currentStep === ORDER_FLOW.length - 1;
+  const activeStatus = ORDER_FLOW[currentStep] || 'pending';
+  const latestOrder = orders[0] as Record<string, unknown> | undefined;
+  const currentStatusLabel = STATUS_LABELS[activeStatus as OrderStatus] || 'Pendiente';
+
+  const orderHistory = (
+    <div className="px-4 pt-4 pb-24">
+      <div className="flex items-center gap-2 mb-4">
+        <button
+          onClick={() => setView('active')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'active' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
+          style={view === 'active' ? { backgroundColor: '#6D28D9' } : {}}
+        >
+          Activo
+        </button>
+        <button
+          onClick={() => setView('history')}
+          className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'history' ? 'text-white' : 'bg-gray-100 text-gray-600'}`}
+          style={view === 'history' ? { backgroundColor: '#6D28D9' } : {}}
+        >
+          Historial
+        </button>
+      </div>
+
+      {loadingOrders ? (
+        <div className="flex justify-center py-8">
+          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12">
+          <span style={{ fontSize: 48 }}>📦</span>
+          <p className="text-gray-500 mt-3">No tienes pedidos aún</p>
+          <button
+            onClick={() => navigate('home')}
+            className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm"
+            style={{ backgroundColor: '#6D28D9' }}
+          >
+            Explorar tiendas
+          </button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((order) => {
+            const o = order as Record<string, unknown>;
+            const items = (o.order_items as Record<string, unknown>[]) || [];
+            const store = o.store as Record<string, unknown> | undefined;
+            return (
+              <div key={o.id as string} className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span style={{ fontSize: 20 }}>{store?.emoji as string || '🍔'}</span>
+                    <p className="font-medium text-gray-900 text-sm">{store?.name as string || 'Tienda'}</p>
+                  </div>
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 font-medium">
+                    {STATUS_LABELS[(o.status as OrderStatus)] || o.status as string}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  {(items as Array<{ product_name?: string; quantity?: number; unit_price?: number }>).slice(0, 3).map((item, i) => (
+                    <p key={i} className="text-xs text-gray-500">
+                      {item.quantity}x {item.product_name}
+                    </p>
+                  ))}
+                </div>
+                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50">
+                  <p className="text-xs text-gray-400">{new Date(o.created_at as string).toLocaleDateString()}</p>
+                  <p className="font-bold text-sm" style={{ color: '#6D28D9' }}>${(o.total as number)?.toFixed(2)}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+
+  if (view === 'history') return orderHistory;
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
@@ -53,17 +167,19 @@ export function TrackingScreen() {
         className="pt-10 pb-4 px-4 flex items-center justify-between"
         style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
       >
-        <button
-          onClick={() => navigate('home')}
-          className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center"
-        >
+        <button onClick={() => navigate('home')} className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
           <ArrowLeft size={18} className="text-white" />
         </button>
         <div className="text-center">
           <h3 className="text-white">Seguimiento</h3>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Pedido en curso</p>
         </div>
-        <div className="w-9" />
+        <button
+          onClick={() => setView('history')}
+          className="text-xs px-3 py-1.5 rounded-full bg-white/20 text-white"
+        >
+          Historial
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8">
@@ -74,27 +190,6 @@ export function TrackingScreen() {
                 <line x1={v} y1="0" x2={v} y2="100" stroke="#6D28D9" strokeWidth="0.3" />
                 <line x1="0" y1={v} x2="100" y2={v} stroke="#6D28D9" strokeWidth="0.3" />
               </g>
-            ))}
-          </svg>
-
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <path d="M0 40 Q30 38 50 45 Q70 52 100 48" stroke="white" strokeWidth="4" fill="none" strokeLinecap="round" />
-            <path d="M0 40 Q30 38 50 45 Q70 52 100 48" stroke="#D1FAE5" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="2,3" />
-            <path d="M25 0 Q28 30 30 50 Q32 70 35 100" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
-            <path d="M60 0 Q62 25 65 50 Q68 75 70 100" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
-            <path
-              d={`M${driverPos.x} ${driverPos.y} Q60 55 80 80`}
-              stroke="#6D28D9" strokeWidth="2" fill="none"
-              strokeDasharray="3,2" strokeLinecap="round"
-            />
-          </svg>
-
-          <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {[
-              [5, 55, 15, 20], [22, 60, 12, 15], [45, 55, 18, 22], [68, 58, 14, 18],
-              [85, 55, 12, 20], [5, 10, 20, 25], [30, 5, 25, 30], [60, 8, 18, 22],
-            ].map(([x, y, w, h], i) => (
-              <rect key={i} x={x} y={y} width={w} height={h} fill="#C8D8C0" rx="1" />
             ))}
           </svg>
 
@@ -143,115 +238,103 @@ export function TrackingScreen() {
 
         <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
           <div className="lg:flex lg:gap-4 lg:mt-4">
-
-        <div className="bg-white px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
-          <div className="flex items-center gap-3">
-            <motion.div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: isDelivered ? '#F0FDF4' : '#EDE9FE', fontSize: 22 }}
-              animate={{ scale: [1, 1.1, 1] }}
-              transition={{ repeat: isDelivered ? 0 : Infinity, duration: 1.5 }}
-            >
-              {orderStatuses[currentStep].icon}
-            </motion.div>
-            <div className="flex-1">
-              <p className="text-gray-900 font-medium">{orderStatuses[currentStep].label}</p>
-              <p className="text-sm text-gray-500">{orderStatuses[currentStep].desc}</p>
-            </div>
-            {isDelivered && <CheckCircle size={22} style={{ color: '#22C55E' }} />}
-          </div>
-
-          <div className="flex items-center gap-1 mt-4">
-            {orderStatuses.map((_, i) => (
-              <div
-                key={i}
-                className="flex-1 h-1.5 rounded-full transition-all duration-500"
-                style={{ backgroundColor: i <= currentStep ? '#6D28D9' : '#E5E7EB' }}
-              />
-            ))}
-          </div>
-        </div>
-
-        <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm lg:w-80">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EDE9FE', fontSize: 24 }}>
-              🧑‍🦱
-            </div>
-            <div className="flex-1">
-              <p className="text-gray-900 font-medium">Carlos Andrés M.</p>
-              <div className="flex items-center gap-1">
-                <Star size={12} fill="#FFD400" stroke="#FFD400" />
-                <span className="text-xs text-gray-500">4.92 · 1,247 entregas</span>
+            <div className="bg-white px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
+              <div className="flex items-center gap-3">
+                <motion.div
+                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                  style={{ backgroundColor: isDelivered ? '#F0FDF4' : '#EDE9FE', fontSize: 22 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ repeat: isDelivered ? 0 : Infinity, duration: 1.5 }}
+                >
+                  {STATUS_ICONS[activeStatus as OrderStatus] || '📋'}
+                </motion.div>
+                <div className="flex-1">
+                  <p className="text-gray-900 font-medium">{currentStatusLabel}</p>
+                  <p className="text-sm text-gray-500">{latestOrder ? (latestOrder.notes as string) || '' : ''}</p>
+                </div>
+                {isDelivered && <CheckCircle size={22} style={{ color: '#22C55E' }} />}
               </div>
-            </div>
-            <div className="flex gap-2">
-              <button className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#F0FDF4' }}>
-                <Phone size={16} style={{ color: '#22C55E' }} />
-              </button>
-              <button className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#EDE9FE' }}>
-                <MessageCircle size={16} style={{ color: '#6D28D9' }} />
-              </button>
-            </div>
-          </div>
-          <div className="mt-3 flex items-center gap-2 text-xs text-gray-500 bg-gray-50 rounded-xl px-3 py-2">
-            <Bike size={13} />
-            <span>Honda PCX 150 · ABC-1234 · Morado</span>
-          </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-gray-900 font-medium text-sm mb-3">Tu pedido</p>
-            <div className="space-y-2">
-            {[
-              { name: 'Combo Whopper', qty: 1, price: 8.99 },
-              { name: 'Papas Grandes', qty: 1, price: 2.99 },
-            ].map((item) => (
-              <div key={item.name} className="flex justify-between text-sm">
-                <span className="text-gray-600">{item.qty}x {item.name}</span>
-                <span className="text-gray-900">${item.price.toFixed(2)}</span>
-              </div>
-            ))}
-            <div className="h-px bg-gray-100 my-1" />
-            <div className="flex justify-between text-sm font-bold">
-              <span>Total</span>
-              <span style={{ color: '#6D28D9' }}>$13.98</span>
-            </div>
-          </div>
-          </div>
-
-          </div>
-        </div>
-
-        {showRating && (
-          <motion.div
-            className="mx-4 mt-4 rounded-2xl p-5 text-center"
-            style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-          >
-            <p className="text-white font-bold mb-1">¡Pedido entregado! 🎉</p>
-            <p className="text-white/70 text-sm mb-4">¿Cómo calificarías tu experiencia?</p>
-            <div className="flex justify-center gap-2 mb-4">
-              {[1, 2, 3, 4, 5].map((s) => (
-                <button key={s} onClick={() => setRating(s)}>
-                  <Star
-                    size={28}
-                    fill={s <= rating ? '#FFD400' : 'none'}
-                    stroke={s <= rating ? '#FFD400' : 'rgba(255,255,255,0.5)'}
+              <div className="flex items-center gap-1 mt-4">
+                {ORDER_FLOW.map((_, i) => (
+                  <div
+                    key={i}
+                    className="flex-1 h-1.5 rounded-full transition-all duration-500"
+                    style={{ backgroundColor: i <= currentStep ? '#6D28D9' : '#E5E7EB' }}
                   />
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
-            <button
-              className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
-              style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-              onClick={() => navigate('home')}
+
+            {latestOrder && (
+              <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm lg:w-80">
+                <p className="text-gray-900 font-medium text-sm mb-3">Tu pedido</p>
+                <div className="space-y-2">
+                  {(latestOrder.order_items as Array<{ product_name?: string; quantity?: number; unit_price?: number }> | undefined)?.map((item, i) => (
+                    <div key={i} className="flex justify-between text-sm">
+                      <span className="text-gray-600">{item.quantity}x {item.product_name}</span>
+                      <span className="text-gray-900">${(item.unit_price ?? 0).toFixed(2)}</span>
+                    </div>
+                  ))}
+                  <div className="h-px bg-gray-100 my-1" />
+                  <div className="flex justify-between text-sm font-bold">
+                    <span>Total</span>
+                    <span style={{ color: '#6D28D9' }}>${(latestOrder.total as number)?.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {latestOrder && !isDelivered && (
+            <div className="mx-4 mt-3">
+              <button
+                onClick={() => setShowChat(true)}
+                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
+                style={{ backgroundColor: '#6D28D9' }}
+              >
+                <MessageCircle size={16} /> Chat del pedido
+              </button>
+            </div>
+          )}
+
+          {showRating && (
+            <motion.div
+              className="mx-4 mt-4 rounded-2xl p-5 text-center"
+              style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
             >
-              Enviar calificación
-            </button>
-          </motion.div>
-        )}
+              <p className="text-white font-bold mb-1">¡Pedido entregado! 🎉</p>
+              <p className="text-white/70 text-sm mb-4">¿Cómo calificarías tu experiencia?</p>
+              <div className="flex justify-center gap-2 mb-4">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <button key={s} onClick={() => setRating(s)}>
+                    <Star size={28} fill={s <= rating ? '#FFD400' : 'none'} stroke={s <= rating ? '#FFD400' : 'rgba(255,255,255,0.5)'} />
+                  </button>
+                ))}
+              </div>
+              <button
+                className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
+                style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
+                onClick={() => navigate('home')}
+              >
+                Enviar calificación
+              </button>
+            </motion.div>
+          )}
         </div>
       </div>
+
+      {showChat && latestOrder && (
+        <OrderChat
+          orderId={latestOrder.id as string}
+          storeId={latestOrder.store_id as string || 'store-1'}
+          storeName={(latestOrder.store as Record<string, unknown>)?.name as string || 'Tienda'}
+          storeEmoji={(latestOrder.store as Record<string, unknown>)?.emoji as string || '🍔'}
+          onClose={() => setShowChat(false)}
+        />
+      )}
     </div>
   );
 }

@@ -7,7 +7,10 @@ export type Screen =
   | 'tracking'
   | 'driver'
   | 'store-admin'
-  | 'admin';
+  | 'admin'
+  | 'profile'
+  | 'register-store'
+  | 'register-driver';
 
 export type Role = 'customer' | 'driver' | 'store' | 'admin';
 

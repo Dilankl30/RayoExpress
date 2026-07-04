@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Minus, Trash2, Tag,
-  CreditCard, Banknote, Smartphone, Zap, CheckCircle,
+  CreditCard, Banknote, Smartphone, Zap, CheckCircle, Upload,
 } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 import { useCart } from '../../../context/CartContext';
 import { createOrder } from '../../../services/orders';
+import { uploadReceipt, savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 
 const paymentMethods = [
   { id: 'cash', label: 'Efectivo', icon: Banknote, color: '#22C55E' },
@@ -25,6 +26,9 @@ export function CartScreen() {
   const [address, setAddress] = useState('Av. Amazonas, Quito');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const receiptRef = useRef<HTMLInputElement>(null);
 
   const delivery = cartTotal > 0 ? 1.50 : 0;
   const discount = couponApplied ? cartTotal * 0.15 : 0;
@@ -43,10 +47,14 @@ export function CartScreen() {
       setError('Ingresa una dirección de entrega');
       return;
     }
+    if (payMethod === 'transfer' && !receiptFile) {
+      setError('Sube el comprobante de pago');
+      return;
+    }
     setError('');
     setPlacing(true);
     try {
-      await createOrder({
+      const result = await createOrder({
         storeId: cart[0].storeId || '',
         productIds: cart.map((i) => i.id),
         quantities: cart.map((i) => i.quantity),
@@ -56,6 +64,12 @@ export function CartScreen() {
         notes: note || undefined,
         tip,
       });
+      if (payMethod === 'transfer' && receiptFile) {
+        const receiptUrl = await uploadReceipt(result.order_id, receiptFile);
+        await savePaymentReceipt(result.order_id, 'transfer', result.total, receiptUrl);
+      } else {
+        await savePaymentReceipt(result.order_id, payMethod, result.total, null);
+      }
       clearCart();
       navigate('tracking');
     } catch (err: unknown) {
@@ -264,6 +278,42 @@ export function CartScreen() {
                   );
                 })}
               </div>
+
+              {payMethod === 'transfer' && (
+                <div className="mt-3">
+                  {receiptPreview ? (
+                    <div className="space-y-2">
+                      <div className="relative bg-gray-50 rounded-xl overflow-hidden">
+                        <img src={receiptPreview} alt="Comprobante" className="w-full h-32 object-contain" />
+                        <button onClick={() => { setReceiptFile(null); setReceiptPreview(null); }} className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                      </div>
+                      <div className="flex items-center gap-2 text-green-600 text-xs">
+                        <CheckCircle size={14} /> {receiptFile?.name}
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      onClick={() => receiptRef.current?.click()}
+                      className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
+                    >
+                      <Upload size={18} className="text-gray-400" />
+                      <span className="text-xs text-gray-500">Subir comprobante</span>
+                    </button>
+                  )}
+                  <input
+                    ref={receiptRef}
+                    type="file"
+                    accept="image/*,application/pdf"
+                    className="hidden"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)); }
+                    }}
+                  />
+                </div>
+              )}
             </div>
 
             <div className="mx-4 mt-3 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm">

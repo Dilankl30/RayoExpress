@@ -1,23 +1,40 @@
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
 import type { CartItem } from '../../../shared/types';
+
+const STORAGE_KEY = 'rayoexpress-cart';
+
+function loadCart(): CartItem[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveCart(cart: CartItem[]) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(cart)); } catch { /* noop */ }
+}
 
 interface CartContextType {
   cart: CartItem[];
   cartCount: number;
+  cartTotal: number;
+  cartStore: string | null;
   addToCart: (item: CartItem) => void;
   removeFromCart: (id: string) => void;
   updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
-  cartTotal: number;
 }
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [cart, setCart] = useState<CartItem[]>([]);
+  const [cart, setCart] = useState<CartItem[]>(loadCart);
+
+  useEffect(() => { saveCart(cart); }, [cart]);
 
   const cartCount = cart.reduce((a, b) => a + b.quantity, 0);
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const cartStore = cart.length > 0 ? (cart[0].storeId || null) : null;
 
   const addToCart = useCallback((item: CartItem) => {
     setCart((prev) => {
@@ -48,7 +65,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <CartContext.Provider value={{ cart, cartCount, addToCart, removeFromCart, updateQuantity, clearCart, cartTotal }}>
+    <CartContext.Provider value={{ cart, cartCount, cartTotal, cartStore, addToCart, removeFromCart, updateQuantity, clearCart }}>
       {children}
     </CartContext.Provider>
   );

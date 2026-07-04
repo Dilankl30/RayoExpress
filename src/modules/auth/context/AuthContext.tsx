@@ -1,8 +1,10 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
+import { useNavigate } from 'react-router';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
 import { getProfile, upsertProfile } from '../../../services/auth';
 import { mockCredentials, mockUser } from '../../../shared/lib/mockData';
 import type { Screen, Role, UserProfile } from '../../../shared/types';
+import { screenPathMap } from '../../../app/router';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -22,24 +24,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<Screen>('landing');
-
   const [navigationParams, setNavigationParams] = useState<Record<string, string>>({});
-  const navigate = (s: Screen, params?: Record<string, string>) => {
+  const routerNavigate = useNavigate();
+
+  const navigate = useCallback((s: Screen, params?: Record<string, string>) => {
     if (params) setNavigationParams(params);
     setScreen(s);
-  };
+    const basePath = screenPathMap[s] || '/';
+    const path = params && params.storeId ? `${basePath}/${params.storeId}` : basePath;
+    routerNavigate(path, { replace: true });
+  }, [routerNavigate]);
 
-  const roleToScreen = (r: Role): Screen =>
-    ({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' }[r] as Screen);
+  const roleToScreen = useCallback((r: Role): Screen =>
+    ({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' }[r] as Screen), []);
 
-  const mockLogin = async (email: string, password: string): Promise<Role | null> => {
+  const mockLogin = useCallback(async (email: string, password: string): Promise<Role | null> => {
     const cred = mockCredentials[email.toLowerCase()];
     if (!cred || cred.password !== password) return null;
     const mu = mockUser(email.toLowerCase());
     if (mu) setUser(mu);
-    setScreen(roleToScreen(cred.role) as Screen);
+    const target = roleToScreen(cred.role);
+    navigate(target);
     return cred.role;
-  };
+  }, [navigate, roleToScreen]);
+
+  const login = useCallback(async (role: Role) => {
+    if (isSupabaseReady && supabase) {
+      const userData = (await supabase.auth.getUser()).data.user;
+      if (!userData) throw new Error('No user found');
+      await upsertProfile(userData.id, role, {
+        full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
+        phone: userData.phone ?? null,
+      });
+      const profile = await getProfile(userData.id);
+      if (profile) {
+        if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
+        setUser(profile);
+        navigate(roleToScreen(role));
+      }
+    }
+  }, [navigate, roleToScreen]);
+
+  const logout = useCallback(async () => {
+    if (isSupabaseReady && supabase) {
+      await supabase.auth.signOut();
+    }
+    setUser(null);
+    navigate('landing');
+  }, [navigate]);
 
   useEffect(() => {
     const boot = async () => {
@@ -62,7 +94,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           setUser(profile);
           if (!profile.is_suspended) {
-            setScreen(roleToScreen(profile.role));
+            navigate(roleToScreen(profile.role));
           }
         }
       } catch {
@@ -78,7 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setUser(null);
-        setScreen('landing');
+        navigate('landing');
         return;
       }
       try {
@@ -86,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (profile) {
           setUser(profile);
           if (!profile.is_suspended) {
-            setScreen(roleToScreen(profile.role));
+            navigate(roleToScreen(profile.role));
           }
         }
       } catch {
@@ -95,31 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const login = async (role: Role) => {
-    if (isSupabaseReady && supabase) {
-      const userData = (await supabase.auth.getUser()).data.user;
-      if (!userData) throw new Error('No user found');
-      await upsertProfile(userData.id, role, {
-        full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
-        phone: userData.phone ?? null,
-      });
-      const profile = await getProfile(userData.id);
-      if (profile) {
-        setUser(profile);
-        setScreen(roleToScreen(role));
-      }
-    }
-  };
-
-  const logout = async () => {
-    if (isSupabaseReady && supabase) {
-      await supabase.auth.signOut();
-    }
-    setUser(null);
-    setScreen('landing');
-  };
+  }, [navigate, roleToScreen]);
 
   return (
     <AuthContext.Provider value={{ user, loading, screen, navigate, navigationParams, login, mockLogin, logout, setUser }}>
