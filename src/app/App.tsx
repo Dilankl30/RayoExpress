@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
-import type { Screen, Role, CartItem } from './types';
+import { AuthProvider, useAuth } from '../context/AuthContext';
+import { CartProvider } from '../context/CartContext';
+import { ResponsiveLayout } from './components/shared/ResponsiveLayout';
+import { LandingScreen } from './components/public/LandingScreen';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { HomeScreen } from './components/customer/HomeScreen';
 import { StoreDetailScreen } from './components/customer/StoreDetailScreen';
@@ -8,89 +10,55 @@ import { TrackingScreen } from './components/customer/TrackingScreen';
 import { DriverDashboard } from './components/driver/DriverDashboard';
 import { StoreDashboard } from './components/store/StoreDashboard';
 import { AdminDashboard } from './components/admin/AdminDashboard';
-import { supabase } from './lib/supabase';
-import { getProfile, upsertProfile } from './lib/auth';
+
+function AppContent() {
+  const { screen, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-gray-500 mt-3">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const renderScreen = () => {
+    switch (screen) {
+      case 'landing':
+        return <LandingScreen />;
+      case 'login':
+        return <LoginScreen />;
+      case 'home':
+        return <HomeScreen />;
+      case 'store-detail':
+        return <StoreDetailScreen />;
+      case 'cart':
+        return <CartScreen />;
+      case 'tracking':
+        return <TrackingScreen />;
+      case 'driver':
+        return <DriverDashboard />;
+      case 'store-admin':
+        return <StoreDashboard />;
+      case 'admin':
+        return <AdminDashboard />;
+      default:
+        return <LandingScreen />;
+    }
+  };
+
+  return <ResponsiveLayout>{renderScreen()}</ResponsiveLayout>;
+}
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>('login');
-  const [role, setRole] = useState<Role>('customer');
-  const [cart, setCart] = useState<CartItem[]>([]);
-  const [selectedStoreId, setSelectedStoreId] = useState<string>('1');
-  const [activeOrderId, setActiveOrderId] = useState<string>('ORD-001');
-
-  const navigate = (s: Screen) => setScreen(s);
-
-  const roleToScreen = (r: Role): Screen => ({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' }[r]);
-
-  useEffect(() => {
-    const boot = async () => {
-      if (!supabase) return;
-      const { data } = await supabase.auth.getSession();
-      const user = data.session?.user;
-      if (!user) return;
-      const profile = await getProfile(user.id);
-      const resolvedRole = profile?.role ?? 'customer';
-      setRole(resolvedRole);
-      setScreen(roleToScreen(resolvedRole));
-    };
-
-    boot();
-
-    if (!supabase) return;
-
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        setScreen('login');
-        return;
-      }
-      const profile = await getProfile(session.user.id);
-      const resolvedRole = profile?.role ?? 'customer';
-      setRole(resolvedRole);
-      setScreen(roleToScreen(resolvedRole));
-    });
-
-    return () => listener.subscription.unsubscribe();
-  }, []);
-
-  const handleLogin = async (r: Role) => {
-    if (!supabase) return;
-    const user = (await supabase.auth.getUser()).data.user;
-    if (!user) return;
-    await upsertProfile(user.id, r, { full_name: user.user_metadata?.full_name ?? user.email ?? null, phone: user.phone ?? null });
-    setRole(r);
-    setScreen(roleToScreen(r));
-  };
-
-  const addToCart = (item: CartItem) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === item.id);
-      if (existing) return prev.map((i) => i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i);
-      return [...prev, { ...item, quantity: 1 }];
-    });
-  };
-
-  const cartCount = cart.reduce((a, b) => a + b.quantity, 0);
-
-  const handleSelectStore = (id: string) => {
-    setSelectedStoreId(id);
-    setScreen('store-detail');
-  };
-
-  const handlePlaceOrder = () => {
-    setActiveOrderId(`ORD-${Math.floor(Math.random() * 9000) + 1000}`);
-    setCart([]);
-    setScreen('tracking');
-  };
-
-  switch (screen) {
-    case 'login': return <LoginScreen onLogin={handleLogin} />;
-    case 'home': return <HomeScreen onNavigate={navigate} cartCount={cartCount} onSelectStore={handleSelectStore} />;
-    case 'store-detail': return <StoreDetailScreen storeId={selectedStoreId} onNavigate={navigate} onAddToCart={addToCart} cartCount={cartCount} />;
-    case 'cart': return <CartScreen cart={cart} setCart={setCart} onNavigate={navigate} onPlaceOrder={handlePlaceOrder} />;
-    case 'tracking': return <TrackingScreen orderId={activeOrderId} onNavigate={navigate} />;
-    case 'driver': return <DriverDashboard onNavigate={navigate} />;
-    case 'store-admin': return <StoreDashboard onNavigate={navigate} />;
-    case 'admin': return <AdminDashboard onNavigate={navigate} />;
-    default: return <LoginScreen onLogin={handleLogin} />;
-  }
+  return (
+    <AuthProvider>
+      <CartProvider>
+        <AppContent />
+      </CartProvider>
+    </AuthProvider>
+  );
 }

@@ -1,63 +1,62 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Star, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart, Tag } from 'lucide-react';
-import type { Screen, CartItem } from '../../types';
+import { useAuth } from '../../../context/AuthContext';
+import { useCart } from '../../../context/CartContext';
+import { getStoreById, getProductsByStore } from '../../../services/stores';
+import type { Screen } from '../../types';
 
-interface StoreDetailScreenProps {
-  storeId: string;
-  onNavigate: (screen: Screen) => void;
-  onAddToCart: (item: CartItem) => void;
-  cartCount: number;
-}
-
-const storeData: Record<string, {
-  name: string; emoji: string; cat: string; rating: number; time: string;
-  fee: string; minOrder: string; bg: string; promo: string | null;
-}> = {
-  '1': { name: 'Burger King', emoji: '🍔', cat: 'Restaurantes · Comida rápida', rating: 4.8, time: '25-35 min', fee: '$1.50', minOrder: '$5.00', bg: '#E55604', promo: '20% OFF en pedidos +$15' },
-  '2': { name: 'KFC Ecuador', emoji: '🍗', cat: 'Restaurantes · Pollo', rating: 4.7, time: '20-30 min', fee: 'Gratis', minOrder: '$4.00', bg: '#E4002B', promo: null },
-  '3': { name: 'Supermaxi Express', emoji: '🛒', cat: 'Súper · Abarrotes', rating: 4.9, time: '30-45 min', fee: '$2.00', minOrder: '$10.00', bg: '#22C55E', promo: '15% OFF primeros pedidos' },
-  '4': { name: 'Farmacia Fybeca', emoji: '💊', cat: 'Farmacias · Salud', rating: 4.6, time: '15-25 min', fee: 'Gratis', minOrder: '$3.00', bg: '#3B82F6', promo: null },
-  '5': { name: 'Pizza Hut', emoji: '🍕', cat: 'Restaurantes · Pizzas', rating: 4.5, time: '35-45 min', fee: '$1.00', minOrder: '$6.00', bg: '#CC0000', promo: '2x1 los martes' },
-  '6': { name: 'Subway', emoji: '🥪', cat: 'Restaurantes · Subs', rating: 4.6, time: '20-30 min', fee: 'Gratis', minOrder: '$5.00', bg: '#00703C', promo: null },
-};
-
-const menuCategories = ['Todo', 'Combos', 'Populares', 'Especialidades', 'Bebidas', 'Postres'];
-
-const menuItems: Record<string, { id: string; name: string; desc: string; price: number; emoji: string; category: string; badge?: string }[]> = {
-  default: [
-    { id: 'p1', name: 'Combo Whopper', desc: 'Whopper + papas + bebida L', price: 8.99, emoji: '🍔', category: 'Combos', badge: 'Popular' },
-    { id: 'p2', name: 'Whopper Doble', desc: 'Doble carne, queso, vegetales frescos', price: 7.50, emoji: '🍔', category: 'Especialidades' },
-    { id: 'p3', name: 'Papas Grandes', desc: 'Crujientes, recién fritas', price: 2.99, emoji: '🍟', category: 'Especialidades' },
-    { id: 'p4', name: 'Onion Rings', desc: 'Anillos de cebolla empanizados', price: 3.49, emoji: '🧅', category: 'Especialidades' },
-    { id: 'p5', name: 'Combo Doble BK', desc: '2 hamburguesas + papas + bebidas', price: 14.99, emoji: '🍔', category: 'Combos', badge: 'Oferta' },
-    { id: 'p6', name: 'Coca-Cola 500ml', desc: 'Bebida refrescante', price: 1.99, emoji: '🥤', category: 'Bebidas' },
-    { id: 'p7', name: 'Sundae Oreo', desc: 'Helado suave con galleta Oreo', price: 2.49, emoji: '🍦', category: 'Postres' },
-    { id: 'p8', name: 'Nuggets x6', desc: 'Trocitos de pollo crujiente', price: 4.99, emoji: '🍗', category: 'Populares', badge: 'Popular' },
-  ],
-};
-
-export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount }: StoreDetailScreenProps) {
+export function StoreDetailScreen() {
+  const { navigate, navigationParams } = useAuth();
+  const { addToCart, cartCount } = useCart();
+  const [store, setStore] = useState<any>(null);
+  const [products, setProducts] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [liked, setLiked] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const store = storeData[storeId] || storeData['1'];
-  const items = menuItems.default;
+  const storeId = navigationParams.storeId || '';
 
-  const filtered = items.filter((item) => {
+  useEffect(() => {
+    if (storeId) {
+      loadStore();
+    } else {
+      setLoading(false);
+    }
+  }, [storeId]);
+
+  const loadStore = async () => {
+    try {
+      const [storeData, productsData] = await Promise.all([
+        getStoreById(storeId),
+        getProductsByStore(storeId),
+      ]);
+      setStore(storeData);
+      setProducts(productsData);
+    } catch (err) {
+      console.warn('Error loading store:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const categories = ['Todo', ...new Set(products.map((p) => p.category || '').filter(Boolean))];
+
+  const filtered = products.filter((item) => {
+    if (!item) return false;
     const matchCat = activeCategory === 'Todo' || item.category === activeCategory;
-    const matchSearch = item.name.toLowerCase().includes(search.toLowerCase());
+    const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
   const getQty = (id: string) => quantities[id] || 0;
 
-  const increment = (item: typeof items[0]) => {
+  const increment = (item: any) => {
     const newQty = getQty(item.id) + 1;
     setQuantities((prev) => ({ ...prev, [item.id]: newQty }));
-    onAddToCart({ id: item.id, name: item.name, price: item.price, quantity: 1, emoji: item.emoji });
+    addToCart({ id: item.id, name: item.name, price: item.price, quantity: 1, emoji: item.emoji });
   };
 
   const decrement = (id: string) => {
@@ -66,22 +65,28 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
 
   const totalInCart = Object.values(quantities).reduce((a, b) => a + b, 0);
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto">
-      {/* Store Banner */}
+    <div className="min-h-screen bg-gray-50 pb-16 lg:pb-0">
       <div
-        className="relative h-48 flex items-end"
-        style={{ backgroundColor: store.bg }}
+        className="relative h-48 md:h-56 lg:h-64 flex items-end"
+        style={{ backgroundColor: store?.cover_color || '#6D28D9' }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: 80 }}>{store.emoji}</span>
+          <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
-        {/* Header buttons */}
         <div className="absolute top-10 left-0 right-0 flex items-center justify-between px-4">
           <button
-            onClick={() => onNavigate('home')}
+            onClick={() => navigate('home')}
             className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
           >
             <ArrowLeft size={18} className="text-gray-700" />
@@ -96,7 +101,7 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
             <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
               <Share2 size={18} className="text-gray-700" />
             </button>
-            <button className="relative" onClick={() => onNavigate('cart')}>
+            <button className="relative" onClick={() => navigate('cart')}>
               <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
                 <ShoppingCart size={18} className="text-gray-700" />
               </div>
@@ -111,91 +116,72 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
             </button>
           </div>
         </div>
-
-        {/* Promo badge */}
-        {store.promo && (
-          <div className="absolute top-12 left-4">
-            <span
-              className="text-xs px-2 py-1 rounded-full font-medium flex items-center gap-1"
-              style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-            >
-              <Tag size={11} />
-              {store.promo}
-            </span>
-          </div>
-        )}
       </div>
 
-      {/* Store Info Card */}
       <div className="bg-white px-4 py-4 shadow-sm">
-        <h2 className="text-gray-900 mb-1">{store.name}</h2>
-        <p className="text-sm text-gray-500 mb-3">{store.cat}</p>
+        <h2 className="text-gray-900 mb-1">{store?.name || 'Tienda'}</h2>
+        <p className="text-sm text-gray-500 mb-3">{store?.description || ''}</p>
         <div className="flex items-center gap-4 flex-wrap">
-          <span className="flex items-center gap-1 text-sm text-gray-700">
-            <Star size={14} fill="#FFD400" stroke="#FFD400" />
-            <strong>{store.rating}</strong>
-            <span className="text-gray-400">(432)</span>
-          </span>
           <span className="flex items-center gap-1 text-sm text-gray-600">
             <Clock size={14} />
-            {store.time}
+            {store?.delivery_time || '25-35 min'}
           </span>
-          <span
-            className="flex items-center gap-1 text-sm"
-            style={{ color: store.fee === 'Gratis' ? '#22C55E' : '#6B7280' }}
-          >
+          <span className="flex items-center gap-1 text-sm" style={{ color: store?.delivery_fee === 0 ? '#22C55E' : '#6B7280' }}>
             <Truck size={14} />
-            Envío {store.fee}
+            Envío {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
           </span>
-          <span className="text-sm text-gray-500">Mínimo {store.minOrder}</span>
+          {store?.min_order > 0 && (
+            <span className="text-sm text-gray-500">Mínimo ${store.min_order.toFixed(2)}</span>
+          )}
         </div>
       </div>
 
-      {/* Search */}
-      <div className="px-4 pt-4 pb-2 bg-white border-b border-gray-100">
-        <div className="bg-gray-100 rounded-xl flex items-center gap-2 px-3 py-2.5">
-          <Search size={15} className="text-gray-400" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar en el menú..."
-            className="flex-1 bg-transparent text-gray-700 placeholder:text-gray-400 text-sm outline-none"
-          />
+      <div className="px-4 md:px-0 pt-4 md:pt-0 pb-2 bg-white md:bg-transparent border-b md:border-0 border-gray-100">
+        <div className="md:max-w-7xl md:mx-auto md:px-6 lg:px-8">
+          <div className="bg-gray-100 rounded-xl flex items-center gap-2 px-3 py-2.5 md:mt-4">
+            <Search size={15} className="text-gray-400" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Buscar en el menú..."
+              className="flex-1 bg-transparent text-gray-700 placeholder:text-gray-400 text-sm outline-none"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Category Tabs */}
-      <div className="bg-white border-b border-gray-100">
-        <div className="flex gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-          {menuCategories.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setActiveCategory(cat)}
-              className="px-4 py-3 text-sm whitespace-nowrap flex-shrink-0 transition-all relative"
-              style={{ color: activeCategory === cat ? '#6D28D9' : '#6B7280' }}
-            >
-              {cat}
-              {activeCategory === cat && (
-                <motion.div
-                  layoutId="category-indicator"
-                  className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
-                  style={{ backgroundColor: '#6D28D9' }}
-                />
-              )}
-            </button>
-          ))}
+      <div className="bg-white border-b border-gray-100 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          <div className="flex gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+            {categories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => setActiveCategory(cat)}
+                className="px-4 py-3 text-sm whitespace-nowrap flex-shrink-0 transition-all relative"
+                style={{ color: activeCategory === cat ? '#6D28D9' : '#6B7280' }}
+              >
+                {cat}
+                {activeCategory === cat && (
+                  <motion.div
+                    layoutId="category-indicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"
+                    style={{ backgroundColor: '#6D28D9' }}
+                  />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
-      {/* Menu Items */}
-      <div className="px-4 py-4 pb-32">
+      <div className="px-4 md:px-6 lg:px-8 py-4 pb-32 max-w-7xl mx-auto">
         {filtered.length === 0 ? (
           <div className="py-10 text-center text-gray-400">
             <p className="text-3xl mb-2">🍽️</p>
-            <p>No hay productos en esta categoría</p>
+            <p>No hay productos disponibles</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {filtered.map((item, i) => (
               <motion.div
                 key={item.id}
@@ -208,26 +194,15 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
                   className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: '#F9FAFB', fontSize: 36 }}
                 >
-                  {item.emoji}
+                  {item.emoji || '🍽️'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">
                     <p className="text-gray-900 font-medium flex-1">{item.name}</p>
-                    {item.badge && (
-                      <span
-                        className="text-xs px-1.5 py-0.5 rounded-md flex-shrink-0"
-                        style={{
-                          backgroundColor: item.badge === 'Popular' ? '#FEF3C7' : '#FDF2F8',
-                          color: item.badge === 'Popular' ? '#D97706' : '#DB2777',
-                        }}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
                   </div>
-                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.desc}</p>
+                  <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{item.description || ''}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <p className="font-bold" style={{ color: '#6D28D9' }}>${item.price.toFixed(2)}</p>
+                    <p className="font-bold" style={{ color: '#6D28D9' }}>${item.price?.toFixed(2)}</p>
                     <div className="flex items-center gap-2">
                       {getQty(item.id) > 0 ? (
                         <div className="flex items-center gap-2 rounded-xl border border-gray-200 px-1">
@@ -265,7 +240,6 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
         )}
       </div>
 
-      {/* Bottom CTA */}
       {totalInCart > 0 && (
         <motion.div
           className="fixed bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md lg:max-w-6xl mx-auto"
@@ -275,7 +249,7 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
           transition={{ type: 'spring', stiffness: 200 }}
         >
           <button
-            onClick={() => onNavigate('cart')}
+            onClick={() => navigate('cart')}
             className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-between px-5"
             style={{ backgroundColor: '#6D28D9' }}
           >
@@ -287,7 +261,7 @@ export function StoreDetailScreen({ storeId, onNavigate, onAddToCart, cartCount 
             </span>
             <span className="font-medium">Ver carrito</span>
             <span style={{ color: '#FFD400' }}>
-              ${filtered.reduce((acc, item) => acc + item.price * getQty(item.id), 0).toFixed(2)}
+              ${filtered.reduce((acc, item) => acc + (item.price || 0) * getQty(item.id), 0).toFixed(2)}
             </span>
           </button>
         </motion.div>

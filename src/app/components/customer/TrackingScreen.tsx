@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Phone, MessageCircle, Star, ChevronRight, CheckCircle, Clock, Bike } from 'lucide-react';
-import type { Screen } from '../../types';
-
-interface TrackingScreenProps {
-  orderId: string;
-  onNavigate: (screen: Screen) => void;
-}
+import { useAuth } from '../../../context/AuthContext';
 
 const orderStatuses = [
   { id: 'pending', label: 'Pedido recibido', desc: 'Esperando confirmación de la tienda', icon: '📋' },
@@ -17,8 +12,9 @@ const orderStatuses = [
   { id: 'delivered', label: 'Entregado', desc: '¡Buen provecho!', icon: '🎉' },
 ];
 
-export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
-  const [currentStep, setCurrentStep] = useState(2);
+export function TrackingScreen() {
+  const { navigate } = useAuth();
+  const [currentStep, setCurrentStep] = useState(0);
   const [eta, setEta] = useState(18);
   const [driverPos, setDriverPos] = useState({ x: 30, y: 60 });
   const [showRating, setShowRating] = useState(false);
@@ -52,29 +48,26 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
   const isDelivered = currentStep === orderStatuses.length - 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
       <div
         className="pt-10 pb-4 px-4 flex items-center justify-between"
         style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
       >
         <button
-          onClick={() => onNavigate('home')}
+          onClick={() => navigate('home')}
           className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center"
         >
           <ArrowLeft size={18} className="text-white" />
         </button>
         <div className="text-center">
           <h3 className="text-white">Seguimiento</h3>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>#{orderId}</p>
+          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Pedido en curso</p>
         </div>
         <div className="w-9" />
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8">
-        {/* Map */}
-        <div className="relative h-52 overflow-hidden" style={{ backgroundColor: '#E8F0E8' }}>
-          {/* Map grid */}
+        <div className="relative h-52 md:h-72 lg:h-96 overflow-hidden" style={{ backgroundColor: '#E8F0E8' }}>
           <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 100" preserveAspectRatio="none">
             {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((v) => (
               <g key={v}>
@@ -84,24 +77,18 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             ))}
           </svg>
 
-          {/* Roads */}
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             <path d="M0 40 Q30 38 50 45 Q70 52 100 48" stroke="white" strokeWidth="4" fill="none" strokeLinecap="round" />
             <path d="M0 40 Q30 38 50 45 Q70 52 100 48" stroke="#D1FAE5" strokeWidth="2" fill="none" strokeLinecap="round" strokeDasharray="2,3" />
             <path d="M25 0 Q28 30 30 50 Q32 70 35 100" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
             <path d="M60 0 Q62 25 65 50 Q68 75 70 100" stroke="white" strokeWidth="3" fill="none" strokeLinecap="round" />
-            {/* Route */}
             <path
               d={`M${driverPos.x} ${driverPos.y} Q60 55 80 80`}
-              stroke="#6D28D9"
-              strokeWidth="2"
-              fill="none"
-              strokeDasharray="3,2"
-              strokeLinecap="round"
+              stroke="#6D28D9" strokeWidth="2" fill="none"
+              strokeDasharray="3,2" strokeLinecap="round"
             />
           </svg>
 
-          {/* Buildings */}
           <svg className="absolute inset-0 w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
             {[
               [5, 55, 15, 20], [22, 60, 12, 15], [45, 55, 18, 22], [68, 58, 14, 18],
@@ -111,15 +98,8 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             ))}
           </svg>
 
-          {/* Store pin */}
-          <div
-            className="absolute flex flex-col items-center"
-            style={{ left: '75%', top: '72%', transform: 'translate(-50%, -50%)' }}
-          >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
-              style={{ backgroundColor: '#22C55E' }}
-            >
+          <div className="absolute flex flex-col items-center" style={{ left: '75%', top: '72%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#22C55E' }}>
               <span style={{ fontSize: 16 }}>🍔</span>
             </div>
             <div className="bg-white px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#22C55E' }}>
@@ -127,15 +107,8 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             </div>
           </div>
 
-          {/* User pin */}
-          <div
-            className="absolute flex flex-col items-center"
-            style={{ left: '85%', top: '85%', transform: 'translate(-50%, -50%)' }}
-          >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white"
-              style={{ backgroundColor: '#3B82F6' }}
-            >
+          <div className="absolute flex flex-col items-center" style={{ left: '85%', top: '85%', transform: 'translate(-50%, -50%)' }}>
+            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#3B82F6' }}>
               <span style={{ fontSize: 16 }}>🏠</span>
             </div>
             <div className="bg-white px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#3B82F6' }}>
@@ -143,32 +116,22 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             </div>
           </div>
 
-          {/* Driver (animated) */}
           <motion.div
             className="absolute flex flex-col items-center"
             style={{ left: `${driverPos.x}%`, top: `${driverPos.y}%`, transform: 'translate(-50%, -50%)' }}
             animate={{ left: `${driverPos.x}%`, top: `${driverPos.y}%` }}
             transition={{ duration: 1.5, ease: 'easeInOut' }}
           >
-            <div
-              className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-3 border-white"
-              style={{ backgroundColor: '#6D28D9', border: '3px solid white' }}
-            >
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-3 border-white" style={{ backgroundColor: '#6D28D9', border: '3px solid white' }}>
               <span style={{ fontSize: 18 }}>🛵</span>
             </div>
-            <div
-              className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white"
-              style={{ backgroundColor: '#6D28D9' }}
-            >
+            <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: '#6D28D9' }}>
               Rayo
             </div>
           </motion.div>
 
-          {/* ETA overlay */}
           {!isDelivered && (
-            <div
-              className="absolute top-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2"
-            >
+            <div className="absolute top-3 left-3 bg-white rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
               <Clock size={15} style={{ color: '#6D28D9' }} />
               <div>
                 <p style={{ fontSize: 10, color: '#9CA3AF' }}>Llega en</p>
@@ -178,8 +141,10 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
           )}
         </div>
 
-        {/* Status Bar */}
-        <div className="bg-white px-4 py-4 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+          <div className="lg:flex lg:gap-4 lg:mt-4">
+
+        <div className="bg-white px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
           <div className="flex items-center gap-3">
             <motion.div
               className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
@@ -196,27 +161,20 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             {isDelivered && <CheckCircle size={22} style={{ color: '#22C55E' }} />}
           </div>
 
-          {/* Progress dots */}
           <div className="flex items-center gap-1 mt-4">
             {orderStatuses.map((_, i) => (
               <div
                 key={i}
                 className="flex-1 h-1.5 rounded-full transition-all duration-500"
-                style={{
-                  backgroundColor: i <= currentStep ? '#6D28D9' : '#E5E7EB',
-                }}
+                style={{ backgroundColor: i <= currentStep ? '#6D28D9' : '#E5E7EB' }}
               />
             ))}
           </div>
         </div>
 
-        {/* Driver Card */}
-        <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
+        <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-white rounded-2xl p-4 shadow-sm lg:w-80">
           <div className="flex items-center gap-3">
-            <div
-              className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: '#EDE9FE', fontSize: 24 }}
-            >
+            <div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EDE9FE', fontSize: 24 }}>
               🧑‍🦱
             </div>
             <div className="flex-1">
@@ -227,16 +185,10 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
               </div>
             </div>
             <div className="flex gap-2">
-              <button
-                className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: '#F0FDF4' }}
-              >
+              <button className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#F0FDF4' }}>
                 <Phone size={16} style={{ color: '#22C55E' }} />
               </button>
-              <button
-                className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: '#EDE9FE' }}
-              >
+              <button className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ backgroundColor: '#EDE9FE' }}>
                 <MessageCircle size={16} style={{ color: '#6D28D9' }} />
               </button>
             </div>
@@ -245,17 +197,10 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             <Bike size={13} />
             <span>Honda PCX 150 · ABC-1234 · Morado</span>
           </div>
-        </div>
 
-        {/* Order detail */}
-        <div className="mx-4 mt-3 bg-white rounded-2xl p-4 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-gray-900 font-medium text-sm">Tu pedido</p>
-            <button className="flex items-center gap-1 text-xs" style={{ color: '#6D28D9' }}>
-              Ver detalle <ChevronRight size={12} />
-            </button>
-          </div>
-          <div className="space-y-2">
+          <div className="mt-4 pt-4 border-t border-gray-100">
+            <p className="text-gray-900 font-medium text-sm mb-3">Tu pedido</p>
+            <div className="space-y-2">
             {[
               { name: 'Combo Whopper', qty: 1, price: 8.99 },
               { name: 'Papas Grandes', qty: 1, price: 2.99 },
@@ -271,9 +216,11 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
               <span style={{ color: '#6D28D9' }}>$13.98</span>
             </div>
           </div>
+          </div>
+
+          </div>
         </div>
 
-        {/* Rating overlay */}
         {showRating && (
           <motion.div
             className="mx-4 mt-4 rounded-2xl p-5 text-center"
@@ -297,12 +244,13 @@ export function TrackingScreen({ orderId, onNavigate }: TrackingScreenProps) {
             <button
               className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
               style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-              onClick={() => onNavigate('home')}
+              onClick={() => navigate('home')}
             >
               Enviar calificación
             </button>
           </motion.div>
         )}
+        </div>
       </div>
     </div>
   );
