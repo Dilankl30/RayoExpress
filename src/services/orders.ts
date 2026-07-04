@@ -55,18 +55,8 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
 
 export async function getOrderById(orderId: string) {
   if (!isSupabaseReady) {
-    const all = Object.values(getMockOrders('')).flat();
-    const byId = Object.values(
-      Object.fromEntries(
-        Object.entries(
-          Object.groupBy(
-            ['mock-customer', 'mock-driver', 'mock-store', 'mock-admin'].flatMap(u => getMockOrders(u)),
-            o => o.id
-          )
-        )
-      )
-    ).flat();
-    return byId.find(o => o.id === orderId) || null;
+    const allOrders = ['mock-customer', 'mock-driver', 'mock-store', 'mock-admin'].flatMap(u => getMockOrders(u));
+    return allOrders.find(o => o.id === orderId) || null;
   }
   const supabase = getSupabase();
   const { data, error } = await supabase

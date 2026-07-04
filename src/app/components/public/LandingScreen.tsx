@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  Search, ChevronRight, Star, Clock, Truck, Zap,
+  Search, ChevronRight, Star, Clock, Truck,
   Shield, Bike, ArrowRight, Sparkles,
   ShoppingBag, Package, Users,
 } from 'lucide-react';
@@ -72,18 +72,10 @@ const featuredStores = [
 
 export function LandingScreen() {
   const { navigate } = useAuth();
-  const [activeBanner, setActiveBanner] = useState(0);
   const [search, setSearch] = useState('');
   const [stores, setStores] = useState<any[]>([]);
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveBanner((prev) => (prev + 1) % banners.length);
-    }, 4000);
-    return () => clearInterval(interval);
-  }, []);
 
   useEffect(() => {
     loadData();

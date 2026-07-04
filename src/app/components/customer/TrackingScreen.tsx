@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Phone, MessageCircle, Star, ChevronRight, CheckCircle, Clock, Bike } from 'lucide-react';
+import { ArrowLeft, Phone, MessageCircle, Star, CheckCircle, Clock, Bike } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
 
 const orderStatuses = [
