@@ -1,7 +1,8 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
+import { useTheme } from '../../shared/theme/ThemeContext';
 import logo from '../../imports/image-1.png';
 
 const navByRole: Record<string, Array<{ id: string; label: string; icon: string }>> = {
@@ -40,9 +41,11 @@ interface Props {
 function SidebarContent({
   user, screen, logout, cartCount,
   collapsed, showClose, onClose, onNavigate, onToggleCollapse,
+  theme, toggleTheme,
 }: {
   user: any; screen: string; logout: () => void; cartCount: number;
   collapsed: boolean; showClose: boolean; onClose: () => void; onNavigate: (id: string) => void; onToggleCollapse: () => void;
+  theme: string; toggleTheme: () => void;
 }) {
   const navItems = navByRole[user.role] || navByRole.customer;
   const isActive = (id: string) => screen === id;
@@ -88,6 +91,13 @@ function SidebarContent({
 
       <div className="border-t border-border-light p-3 flex-shrink-0 space-y-1">
         <button
+          onClick={toggleTheme}
+          className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-text-primary hover:bg-brand-light transition-all"
+        >
+          <span className="text-xl flex-shrink-0">{theme === 'dark' ? '☀️' : '🌙'}</span>
+          {!collapsed && <span className="font-medium">{theme === 'dark' ? 'Modo claro' : 'Modo oscuro'}</span>}
+        </button>
+        <button
           onClick={() => { logout(); onClose(); }}
           className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm text-danger hover:bg-danger-light transition-all"
         >
@@ -108,6 +118,7 @@ function SidebarContent({
 export function DesktopSidebar({ mobileOpen, onMobileClose, collapsed, onToggleCollapse }: Props) {
   const { user, screen, logout, navigate } = useAuth();
   const { cartCount } = useCart();
+  const { theme, toggle } = useTheme();
   if (!user) return null;
 
   const onNavigate = (id: string) => {
@@ -115,7 +126,7 @@ export function DesktopSidebar({ mobileOpen, onMobileClose, collapsed, onToggleC
     onMobileClose();
   };
 
-  const commonProps = { user, screen, logout, cartCount, collapsed, onClose: onMobileClose, onNavigate, onToggleCollapse };
+  const commonProps = { user, screen, logout, cartCount, collapsed, onClose: onMobileClose, onNavigate, onToggleCollapse, theme, toggleTheme: toggle };
 
   return (
     <>
