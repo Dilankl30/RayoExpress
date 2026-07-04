@@ -1,8 +1,8 @@
-import { getSupabase, isSupabaseReady } from './supabase';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import {
   mockStores, mockCategories, getMockProductsByStore, getMockProductsByCategory,
-} from './mockData';
-import type { Database } from '../app/types';
+} from '../../../shared/lib/mockData';
+import type { Database } from '../../../shared/types';
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];

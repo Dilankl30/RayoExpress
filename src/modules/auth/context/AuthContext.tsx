@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
-import { getProfile, upsertProfile } from '../../../services/auth';
+import { getProfile, upsertProfile } from '../application/auth-service';
 import { mockCredentials, mockUser } from '../../../shared/lib/mockData';
 import type { Screen, Role, UserProfile } from '../../../shared/types';
 import { screenPathMap } from '../../../app/router';
@@ -48,11 +48,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return cred.role;
   }, [navigate, roleToScreen]);
 
-  const login = useCallback(async (role: Role) => {
+  const login = useCallback(async (_role: Role) => {
     if (isSupabaseReady && supabase) {
       const userData = (await supabase.auth.getUser()).data.user;
       if (!userData) throw new Error('No user found');
-      await upsertProfile(userData.id, role, {
+      await upsertProfile(userData.id, {
         full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
         phone: userData.phone ?? null,
       });
@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (profile) {
         if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
         setUser(profile);
-        navigate(roleToScreen(role));
+        navigate(roleToScreen(profile.role));
       }
     }
   }, [navigate, roleToScreen]);

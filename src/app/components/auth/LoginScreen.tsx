@@ -1,26 +1,23 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight, Info } from 'lucide-react';
-import { isSupabaseReady } from '../../../services/supabase';
-import { useAuth } from '../../../context/AuthContext';
-import { supabase } from '../../../services/supabase';
-import { sendPasswordReset } from '../../../services/auth';
-import { hashText, isSecurePassword } from '../../../services/validation';
-import type { Role } from '../../types';
+import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { sendPasswordReset } from '../../../modules/auth/application/auth-service';
+import { hashText, isSecurePassword } from '../../../shared/validation';
+import type { Role } from '../../../shared/types';
 import logo from '../../../imports/image-1.png';
 
 const roles: { id: Role; label: string; icon: string; desc: string }[] = [
   { id: 'customer', label: 'Cliente', icon: '👤', desc: 'Pide lo que quieras' },
   { id: 'driver', label: 'Repartidor', icon: '🛵', desc: 'Reparte y gana' },
   { id: 'store', label: 'Tienda', icon: '🏪', desc: 'Vende más' },
-  { id: 'admin', label: 'Admin', icon: '⚡', desc: 'Administra todo' },
 ];
 
 const mockDemoAccounts = [
   { role: 'customer' as Role, email: 'customer@rayo.com', password: 'customer123', label: 'Cliente', icon: '👤' },
   { role: 'driver' as Role, email: 'driver@rayo.com', password: 'driver123', label: 'Repartidor', icon: '🛵' },
   { role: 'store' as Role, email: 'store@rayo.com', password: 'store123', label: 'Tienda', icon: '🏪' },
-  { role: 'admin' as Role, email: 'admin@rayo.com', password: 'admin123', label: 'Admin', icon: '⚡' },
 ];
 
 export function LoginScreen() {
@@ -86,7 +83,6 @@ export function LoginScreen() {
           password,
           options: {
             data: {
-              role: selectedRole,
               full_name: fullName,
               security_question: securityQuestion,
               security_answer_hash: answerHash,

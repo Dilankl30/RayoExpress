@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
-import { useAuth } from '../../../context/AuthContext';
-import { useCart } from '../../../context/CartContext';
-import { getStoreById, getProductsByStore } from '../../../services/stores';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { useCart } from '../../../modules/cart/context/CartContext';
+import { getStoreById, getProductsByStore } from '../../../modules/stores/application/store-service';
 
 export function StoreDetailScreen() {
   const { navigate, navigationParams } = useAuth();

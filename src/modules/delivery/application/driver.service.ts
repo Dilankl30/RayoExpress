@@ -1,5 +1,5 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
-import { validateFile } from '../../../shared/validation/service-validators';
+import { uploadFile } from '../../../shared/storage/storage.service';
 import { logAuditEvent } from '../../audit/application/audit.service';
 
 let mockOnlineStatus = false;
@@ -46,24 +46,98 @@ export async function getDriverEarnings(driverId: string) {
   };
 }
 
-export async function uploadDeliveryEvidence(orderId: string, driverId: string, file: File, notes: string) {
-  const fileError = validateFile(file, 10);
-  if (fileError) throw new Error(fileError);
+export interface WeeklyEarnings {
+  day: string;
+  earnings: number;
+  orders: number;
+}
+
+export async function getDriverWeeklyHistory(driverId: string): Promise<WeeklyEarnings[]> {
   if (!isSupabaseReady) {
-    const evidence = { id: `mock-ev-${Date.now()}`, orderId, imageUrl: URL.createObjectURL(file), notes, code: Math.random().toString(36).slice(2, 8).toUpperCase(), createdAt: new Date().toISOString() };
+    return [
+      { day: 'L', earnings: 24, orders: 8 }, { day: 'M', earnings: 31, orders: 11 },
+      { day: 'X', earnings: 28, orders: 9 }, { day: 'J', earnings: 38, orders: 13 },
+      { day: 'V', earnings: 45, orders: 16 }, { day: 'S', earnings: 52, orders: 18 },
+      { day: 'D', earnings: 18, orders: 6 },
+    ];
+  }
+  const supabase = getSupabase();
+  const weekAgo = new Date();
+  weekAgo.setDate(weekAgo.getDate() - 7);
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('total, created_at')
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered')
+    .gte('created_at', weekAgo.toISOString());
+  if (error) throw error;
+
+  const dayNames = ['D', 'L', 'M', 'X', 'J', 'V', 'S'];
+  const buckets: Record<string, { earnings: number; orders: number }> = {};
+  for (const d of dayNames) buckets[d] = { earnings: 0, orders: 0 };
+
+  for (const row of (data || []) as { total: number; created_at: string }[]) {
+    const dayIdx = new Date(row.created_at).getDay();
+    buckets[dayNames[dayIdx]].earnings += row.total || 0;
+    buckets[dayNames[dayIdx]].orders += 1;
+  }
+
+  return dayNames.map((day) => ({ day, earnings: Math.round(buckets[day].earnings * 100) / 100, orders: buckets[day].orders }));
+}
+
+export async function getDriverOrdersToday(driverId: string) {
+  if (!isSupabaseReady) {
+    return [
+      { id: 'ord-1', store_name: 'KFC', store_emoji: '🍗', total: 4.2, status: 'delivered', created_at: new Date().toISOString(), distance: '1.8 km' },
+      { id: 'ord-2', store_name: 'Subway', store_emoji: '🥪', total: 3.5, status: 'delivered', created_at: new Date().toISOString(), distance: '2.1 km' },
+    ];
+  }
+  const supabase = getSupabase();
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, total, status, created_at, store:stores(name, emoji)')
+    .eq('driver_id', driverId)
+    .gte('created_at', todayStart.toISOString())
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map((o: Record<string, unknown>) => ({
+    id: o.id as string,
+    store_name: ((o.store as Record<string, unknown>)?.name as string) ?? '',
+    store_emoji: ((o.store as Record<string, unknown>)?.emoji as string) ?? '',
+    total: o.total as number,
+    status: o.status as string,
+    created_at: o.created_at as string,
+  }));
+}
+
+export async function getDriverTripCount(driverId: string): Promise<number> {
+  if (!isSupabaseReady) return 1247;
+  const supabase = getSupabase();
+  const { count, error } = await supabase
+    .from('orders')
+    .select('id', { count: 'exact', head: true })
+    .eq('driver_id', driverId)
+    .eq('status', 'delivered');
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function uploadDeliveryEvidence(orderId: string, driverId: string, file: File, notes: string) {
+  const { path, storagePath } = await uploadFile('delivery-evidence', orderId, file);
+  if (!isSupabaseReady) {
+    const evidence = { id: `mock-ev-${Date.now()}`, orderId, imageUrl: storagePath, notes, code: Math.random().toString(36).slice(2, 8).toUpperCase(), createdAt: new Date().toISOString() };
     mockDeliveries.push(evidence);
     return evidence;
   }
   const supabase = getSupabase();
-  const ext = file.name.split('.').pop();
-  const path = `delivery-evidence/${orderId}/${Date.now()}.${ext}`;
-  const { error: uploadError } = await supabase.storage.from('delivery-evidence').upload(path, file);
-  if (uploadError) throw uploadError;
-  const { data: urlData } = supabase.storage.from('delivery-evidence').getPublicUrl(path);
   const code = Math.random().toString(36).slice(2, 8).toUpperCase();
   const { data, error } = await supabase
     .from('delivery_evidence')
-    .insert({ order_id: orderId, driver_id: driverId, image_url: urlData.publicUrl, notes })
+    .insert({ order_id: orderId, driver_id: driverId, image_url: path, notes })
     .select()
     .single();
   if (error) throw error;

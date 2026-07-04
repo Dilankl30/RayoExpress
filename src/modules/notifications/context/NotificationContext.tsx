@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
-import { getNotifications, markAsRead, markAllAsRead } from '../../../services/notifications';
+import { getNotifications, markAsRead, markAllAsRead } from '../application/notification-service';
 import { isSupabaseReady, getSupabase } from '../../../integrations/supabase/client';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { Plus, Settings, Trash2, X, Save } from 'lucide-react';
+import { Plus, Settings, Trash2, X, Save, Camera } from 'lucide-react';
 import { getStoreProducts, createProduct, updateProduct, deleteProduct, getCategories, createCategory, deleteCategory } from '../application/store-catalog.service';
+import { uploadFile, getFileUrl } from '../../../shared/storage/storage.service';
 import type { ProductData, CategoryData } from '../application/store-catalog.service';
 
 const defaultEmojis = ['🍔', '🍕', '🌮', '🥗', '🍟', '🥤', '🍦', '🧁', '🥪', '🍗', '🌯', '🥩'];
@@ -17,7 +18,13 @@ export function CatalogManager({ storeId }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newCatName, setNewCatName] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [existingImage, setExistingImage] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({ name: '', price: '', emoji: '🍔', description: '', category_id: '' });
+
+  const [resolvedImages, setResolvedImages] = useState<Map<string, string | null>>(new Map());
 
   const load = async () => {
     setLoading(true);
@@ -25,6 +32,16 @@ export function CatalogManager({ storeId }: Props) {
       const [p, c] = await Promise.all([getStoreProducts(storeId), getCategories()]);
       setProducts(p);
       setCategories(c);
+      const map = new Map<string, string | null>();
+      for (const prod of p) {
+        if (prod.image_url) {
+          try {
+            const url = await getFileUrl('product-images', prod.image_url);
+            map.set(prod.id!, url);
+          } catch { map.set(prod.id!, null); }
+        }
+      }
+      setResolvedImages(map);
     } finally {
       setLoading(false);
     }
@@ -36,17 +53,40 @@ export function CatalogManager({ storeId }: Props) {
     setForm({ name: '', price: '', emoji: '🍔', description: '', category_id: '' });
     setEditingId(null);
     setShowForm(false);
+    setImageFile(null);
+    setImagePreview(null);
+    setExistingImage(null);
   };
 
   const handleEdit = (p: ProductData) => {
     setForm({ name: p.name, price: String(p.price), emoji: p.emoji, description: p.description || '', category_id: p.category_id || '' });
     setEditingId(p.id || null);
     setShowForm(true);
+    if (p.image_url) {
+      setExistingImage(p.image_url);
+    }
   };
 
   const handleSave = async () => {
     if (!form.name || !form.price) return;
-    const productData = { name: form.name, price: Number(form.price), emoji: form.emoji, description: form.description || null, category_id: form.category_id || null, is_active: true, image_url: null };
+
+    let imageUrl: string | null = existingImage;
+
+    if (imageFile) {
+      const { path } = await uploadFile('product-images', storeId, imageFile);
+      imageUrl = path;
+    }
+
+    const productData = {
+      name: form.name,
+      price: Number(form.price),
+      emoji: form.emoji,
+      description: form.description || null,
+      category_id: form.category_id || null,
+      is_active: true,
+      image_url: imageUrl,
+    };
+
     if (editingId) {
       await updateProduct(editingId, productData);
     } else {
@@ -72,6 +112,12 @@ export function CatalogManager({ storeId }: Props) {
   const handleDeleteCategory = async (id: string) => {
     await deleteCategory(id);
     await load();
+  };
+
+  const handleImageSelect = (f: File) => {
+    setImageFile(f);
+    setImagePreview(URL.createObjectURL(f));
+    setExistingImage(null);
   };
 
   if (loading) {
@@ -129,6 +175,27 @@ export function CatalogManager({ storeId }: Props) {
             {categories.map((c) => <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>)}
           </select>
 
+          <div>
+            <p className="text-xs text-gray-400 mb-1 font-medium">Imagen del producto</p>
+            {(imagePreview || existingImage) ? (
+              <div className="relative bg-gray-50 rounded-xl overflow-hidden mb-2">
+                <img src={imagePreview || existingImage || ''} alt="Producto" className="w-full h-32 object-contain" />
+                <button onClick={() => { setImageFile(null); setImagePreview(null); setExistingImage(null); }} className="absolute top-1 right-1 w-6 h-6 bg-white rounded-full shadow flex items-center justify-center">
+                  <X size={12} className="text-gray-500" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full py-4 rounded-xl border-2 border-dashed border-gray-200 flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
+              >
+                <Camera size={18} className="text-gray-400" />
+                <span className="text-xs text-gray-400">Subir imagen</span>
+              </button>
+            )}
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageSelect(f); }} />
+          </div>
+
           <button onClick={handleSave} className="w-full py-2.5 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2" style={{ backgroundColor: '#6D28D9' }}>
             <Save size={14} /> {editingId ? 'Guardar cambios' : 'Crear producto'}
           </button>
@@ -160,7 +227,13 @@ export function CatalogManager({ storeId }: Props) {
               <div className="space-y-2">
                 {cat.products.map((p) => (
                   <div key={p.id} className="bg-white rounded-2xl p-3 shadow-sm flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl">{p.emoji}</div>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl overflow-hidden">
+                      {p.image_url && resolvedImages.get(p.id!) ? (
+                        <img src={resolvedImages.get(p.id!)!} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        p.emoji
+                      )}
+                    </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                       <p className="text-xs text-gray-400">${p.price.toFixed(2)}</p>
@@ -183,7 +256,13 @@ export function CatalogManager({ storeId }: Props) {
           <div className="space-y-2">
             {uncategorized.map((p) => (
               <div key={p.id} className="bg-white rounded-2xl p-3 shadow-sm flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl">{p.emoji}</div>
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-gray-50 text-xl overflow-hidden">
+                  {p.image_url && resolvedImages.get(p.id!) ? (
+                    <img src={resolvedImages.get(p.id!)!} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    p.emoji
+                  )}
+                </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-gray-900 truncate">{p.name}</p>
                   <p className="text-xs text-gray-400">${p.price.toFixed(2)}</p>
