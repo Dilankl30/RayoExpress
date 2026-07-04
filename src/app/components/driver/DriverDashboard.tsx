@@ -3,15 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Zap, Bell, MapPin, Star, DollarSign, Package, Clock,
   CheckCircle, XCircle, Phone, Navigation, ToggleLeft, ToggleRight,
-  TrendingUp, Wallet, History, User,
+  TrendingUp, Wallet, History, User, ChevronRight,
 } from 'lucide-react';
-import type { Screen } from '../../types';
+import { useAuth } from '../../../context/AuthContext';
 import logo from '../../../imports/image-1.png';
 import mascot from '../../../imports/image.png';
-
-interface DriverDashboardProps {
-  onNavigate: (screen: Screen) => void;
-}
 
 const newOrder = {
   id: 'ORD-2847',
@@ -39,7 +35,8 @@ const weeklyData = [
 
 const maxEarnings = Math.max(...weeklyData.map((d) => d.earnings));
 
-export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
+export function DriverDashboard() {
+  const { navigate, logout } = useAuth();
   const [isOnline, setIsOnline] = useState(false);
   const [showOrder, setShowOrder] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'wallet' | 'profile'>('dashboard');
@@ -72,8 +69,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
       <div
         className="pt-10 pb-5 px-4"
         style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
@@ -90,19 +86,13 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
             <button className="relative">
               <Bell size={22} className="text-white" />
               {isOnline && (
-                <span
-                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}
-                >
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}>
                   1
                 </span>
               )}
             </button>
             <div className="flex items-center gap-2">
-              <div
-                className="w-2.5 h-2.5 rounded-full"
-                style={{ backgroundColor: isOnline ? '#22C55E' : '#EF4444' }}
-              />
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: isOnline ? '#22C55E' : '#EF4444' }} />
               <span style={{ color: isOnline ? '#86EFAC' : '#FCA5A5', fontSize: 12 }}>
                 {isOnline ? 'En línea' : 'Desconectado'}
               </span>
@@ -110,7 +100,6 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
           </div>
         </div>
 
-        {/* Toggle Online */}
         <div className="flex items-center justify-between bg-white/10 rounded-2xl px-4 py-3">
           <div>
             <p className="text-white font-medium">Estado de servicio</p>
@@ -128,11 +117,9 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto pb-24">
         {activeTab === 'dashboard' && (
           <>
-            {/* Stats */}
             <div className="px-4 pt-4 grid grid-cols-2 gap-3">
               {[
                 { label: 'Ganancias hoy', value: `$${todayEarnings.toFixed(2)}`, icon: DollarSign, color: '#22C55E', bg: '#F0FDF4' },
@@ -143,10 +130,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
                 const Icon = stat.icon;
                 return (
                   <div key={stat.label} className="bg-white rounded-2xl p-4 shadow-sm">
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-2"
-                      style={{ backgroundColor: stat.bg }}
-                    >
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: stat.bg }}>
                       <Icon size={18} style={{ color: stat.color }} />
                     </div>
                     <p className="font-bold text-gray-900">{stat.value}</p>
@@ -156,7 +140,6 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
               })}
             </div>
 
-            {/* Weekly Chart */}
             <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-gray-900 font-medium text-sm">Ganancias semana</p>
@@ -171,7 +154,6 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
                     <motion.div
                       className="w-full rounded-t-lg"
                       style={{
-                        transformOrigin: 'bottom',
                         backgroundColor: i === 4 ? '#6D28D9' : '#EDE9FE',
                         height: `${(d.earnings / maxEarnings) * 80}px`,
                       }}
@@ -185,12 +167,8 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
               </div>
             </div>
 
-            {/* Delivery map preview */}
             <div className="mx-4 mt-4 bg-white rounded-2xl overflow-hidden shadow-sm">
-              <div
-                className="h-32 flex items-center justify-center relative"
-                style={{ backgroundColor: '#E8F0E8' }}
-              >
+              <div className="h-32 flex items-center justify-center relative" style={{ backgroundColor: '#E8F0E8' }}>
                 <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 50" preserveAspectRatio="none">
                   {[10, 20, 30, 40].map((v) => (
                     <g key={v}>
@@ -204,10 +182,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
                   <path d="M30 0 Q32 20 35 50" stroke="white" strokeWidth="3" fill="none" />
                   <path d="M70 0 Q72 25 75 50" stroke="white" strokeWidth="3" fill="none" />
                 </svg>
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center z-10 border-2 border-white shadow-lg"
-                  style={{ backgroundColor: '#6D28D9', fontSize: 20 }}
-                >
+                <div className="w-10 h-10 rounded-full flex items-center justify-center z-10 border-2 border-white shadow-lg" style={{ backgroundColor: '#6D28D9', fontSize: 20 }}>
                   🛵
                 </div>
                 <div className="absolute top-2 right-3 bg-white rounded-xl px-3 py-1.5 shadow flex items-center gap-1.5">
@@ -220,16 +195,12 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
                   <p className="text-sm text-gray-700 font-medium">Zona activa</p>
                   <p className="text-xs text-gray-400">3 pedidos disponibles cerca</p>
                 </div>
-                <button
-                  className="px-4 py-2 rounded-xl text-white text-sm"
-                  style={{ backgroundColor: '#6D28D9' }}
-                >
+                <button className="px-4 py-2 rounded-xl text-white text-sm" style={{ backgroundColor: '#6D28D9' }}>
                   Ver mapa
                 </button>
               </div>
             </div>
 
-            {/* Mascot promo */}
             {!isOnline && (
               <motion.div
                 className="mx-4 mt-4 rounded-2xl overflow-hidden flex items-center shadow-sm"
@@ -264,10 +235,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
               { id: 'ORD-2830', store: 'McDonald\'s', emoji: '🍔', earnings: '$3.80', time: '11:10', status: 'cancelled', distance: '1.5 km' },
             ].map((order) => (
               <div key={order.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: '#F9FAFB', fontSize: 24 }}
-                >
+                <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9FAFB', fontSize: 24 }}>
                   {order.emoji}
                 </div>
                 <div className="flex-1">
@@ -290,22 +258,14 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
 
         {activeTab === 'wallet' && (
           <div className="px-4 pt-4">
-            <div
-              className="rounded-2xl p-5 text-white mb-4"
-              style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}
-            >
+            <div className="rounded-2xl p-5 text-white mb-4" style={{ background: 'linear-gradient(135deg, #6D28D9, #4C1D95)' }}>
               <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12 }}>Balance disponible</p>
               <p className="font-bold mt-1" style={{ fontSize: 32 }}>$127.40</p>
               <div className="flex gap-4 mt-4">
-                <button
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-                >
+                <button className="flex-1 py-2.5 rounded-xl text-sm font-medium" style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}>
                   Retirar
                 </button>
-                <button
-                  className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-white/20 text-white"
-                >
+                <button className="flex-1 py-2.5 rounded-xl text-sm font-medium bg-white/20 text-white">
                   Historial
                 </button>
               </div>
@@ -330,10 +290,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
         {activeTab === 'profile' && (
           <div className="px-4 pt-4">
             <div className="bg-white rounded-2xl p-5 shadow-sm text-center mb-4">
-              <div
-                className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center mb-3"
-                style={{ backgroundColor: '#EDE9FE', fontSize: 36 }}
-              >
+              <div className="w-20 h-20 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: '#EDE9FE', fontSize: 36 }}>
                 🧑‍🦱
               </div>
               <p className="text-gray-900 font-bold">Carlos Andrés Morales</p>
@@ -353,7 +310,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
             ].map(([label, icon]) => (
               <button
                 key={label}
-                onClick={() => label === 'Cerrar sesión' && onNavigate('login')}
+                onClick={() => label === 'Cerrar sesión' && logout()}
                 className="w-full bg-white rounded-2xl px-4 py-4 flex items-center gap-3 shadow-sm mb-2 text-left"
               >
                 <span style={{ fontSize: 20 }}>{icon}</span>
@@ -365,7 +322,6 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
         )}
       </div>
 
-      {/* Incoming Order Popup */}
       <AnimatePresence>
         {showOrder && (
           <motion.div
@@ -383,19 +339,11 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
             >
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
-                  <div
-                    className="w-2.5 h-2.5 rounded-full animate-pulse"
-                    style={{ backgroundColor: '#22C55E' }}
-                  />
+                  <div className="w-2.5 h-2.5 rounded-full animate-pulse" style={{ backgroundColor: '#22C55E' }} />
                   <p className="font-bold text-gray-900">¡Nuevo pedido!</p>
                 </div>
-                <div className="flex items-center gap-1">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                    style={{ backgroundColor: acceptCountdown < 10 ? '#EF4444' : '#6D28D9' }}
-                  >
-                    {acceptCountdown}
-                  </div>
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold" style={{ backgroundColor: acceptCountdown < 10 ? '#EF4444' : '#6D28D9' }}>
+                  {acceptCountdown}
                 </div>
               </div>
               <p className="text-xs text-gray-400 mb-4">Se asignará automáticamente o expirará</p>
@@ -409,10 +357,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: '#3B82F6' }}
-                  >
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#3B82F6' }}>
                     <span style={{ fontSize: 14 }}>🏠</span>
                   </div>
                   <div>
@@ -438,19 +383,11 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
               </div>
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => setShowOrder(false)}
-                  className="flex-1 py-4 rounded-2xl border-2 flex items-center justify-center gap-2 text-red-500"
-                  style={{ borderColor: '#FEE2E2' }}
-                >
+                <button onClick={() => setShowOrder(false)} className="flex-1 py-4 rounded-2xl border-2 flex items-center justify-center gap-2 text-red-500" style={{ borderColor: '#FEE2E2' }}>
                   <XCircle size={20} />
                   Rechazar
                 </button>
-                <button
-                  onClick={handleAccept}
-                  className="flex-1 py-4 rounded-2xl text-white flex items-center justify-center gap-2"
-                  style={{ backgroundColor: '#22C55E' }}
-                >
+                <button onClick={handleAccept} className="flex-1 py-4 rounded-2xl text-white flex items-center justify-center gap-2" style={{ backgroundColor: '#22C55E' }}>
                   <CheckCircle size={20} />
                   Aceptar
                 </button>
@@ -460,8 +397,7 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
         )}
       </AnimatePresence>
 
-      {/* Bottom Nav */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 max-w-md lg:max-w-6xl mx-auto" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 lg:hidden" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -473,21 +409,11 @@ export function DriverDashboard({ onNavigate }: DriverDashboardProps) {
             >
               <Icon size={22} style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }} strokeWidth={isActive ? 2.5 : 1.8} />
               <span style={{ fontSize: 10, color: isActive ? '#6D28D9' : '#9CA3AF' }}>{tab.label}</span>
-              {isActive && (
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />
-              )}
+              {isActive && <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />}
             </button>
           );
         })}
       </div>
     </div>
-  );
-}
-
-function ChevronRight({ size, className }: { size: number; className?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
-      <polyline points="9,18 15,12 9,6" />
-    </svg>
   );
 }

@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../../services/supabase';
+import { useAuth } from '../../../context/AuthContext';
+import { sendPasswordReset } from '../../../services/auth';
+import { hashText, isSecurePassword, isValidEmail } from '../../../services/validation';
 import type { Role } from '../../types';
 import logo from '../../../imports/image-1.png';
-
-interface LoginScreenProps {
-  onLogin: (role: Role) => Promise<void>;
-}
 
 const roles: { id: Role; label: string; icon: string; desc: string }[] = [
   { id: 'customer', label: 'Cliente', icon: '👤', desc: 'Pide lo que quieras' },
@@ -16,7 +15,8 @@ const roles: { id: Role; label: string; icon: string; desc: string }[] = [
   { id: 'admin', label: 'Admin', icon: '⚡', desc: 'Administra todo' },
 ];
 
-export function LoginScreen({ onLogin }: LoginScreenProps) {
+export function LoginScreen() {
+  const { login } = useAuth();
   const [tab, setTab] = useState<'email' | 'phone'>('email');
   const [selectedRole, setSelectedRole] = useState<Role>('customer');
   const [email, setEmail] = useState('');
@@ -32,100 +32,124 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
-  const [recoveryQuestion, setRecoveryQuestion] = useState('');
-  const [recoveryAnswer, setRecoveryAnswer] = useState('');
-
-  const isSecurePassword = (value: string) =>
-    value.length >= 8 && /[A-Z]/.test(value) && /[a-z]/.test(value) && /\d/.test(value);
-  const securityStorageKey = (userEmail: string) => `rayo_security_${userEmail.trim().toLowerCase()}`;
-  const hashText = async (value: string) => {
-    const encoded = new TextEncoder().encode(value.trim().toLowerCase());
-    const digest = await crypto.subtle.digest('SHA-256', encoded);
-    return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('');
-  };
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const loginWithProvider = async (provider: 'google' | 'facebook') => {
-    if (!supabase) return alert('Configura Supabase en .env');
+    if (!supabase) return setError('Configura Supabase en .env');
+    setError('');
     await supabase.auth.signInWithOAuth({ provider });
   };
 
   const loginWithEmail = async () => {
-    if (isRegister) {
-      if (!fullName.trim()) return alert('Ingresa tu nombre completo');
-      if (password !== confirmPassword) return alert('Las contraseñas no coinciden');
-      if (!isSecurePassword(password)) return alert('La contraseña debe tener 8+ caracteres, mayúscula, minúscula y número');
-      if (!securityAnswer.trim()) return alert('Responde tu pregunta de seguridad');
-      if (!supabase) return alert('Configura Supabase en .env');
-      const answerHash = await hashText(securityAnswer);
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { data: { role: selectedRole, full_name: fullName, security_question: securityQuestion, security_answer_hash: answerHash } },
-      });
-      if (error) return alert(error.message);
-      localStorage.setItem(securityStorageKey(email), JSON.stringify({ question: securityQuestion, answerHash }));
-    } else {
-      if (!supabase) return alert('Configura Supabase en .env');
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) return alert(error.message);
+    setError('');
+    setLoading(true);
+    try {
+      if (!supabase) throw new Error('Configura Supabase en .env');
+
+      if (isRegister) {
+        if (!fullName.trim()) throw new Error('Ingresa tu nombre completo');
+        if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden');
+        if (!isSecurePassword(password)) throw new Error('La contraseña debe tener 8+ caracteres, mayúscula, minúscula, número y carácter especial');
+        if (!securityAnswer.trim()) throw new Error('Responde tu pregunta de seguridad');
+
+        const answerHash = await hashText(securityAnswer);
+        const { error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              role: selectedRole,
+              full_name: fullName,
+              security_question: securityQuestion,
+              security_answer_hash: answerHash,
+            },
+          },
+        });
+        if (signUpError) throw signUpError;
+      } else {
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+      }
+
+      await login(selectedRole);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setLoading(false);
     }
-    await onLogin(selectedRole);
   };
 
   const sendOtp = async () => {
-    if (!supabase) return alert('Configura Supabase en .env');
-    const { error } = await supabase.auth.signInWithOtp({ phone: `+593${phone.replace(/\D/g, '')}` });
-    if (error) return alert(error.message);
-    setOtpSent(true);
+    if (!supabase) return setError('Configura Supabase en .env');
+    setError('');
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({ phone: `+593${phone.replace(/\D/g, '')}` });
+      if (error) throw error;
+      setOtpSent(true);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al enviar OTP');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const verifyOtp = async () => {
-    if (!supabase) return alert('Configura Supabase en .env');
-    const { error } = await supabase.auth.verifyOtp({
-      phone: `+593${phone.replace(/\D/g, '')}`,
-      token: otp,
-      type: 'sms',
-    });
-    if (error) return alert(error.message);
-    await onLogin(selectedRole);
+    if (!supabase) return setError('Configura Supabase en .env');
+    setError('');
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        phone: `+593${phone.replace(/\D/g, '')}`,
+        token: otp,
+        type: 'sms',
+      });
+      if (error) throw error;
+      await login(selectedRole);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al verificar OTP');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetPassword = async () => {
-    if (!recoveryEmail) return;
-    const raw = localStorage.getItem(securityStorageKey(recoveryEmail));
-    if (!raw) return alert('No hay pregunta de seguridad guardada para este correo');
-    const saved = JSON.parse(raw) as { question: string; answerHash: string };
-    const answerHash = await hashText(recoveryAnswer);
-    if (saved.answerHash !== answerHash) return alert('Respuesta de seguridad incorrecta');
-    if (!supabase) return alert('Configura Supabase en .env');
-    const { error } = await supabase.auth.resetPasswordForEmail(recoveryEmail);
-    if (error) return alert(error.message);
-    alert('Correo de recuperación enviado');
-    setRecoveryMode(false);
+    if (!recoveryEmail) return setError('Ingresa tu correo');
+    setError('');
+    setLoading(true);
+    try {
+      await sendPasswordReset(recoveryEmail);
+      alert('Correo de recuperación enviado. Revisa tu bandeja de entrada.');
+      setRecoveryMode(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error en recuperación');
+    } finally {
+      setLoading(false);
+    }
   };
+
   return (
     <div
-      className="min-h-screen flex flex-col max-w-md lg:max-w-6xl mx-auto relative overflow-hidden"
+      className="min-h-screen flex flex-col md:flex-row md:items-center md:justify-center relative overflow-hidden"
       style={{ background: 'linear-gradient(160deg, #6D28D9 0%, #4C1D95 100%)' }}
     >
-      {/* Background decorative circles */}
       <div
-        className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-20"
+        className="absolute top-0 right-0 w-48 h-48 md:w-96 md:h-96 rounded-full opacity-20"
         style={{ background: 'radial-gradient(circle, #FFD400, transparent)', transform: 'translate(30%, -30%)' }}
       />
       <div
-        className="absolute top-20 left-0 w-32 h-32 rounded-full opacity-10"
+        className="absolute top-20 left-0 w-32 h-32 md:w-64 md:h-64 rounded-full opacity-10"
         style={{ background: 'radial-gradient(circle, #ffffff, transparent)', transform: 'translate(-40%, 0)' }}
       />
 
-      {/* Header */}
-      <div className="flex flex-col items-center pt-12 pb-2 px-6 relative z-10">
+      <div className="flex flex-col items-center pt-12 md:pt-0 pb-2 px-6 relative z-10 md:pr-12">
         <motion.div
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ duration: 0.5, type: 'spring' }}
         >
-          <img src={logo} alt="Rayo Express" className="w-24 h-24 object-contain rounded-2xl" />
+          <img src={logo} alt="Rayo Express" className="w-24 h-24 md:w-32 md:h-32 object-contain rounded-2xl" />
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -137,14 +161,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
         </motion.div>
       </div>
 
-      {/* Login Card */}
       <motion.div
-        className="flex-1 bg-white rounded-t-3xl px-5 pt-6 pb-8 relative z-10"
+        className="flex-1 md:flex-none md:w-[480px] bg-white rounded-t-3xl md:rounded-3xl px-5 pt-6 pb-8 md:pb-6 relative z-10 md:shadow-2xl md:max-h-[90vh] md:overflow-y-auto"
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
       >
-        {/* Role Selector */}
         <div className="flex gap-2 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
           {roles.map((r) => (
             <button
@@ -161,14 +183,21 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           ))}
         </div>
 
-        <h2 className="text-gray-900 mb-1">{recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}</h2>
+        <h2 className="text-gray-900 mb-1">
+          {recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}
+        </h2>
         <p className="text-gray-400 text-sm mb-5">
           {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
         </p>
 
-        {/* Social Login */}
+        {error && (
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-4">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
+
         <div className="flex gap-3 mb-5">
-          <button onClick={() => loginWithProvider('google')} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
+          <button onClick={() => loginWithProvider('google')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
             <svg width="16" height="16" viewBox="0 0 24 24">
               <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
               <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -177,7 +206,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             </svg>
             Google
           </button>
-          <button onClick={() => loginWithProvider('facebook')} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
+          <button onClick={() => loginWithProvider('facebook')} disabled={loading} className="flex-1 flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-3 hover:bg-gray-50 transition-colors text-sm text-gray-600">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
@@ -191,7 +220,6 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <div className="flex-1 h-px bg-gray-200" />
         </div>
 
-        {/* Tabs */}
         <div className="flex bg-gray-100 rounded-xl p-1 mb-4">
           <button
             onClick={() => setTab('email')}
@@ -213,25 +241,37 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           <div className="space-y-3">
             <div className="bg-gray-50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
-              <input type="email" value={recoveryEmail} onChange={(e) => {
-                const next = e.target.value;
-                setRecoveryEmail(next);
-                const raw = localStorage.getItem(securityStorageKey(next));
-                setRecoveryQuestion(raw ? (JSON.parse(raw) as { question: string }).question : '');
-              }} placeholder="correo@ejemplo.com" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
+              <input
+                type="email"
+                value={recoveryEmail}
+                onChange={(e) => setRecoveryEmail(e.target.value)}
+                placeholder="correo@ejemplo.com"
+                className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+              />
             </div>
-            {recoveryQuestion && <div className="bg-gray-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">{recoveryQuestion}</p>
-              <input type="text" value={recoveryAnswer} onChange={(e) => setRecoveryAnswer(e.target.value)} placeholder="Tu respuesta" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
-            </div>}
-            <button onClick={resetPassword} className="w-full py-3 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: '#6D28D9' }}>Validar y recuperar</button>
+            <button
+              onClick={resetPassword}
+              disabled={loading}
+              className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50"
+              style={{ backgroundColor: '#6D28D9' }}
+            >
+              {loading ? 'Enviando...' : 'Enviar correo de recuperación'}
+            </button>
           </div>
         ) : tab === 'email' ? (
           <div className="space-y-3">
-            {isRegister && <div className="bg-gray-50 rounded-xl px-4 py-3">
-              <p className="text-xs text-gray-400 mb-1">Nombre completo</p>
-              <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Tu nombre completo" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
-            </div>}
+            {isRegister && (
+              <div className="bg-gray-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-gray-400 mb-1">Nombre completo</p>
+                <input
+                  type="text"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Tu nombre completo"
+                  className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                />
+              </div>
+            )}
             <div className="bg-gray-50 rounded-xl px-4 py-3">
               <p className="text-xs text-gray-400 mb-1">Correo electrónico</p>
               <input
@@ -257,24 +297,42 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-            {isRegister && <>
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Confirmar contraseña</p>
-                <input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
-              </div>
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Pregunta de seguridad</p>
-                <select value={securityQuestion} onChange={(e) => setSecurityQuestion(e.target.value)} className="w-full bg-transparent text-gray-900 outline-none text-sm">
-                  <option>¿Cuál es el nombre de tu primera mascota?</option>
-                  <option>¿En qué ciudad naciste?</option>
-                  <option>¿Cuál fue tu primera escuela?</option>
-                </select>
-              </div>
-              <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Respuesta de seguridad</p>
-                <input type="text" value={securityAnswer} onChange={(e) => setSecurityAnswer(e.target.value)} placeholder="Tu respuesta" className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm" />
-              </div>
-            </>}
+            {isRegister && (
+              <>
+                <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <p className="text-xs text-gray-400 mb-1">Confirmar contraseña</p>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  />
+                </div>
+                <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <p className="text-xs text-gray-400 mb-1">Pregunta de seguridad</p>
+                  <select
+                    value={securityQuestion}
+                    onChange={(e) => setSecurityQuestion(e.target.value)}
+                    className="w-full bg-transparent text-gray-900 outline-none text-sm"
+                  >
+                    <option>¿Cuál es el nombre de tu primera mascota?</option>
+                    <option>¿En qué ciudad naciste?</option>
+                    <option>¿Cuál fue tu primera escuela?</option>
+                  </select>
+                </div>
+                <div className="bg-gray-50 rounded-xl px-4 py-3">
+                  <p className="text-xs text-gray-400 mb-1">Respuesta de seguridad</p>
+                  <input
+                    type="text"
+                    value={securityAnswer}
+                    onChange={(e) => setSecurityAnswer(e.target.value)}
+                    placeholder="Tu respuesta"
+                    className="w-full bg-transparent text-gray-900 outline-none placeholder:text-gray-400 text-sm"
+                  />
+                </div>
+              </>
+            )}
             <div className="flex justify-end">
               <button onClick={() => setRecoveryMode(true)} className="text-sm" style={{ color: '#6D28D9' }}>
                 ¿Olvidaste tu contraseña?
@@ -297,14 +355,15 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
             {!otpSent ? (
               <button
                 onClick={sendOtp}
-                className="w-full py-3 rounded-xl border-2 text-sm font-medium transition-colors"
+                disabled={loading}
+                className="w-full py-3 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-50"
                 style={{ borderColor: '#6D28D9', color: '#6D28D9' }}
               >
-                Enviar código OTP
+                {loading ? 'Enviando...' : 'Enviar código OTP'}
               </button>
             ) : (
               <div className="bg-gray-50 rounded-xl px-4 py-3">
-                <p className="text-xs text-gray-400 mb-1">Código OTP (enviado a {phone || '+593 98 765 4321'})</p>
+                <p className="text-xs text-gray-400 mb-1">Código OTP</p>
                 <input
                   type="text"
                   value={otp}
@@ -318,36 +377,39 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </div>
         )}
 
-        {!recoveryMode && <motion.button
-          onClick={tab === 'email' ? loginWithEmail : verifyOtp}
-          className="w-full mt-5 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2"
-          style={{ backgroundColor: '#6D28D9' }}
-          whileTap={{ scale: 0.98 }}
-          whileHover={{ backgroundColor: '#5B21B6' }}
-        >
-          <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-          {isRegister ? 'Registrarse gratis' : `Ingresar como ${roles.find((r) => r.id === selectedRole)?.label}`}
-          <ArrowRight size={16} />
-        </motion.button>}
-
-
-
-        <div className="mt-3 bg-gray-50 rounded-xl px-3 py-2">
-          <p className="text-xs text-gray-500">Cuentas de prueba (email):</p>
-          <p className="text-xs text-gray-400">cliente.test@rayoexpress.app · repartidor.test@rayoexpress.app</p>
-          <p className="text-xs text-gray-400">tienda.test@rayoexpress.app · admin.test@rayoexpress.app</p>
-        </div>
-        {!recoveryMode && <p className="text-center text-sm text-gray-500 mt-4">
-          ¿No tienes cuenta?{' '}
-          <button
-            type="button"
-            onClick={() => setIsRegister((prev) => !prev)}
-            className="cursor-pointer font-medium"
-            style={{ color: '#6D28D9' }}
+        {!recoveryMode && (
+          <motion.button
+            onClick={tab === 'email' ? loginWithEmail : verifyOtp}
+            disabled={loading}
+            className="w-full mt-5 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{ backgroundColor: '#6D28D9' }}
+            whileTap={{ scale: 0.98 }}
           >
-            {isRegister ? 'Volver a iniciar sesión' : 'Regístrate gratis'}
-          </button>
-        </p>}
+            <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
+            {loading ? 'Procesando...' : isRegister ? 'Registrarse gratis' : `Ingresar como ${roles.find((r) => r.id === selectedRole)?.label}`}
+            <ArrowRight size={16} />
+          </motion.button>
+        )}
+
+        <p className="text-center text-sm text-gray-500 mt-4">
+          {recoveryMode ? (
+            <button onClick={() => setRecoveryMode(false)} className="font-medium" style={{ color: '#6D28D9' }}>
+              Volver a inicio de sesión
+            </button>
+          ) : (
+            <>
+              ¿No tienes cuenta?{' '}
+              <button
+                type="button"
+                onClick={() => setIsRegister((prev) => !prev)}
+                className="cursor-pointer font-medium"
+                style={{ color: '#6D28D9' }}
+              >
+                {isRegister ? 'Volver a iniciar sesión' : 'Regístrate gratis'}
+              </button>
+            </>
+          )}
+        </p>
 
         <p className="text-center text-xs text-gray-400 mt-4">
           Al continuar aceptas nuestros{' '}

@@ -1,0 +1,108 @@
+import { getSupabase } from './supabase';
+
+export interface CreateOrderParams {
+  storeId: string;
+  productIds: string[];
+  quantities: number[];
+  deliveryAddress: string;
+  paymentMethod: 'cash' | 'transfer' | 'card';
+  couponCode?: string;
+  notes?: string;
+  tip?: number;
+}
+
+export interface CreateOrderResult {
+  order_id: string;
+  subtotal: number;
+  delivery_fee: number;
+  discount: number;
+  tax: number;
+  tip: number;
+  total: number;
+  status: string;
+}
+
+export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('create_order', {
+    p_store_id: params.storeId,
+    p_product_ids: params.productIds,
+    p_quantities: params.quantities,
+    p_delivery_address: params.deliveryAddress,
+    p_payment_method: params.paymentMethod,
+    p_coupon_code: params.couponCode ?? null,
+    p_notes: params.notes ?? null,
+    p_tip: params.tip ?? 0,
+  });
+
+  if (error) throw error;
+  return data as unknown as CreateOrderResult;
+}
+
+export async function getOrderById(orderId: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, order_items(*), order_status_history(*), driver:profiles!driver_id(full_name, avatar_url), store:stores(name, emoji)')
+    .eq('id', orderId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getMyOrders(userId: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*, store:stores(name, emoji)')
+    .eq('customer_id', userId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getStoreOrders(storeId: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function getDriverOrders(driverId: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('*')
+    .eq('driver_id', driverId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data ?? [];
+}
+
+export async function updateOrderStatus(orderId: string, status: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ status })
+    .eq('id', orderId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function assignDriver(orderId: string, driverId: string) {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .update({ driver_id: driverId })
+    .eq('id', orderId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}

@@ -1,0 +1,78 @@
+import { getSupabase } from './supabase';
+import { hashText } from './validation';
+import type { Role } from '../app/types';
+
+export type Profile = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  role: Role;
+  avatar_url: string | null;
+  is_suspended: boolean;
+};
+
+export async function getProfile(userId: string): Promise<Profile | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('id, full_name, phone, role, avatar_url, is_suspended')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  return data as Profile | null;
+}
+
+export async function upsertProfile(userId: string, role: Role, data?: Partial<Profile>) {
+  const supabase = getSupabase();
+  const payload = {
+    id: userId,
+    role,
+    full_name: data?.full_name ?? null,
+    phone: data?.phone ?? null,
+    avatar_url: data?.avatar_url ?? null,
+    updated_at: new Date().toISOString(),
+  };
+  const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function saveSecurityQuestion(userId: string, question: string, answer: string) {
+  const supabase = getSupabase();
+  const answerHash = await hashText(answer);
+  const { error } = await supabase.from('password_recovery_questions').upsert({
+    user_id: userId,
+    question,
+    answer_hash: answerHash,
+    updated_at: new Date().toISOString(),
+  }, { onConflict: 'user_id' });
+  if (error) throw error;
+}
+
+export async function verifySecurityAnswer(userId: string, answer: string): Promise<boolean> {
+  const supabase = getSupabase();
+  const answerHash = await hashText(answer);
+  const { data, error } = await supabase
+    .from('password_recovery_questions')
+    .select('answer_hash')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return false;
+  return data.answer_hash === answerHash;
+}
+
+export async function getRecoveryQuestion(userId: string): Promise<string | null> {
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('password_recovery_questions')
+    .select('question')
+    .eq('user_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data.question;
+}
+
+export async function sendPasswordReset(email: string): Promise<void> {
+  const supabase = getSupabase();
+  const { error } = await supabase.auth.resetPasswordForEmail(email);
+  if (error) throw error;
+}

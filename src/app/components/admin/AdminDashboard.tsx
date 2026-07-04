@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -6,14 +6,10 @@ import {
 } from 'recharts';
 import {
   Bell, TrendingUp, Users, Store, Bike, Package, DollarSign,
-  Settings, BarChart2, Map, Shield, Zap, ArrowUpRight,
+  Settings, BarChart2, Map, Shield, Zap, ArrowUpRight, ChevronRight,
 } from 'lucide-react';
-import type { Screen } from '../../types';
+import { useAuth } from '../../../context/AuthContext';
 import logo from '../../../imports/image-1.png';
-
-interface AdminDashboardProps {
-  onNavigate: (screen: Screen) => void;
-}
 
 const salesData = [
   { month: 'Ene', sales: 12400, orders: 420 },
@@ -57,7 +53,8 @@ const statusInfo: Record<string, { bg: string; text: string; label: string }> = 
   cancelled: { bg: '#FEE2E2', text: '#991B1B', label: 'Cancelado' },
 };
 
-export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
+export function AdminDashboard() {
+  const { navigate, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'map' | 'settings'>('dashboard');
 
   const kpis = [
@@ -77,12 +74,8 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-gray-50 max-w-md lg:max-w-6xl mx-auto flex flex-col">
-      {/* Header */}
-      <div
-        className="pt-10 pb-5 px-4"
-        style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}
-      >
+    <div className="min-h-screen bg-gray-50 flex flex-col pb-16 lg:pb-0">
+      <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, #6D28D9, #4C1D95)' }}>
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <img src={logo} alt="Rayo" className="w-8 h-8 object-contain rounded-lg" />
@@ -94,24 +87,17 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
           <div className="flex items-center gap-2">
             <button className="relative">
               <Bell size={22} className="text-white" />
-              <span
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
-                style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}
-              >
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', fontSize: 9, color: '#111827' }}>
                 7
               </span>
             </button>
-            <div
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-              style={{ backgroundColor: 'rgba(255,212,0,0.2)' }}
-            >
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full" style={{ backgroundColor: 'rgba(255,212,0,0.2)' }}>
               <Shield size={12} style={{ color: '#FFD400' }} />
               <span style={{ color: '#FFD400', fontSize: 11 }}>Admin</span>
             </div>
           </div>
         </div>
 
-        {/* Quick stats row */}
         <div className="flex gap-2">
           {[
             { label: 'Pedidos hoy', value: '287', emoji: '📦' },
@@ -126,24 +112,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         </div>
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto pb-24">
         {activeTab === 'dashboard' && (
           <>
-            {/* KPI Grid */}
             <div className="px-4 pt-4 grid grid-cols-2 gap-3">
               {kpis.map((kpi) => {
                 const Icon = kpi.icon;
                 return (
-                  <motion.div
-                    key={kpi.label}
-                    className="bg-white rounded-2xl p-4 shadow-sm"
-                    whileTap={{ scale: 0.97 }}
-                  >
-                    <div
-                      className="w-10 h-10 rounded-xl flex items-center justify-center mb-2"
-                      style={{ backgroundColor: kpi.bg }}
-                    >
+                  <motion.div key={kpi.label} className="bg-white rounded-2xl p-4 shadow-sm" whileTap={{ scale: 0.97 }}>
+                    <div className="w-10 h-10 rounded-xl flex items-center justify-center mb-2" style={{ backgroundColor: kpi.bg }}>
                       <Icon size={18} style={{ color: kpi.color }} />
                     </div>
                     <p className="font-bold text-gray-900">{kpi.value}</p>
@@ -159,7 +136,6 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               })}
             </div>
 
-            {/* Sales Chart */}
             <div className="mx-4 mt-4 bg-white rounded-2xl p-4 shadow-sm">
               <div className="flex items-center justify-between mb-4">
                 <p className="text-gray-900 font-medium text-sm">Ventas mensuales</p>
@@ -179,33 +155,19 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                   <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}K`} />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }}
-                    formatter={(v: number) => [`$${v.toLocaleString()}`, 'Ventas']}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="sales"
-                    stroke="#6D28D9"
-                    strokeWidth={2.5}
-                    fill="url(#salesGrad)"
-                    dot={{ r: 3, fill: '#6D28D9', stroke: 'white', strokeWidth: 2 }}
-                  />
+                  <Tooltip contentStyle={{ borderRadius: 12, border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.1)' }} formatter={(v: number) => [`$${v.toLocaleString()}`, 'Ventas']} />
+                  <Area type="monotone" dataKey="sales" stroke="#6D28D9" strokeWidth={2.5} fill="url(#salesGrad)" dot={{ r: 3, fill: '#6D28D9', stroke: 'white', strokeWidth: 2 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
 
-            {/* Orders + Category row */}
             <div className="mx-4 mt-3 grid grid-cols-2 gap-3">
-              {/* Daily orders */}
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-gray-900 font-medium text-sm mb-3">Pedidos diarios</p>
                 <ResponsiveContainer width="100%" height={100}>
                   <BarChart data={dailyOrders} barSize={12}>
                     <XAxis dataKey="day" tick={{ fontSize: 9, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', fontSize: 11 }}
-                    />
+                    <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 2px 10px rgba(0,0,0,0.1)', fontSize: 11 }} />
                     <Bar dataKey="orders" fill="#6D28D9" radius={[4, 4, 0, 0]}>
                       {dailyOrders.map((_, i) => (
                         <Cell key={i} fill={i === 5 ? '#FFD400' : '#EDE9FE'} />
@@ -215,20 +177,11 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 </ResponsiveContainer>
               </div>
 
-              {/* Category pie */}
               <div className="bg-white rounded-2xl p-3 shadow-sm">
                 <p className="text-gray-900 font-medium text-sm mb-2">Por categoría</p>
                 <div className="flex flex-col items-center">
                   <PieChart width={90} height={80}>
-                    <Pie
-                      data={categoryData}
-                      cx={45}
-                      cy={40}
-                      innerRadius={22}
-                      outerRadius={38}
-                      dataKey="value"
-                      strokeWidth={0}
-                    >
+                    <Pie data={categoryData} cx={45} cy={40} innerRadius={22} outerRadius={38} dataKey="value" strokeWidth={0}>
                       {categoryData.map((entry, i) => (
                         <Cell key={i} fill={entry.color} />
                       ))}
@@ -249,7 +202,6 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               </div>
             </div>
 
-            {/* Recent Orders */}
             <div className="mx-4 mt-4">
               <p className="text-gray-900 font-medium text-sm mb-3">Pedidos recientes</p>
               <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -266,10 +218,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-sm font-bold text-gray-900">{order.amount}</p>
-                        <span
-                          className="text-xs px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: si.bg, color: si.text }}
-                        >
+                        <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: si.bg, color: si.text }}>
                           {si.label}
                         </span>
                       </div>
@@ -307,23 +256,17 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
               { name: 'Pizza Express', role: 'Tienda', status: 'pending', time: 'hace 2h' },
             ].map((user) => (
               <div key={user.name} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-                  style={{ backgroundColor: '#EDE9FE', fontSize: 18 }}
-                >
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EDE9FE', fontSize: 18 }}>
                   {user.role === 'Cliente' ? '👤' : user.role === 'Repartidor' ? '🛵' : '🏪'}
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-900">{user.name}</p>
                   <p className="text-xs text-gray-400">{user.role} · {user.time}</p>
                 </div>
-                <span
-                  className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
-                  style={{
-                    backgroundColor: user.status === 'active' ? '#D1FAE5' : user.status === 'suspended' ? '#FEE2E2' : '#FEF3C7',
-                    color: user.status === 'active' ? '#065F46' : user.status === 'suspended' ? '#991B1B' : '#92400E',
-                  }}
-                >
+                <span className="text-xs px-2 py-0.5 rounded-full flex-shrink-0" style={{
+                  backgroundColor: user.status === 'active' ? '#D1FAE5' : user.status === 'suspended' ? '#FEE2E2' : '#FEF3C7',
+                  color: user.status === 'active' ? '#065F46' : user.status === 'suspended' ? '#991B1B' : '#92400E',
+                }}>
                   {user.status === 'active' ? 'Activo' : user.status === 'suspended' ? 'Suspendido' : 'Pendiente'}
                 </span>
               </div>
@@ -334,10 +277,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         {activeTab === 'map' && (
           <div className="px-4 pt-4">
             <p className="text-gray-900 font-medium text-sm mb-3">Mapa global en vivo</p>
-            <div
-              className="rounded-2xl overflow-hidden shadow-sm"
-              style={{ backgroundColor: '#E8F0E8', height: 320, position: 'relative' }}
-            >
+            <div className="rounded-2xl overflow-hidden shadow-sm" style={{ backgroundColor: '#E8F0E8', height: 320, position: 'relative' }}>
               <svg className="absolute inset-0 w-full h-full opacity-25" viewBox="0 0 100 100">
                 {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((v) => (
                   <g key={v}>
@@ -354,7 +294,6 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <path d="M80 0 Q82 40 85 100" stroke="white" strokeWidth="3" fill="none" />
               </svg>
 
-              {/* Driver pins */}
               {[
                 { x: 15, y: 40, label: 'Carlos' },
                 { x: 35, y: 60, label: 'Miguel' },
@@ -369,36 +308,24 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                   animate={{ y: [0, -3, 0] }}
                   transition={{ repeat: Infinity, duration: 2, delay: Math.random() * 2 }}
                 >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center shadow-md border-2 border-white"
-                    style={{ backgroundColor: '#6D28D9', fontSize: 12 }}
-                  >
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-md border-2 border-white" style={{ backgroundColor: '#6D28D9', fontSize: 12 }}>
                     🛵
                   </div>
                 </motion.div>
               ))}
 
-              {/* Store pins */}
               {[
                 { x: 30, y: 25, emoji: '🍔' },
                 { x: 60, y: 65, emoji: '🛒' },
                 { x: 80, y: 30, emoji: '💊' },
               ].map((store, i) => (
-                <div
-                  key={i}
-                  className="absolute flex flex-col items-center"
-                  style={{ left: `${store.x}%`, top: `${store.y}%`, transform: 'translate(-50%, -50%)' }}
-                >
-                  <div
-                    className="w-7 h-7 rounded-full flex items-center justify-center shadow-md border-2 border-white"
-                    style={{ backgroundColor: '#22C55E', fontSize: 12 }}
-                  >
+                <div key={i} className="absolute flex flex-col items-center" style={{ left: `${store.x}%`, top: `${store.y}%`, transform: 'translate(-50%, -50%)' }}>
+                  <div className="w-7 h-7 rounded-full flex items-center justify-center shadow-md border-2 border-white" style={{ backgroundColor: '#22C55E', fontSize: 12 }}>
                     {store.emoji}
                   </div>
                 </div>
               ))}
 
-              {/* Stats overlay */}
               <div className="absolute top-3 left-3 bg-white/90 rounded-xl px-3 py-2 shadow">
                 <p className="text-xs font-bold text-gray-900">🟢 23 repartidores online</p>
                 <p className="text-xs text-gray-500">38 pedidos activos</p>
@@ -438,13 +365,11 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
                 <span style={{ fontSize: 20 }}>{icon}</span>
                 <span className="flex-1 text-gray-700 font-medium text-sm">{label}</span>
                 <span className="text-sm text-gray-500">{value}</span>
-                <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="2">
-                  <polyline points="9,18 15,12 9,6" />
-                </svg>
+                <ChevronRight size={14} className="text-gray-300" />
               </div>
             ))}
             <button
-              onClick={() => onNavigate('login')}
+              onClick={logout}
               className="w-full bg-red-50 rounded-2xl px-4 py-3.5 flex items-center gap-3 text-left"
             >
               <span style={{ fontSize: 20 }}>🚪</span>
@@ -454,11 +379,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
         )}
       </div>
 
-      {/* Bottom Nav */}
-      <div
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 max-w-md lg:max-w-6xl mx-auto"
-        style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}
-      >
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 flex items-center justify-around px-2 py-2 z-40 lg:hidden" style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.08)' }}>
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -470,9 +391,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps) {
             >
               <Icon size={22} style={{ color: isActive ? '#6D28D9' : '#9CA3AF' }} strokeWidth={isActive ? 2.5 : 1.8} />
               <span style={{ fontSize: 10, color: isActive ? '#6D28D9' : '#9CA3AF' }}>{tab.label}</span>
-              {isActive && (
-                <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />
-              )}
+              {isActive && <div className="absolute -top-px left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full" style={{ backgroundColor: '#6D28D9' }} />}
             </button>
           );
         })}
