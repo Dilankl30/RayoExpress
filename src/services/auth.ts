@@ -1,4 +1,4 @@
-import { getSupabase } from './supabase';
+import { getSupabase, isSupabaseReady } from './supabase';
 import { hashText } from './validation';
 import type { Role } from '../app/types';
 
@@ -12,6 +12,7 @@ export type Profile = {
 };
 
 export async function getProfile(userId: string): Promise<Profile | null> {
+  if (!isSupabaseReady) return null;
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('profiles')
@@ -23,6 +24,7 @@ export async function getProfile(userId: string): Promise<Profile | null> {
 }
 
 export async function upsertProfile(userId: string, role: Role, data?: Partial<Profile>) {
+  if (!isSupabaseReady) return;
   const supabase = getSupabase();
   const payload = {
     id: userId,
@@ -37,6 +39,7 @@ export async function upsertProfile(userId: string, role: Role, data?: Partial<P
 }
 
 export async function saveSecurityQuestion(userId: string, question: string, answer: string) {
+  if (!isSupabaseReady) return;
   const supabase = getSupabase();
   const answerHash = await hashText(answer);
   const { error } = await supabase.from('password_recovery_questions').upsert({
@@ -49,6 +52,7 @@ export async function saveSecurityQuestion(userId: string, question: string, ans
 }
 
 export async function verifySecurityAnswer(userId: string, answer: string): Promise<boolean> {
+  if (!isSupabaseReady) return false;
   const supabase = getSupabase();
   const answerHash = await hashText(answer);
   const { data, error } = await supabase
@@ -61,6 +65,7 @@ export async function verifySecurityAnswer(userId: string, answer: string): Prom
 }
 
 export async function getRecoveryQuestion(userId: string): Promise<string | null> {
+  if (!isSupabaseReady) return null;
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('password_recovery_questions')
@@ -72,6 +77,7 @@ export async function getRecoveryQuestion(userId: string): Promise<string | null
 }
 
 export async function sendPasswordReset(email: string): Promise<void> {
+  if (!isSupabaseReady) throw new Error('Mock mode: no email service configured');
   const supabase = getSupabase();
   const { error } = await supabase.auth.resetPasswordForEmail(email);
   if (error) throw error;
