@@ -17,12 +17,12 @@ export async function logAuditEvent(entry: AuditEntry) {
   }
   try {
     const supabase = getSupabase();
-    await supabase.from('audit_log').insert({
-      user_id: entry.userId,
-      action: entry.action,
-      entity_type: entry.entityType,
-      entity_id: entry.entityId ?? null,
-      details: entry.details ?? null,
+    await supabase.rpc('log_audit_event', {
+      p_user_id: entry.userId,
+      p_action: entry.action,
+      p_entity_type: entry.entityType,
+      p_entity_id: entry.entityId ?? null,
+      p_details: entry.details ?? null,
     });
   } catch {
     console.warn('Audit log insert failed (non-critical)');

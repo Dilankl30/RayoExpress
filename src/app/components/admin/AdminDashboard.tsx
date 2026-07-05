@@ -13,7 +13,7 @@ import {
   getCategoryDistribution, getRecentOrders, getUserCountsByRole, getRecentUsers,
 } from '../../../modules/admin/application/admin-analytics.service';
 import { AdminApplications } from '../../../modules/admin/ui/AdminApplications';
-import type { RecentOrder, RecentUser } from '../../../modules/admin/application/admin-analytics.service';
+import type { RecentOrder, RecentUser, DailyOrders } from '../../../modules/admin/application/admin-analytics.service';
 
 const PIE_COLORS = ['var(--brand)', '#22C55E', '#F59E0B', '#3B82F6', '#EF4444'];
 
@@ -29,7 +29,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 ];
 
 export function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [period, setPeriod] = useState('7d');
   const [kpis, setKpis] = useState({ totalSales: 0, totalOrders: 0, activeStores: 0, activeDrivers: 0, totalDrivers: 0, totalUsers: 0, avgOrderValue: 0, conversionRate: 0, pendingOrders: 0 });
@@ -66,7 +66,7 @@ export function AdminDashboard() {
           pendingOrders: 0,
         });
         setMonthlySales(ms);
-        setDailyOrders(dO);
+        setDailyOrders(dO.map((o: DailyOrders) => ({ date: o.day, orders: o.orders })));
         setCategoryDist(cD);
         setRecentOrders(rO);
         setUsersByRole([
@@ -299,11 +299,11 @@ export function AdminDashboard() {
                 {recentOrders.slice(0, 10).map((order) => (
                   <div key={order.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9FAFB', fontSize: 16 }}>
-                      {order.store_emoji || '📦'}
+                      📦
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-start">
-                        <p className="text-sm text-text-primary truncate">{order.store_name || order.id.slice(0, 8)}</p>
+                        <p className="text-sm text-text-primary truncate">{order.store || order.id.slice(0, 8)}</p>
                         <p className="text-sm font-medium" style={{ color: '#22C55E' }}>${order.amount.toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -339,7 +339,7 @@ export function AdminDashboard() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-text-primary truncate">{u.full_name || 'Usuario'}</p>
                       <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-text-secondary">{u.email || '—'}</span>
+                        <span className="text-xs text-text-secondary">—</span>
                         <span className="text-xs px-1.5 py-0.5 rounded-full bg-brand-light text-brand capitalize">{u.role}</span>
                       </div>
                     </div>

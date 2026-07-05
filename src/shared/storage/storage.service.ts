@@ -34,7 +34,6 @@ function validateFile(file: File, bucket: BucketName): string | null {
 }
 
 function buildPath(bucket: BucketName, entityId: string, fileName: string): string {
-  const ext = fileName.split('.').pop() || 'jpg';
   const timestamp = Date.now();
   const safe = fileName.replace(/[^a-zA-Z0-9_.-]/g, '_').slice(0, 50);
   return `${bucket}/${entityId}/${timestamp}-${safe}`;
@@ -117,7 +116,6 @@ export async function getFileUrl(
   if (!path) return null;
   if (!isSupabaseReady) return path;
 
-  const config = BUCKET_CONFIG[bucket];
   const isPublic = bucket === 'product-images' || bucket === 'avatars';
 
   if (isPublic) {

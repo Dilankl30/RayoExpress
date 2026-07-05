@@ -197,30 +197,30 @@ export function CartScreen() {
             </div>
 
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm space-y-4">
-              <h3 className="text-2xl font-bold text-[#12001f]">Datos de entrega</h3>
+              <h3 className="text-2xl font-bold text-text-primary">Datos de entrega</h3>
               <div className="flex gap-3">
-                <Bike size={24} className="text-[#12001f]" />
+                <Bike size={24} className="text-text-primary" />
                 <div className="flex-1">
-                  <p className="font-bold text-[#12001f]">Delivery</p>
+                  <p className="font-bold text-text-primary">Delivery</p>
                   <p className="text-gray-500">20-40 min</p>
                 </div>
-                <button className="font-bold text-[#12001f]">Cambiar</button>
+                <button className="font-bold text-text-primary">Cambiar</button>
               </div>
               <div className="flex gap-3">
-                <MapPin size={24} className="text-[#12001f]" />
+                <MapPin size={24} className="text-text-primary" />
                 <div className="flex-1">
-                  <p className="font-bold text-[#12001f]">Lo recibes en</p>
+                  <p className="font-bold text-text-primary">Lo recibes en</p>
                   <p className="text-gray-500">{address}</p>
                 </div>
-                <button className="font-bold text-[#12001f]">Cambiar</button>
+                <button className="font-bold text-text-primary">Cambiar</button>
               </div>
               <div className="flex gap-3">
-                <FileText size={24} className="text-[#12001f]" />
+                <FileText size={24} className="text-text-primary" />
                 <div className="flex-1">
-                  <p className="font-bold text-[#12001f]">Instrucciones de entrega</p>
+                  <p className="font-bold text-text-primary">Instrucciones de entrega</p>
                   <p className="text-gray-500">{note || 'Sin instrucciones'}</p>
                 </div>
-                <button className="font-bold text-[#12001f]">Editar</button>
+                <button className="font-bold text-text-primary">Editar</button>
               </div>
             </div>
 
@@ -238,12 +238,12 @@ export function CartScreen() {
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="font-bold text-[#12001f]">Que prefieres si hay productos agotados?</p>
+                  <p className="font-bold text-text-primary">Que prefieres si hay productos agotados?</p>
                   <p className="text-gray-500">{replacement}</p>
                 </div>
                 <button
                   onClick={() => setReplacement(replacement === 'Elegir reemplazos' ? 'Cancelar productos agotados' : 'Elegir reemplazos')}
-                  className="font-bold text-[#12001f]"
+                  className="font-bold text-text-primary"
                 >
                   Editar
                 </button>
@@ -251,10 +251,10 @@ export function CartScreen() {
             </div>
 
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
-              <h3 className="text-2xl font-bold text-[#12001f] mb-3">Datos de facturacion</h3>
+              <h3 className="text-2xl font-bold text-text-primary mb-3">Datos de facturacion</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Nombre o razon social" className="bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm" />
-                <input value={billingId} onChange={(e) => setBillingId(e.target.value)} placeholder="Cedula/RUC" className="bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm" />
+                <input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Nombre o razon social" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
+                <input value={billingId} onChange={(e) => setBillingId(e.target.value)} placeholder="Cedula/RUC" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
               </div>
             </div>
 
@@ -373,7 +373,7 @@ export function CartScreen() {
                     value={cashAmount}
                     onChange={(e) => setCashAmount(e.target.value)}
                     placeholder="Con cuanto pagas? Ej. 10.00"
-                    className="w-full bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm"
+                    className="w-full bg-surface rounded-xl px-3 py-3 outline-none text-sm"
                   />
                 </div>
               )}

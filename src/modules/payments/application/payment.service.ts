@@ -23,7 +23,7 @@ export async function uploadReceipt(orderId: string, file: File): Promise<string
   return path;
 }
 
-export async function savePaymentReceipt(orderId: string, method: string, amount: number, receiptUrl: string | null) {
+export async function savePaymentReceipt(orderId: string, method: string, amount: number, receiptUrl: string | null, userId = '') {
   if (!validatePaymentMethod(method)) throw new Error(`Método de pago inválido: ${method}`);
   if (!isPositiveNumber(amount)) throw new Error('Monto inválido');
   if (!isSupabaseReady) {
@@ -38,6 +38,7 @@ export async function savePaymentReceipt(orderId: string, method: string, amount
       created_at: new Date().toISOString(),
     };
     mockTransactions.push(tx);
+    logAuditEvent({ userId, action: 'PAYMENT_CREATED', entityType: 'payment', entityId: tx.id, details: { orderId, method, amount } }).catch(() => {});
     return tx;
   }
   const supabase = getSupabase();
@@ -47,6 +48,7 @@ export async function savePaymentReceipt(orderId: string, method: string, amount
     .select()
     .single();
   if (error) throw error;
+  logAuditEvent({ userId, action: 'PAYMENT_CREATED', entityType: 'payment', entityId: data.id, details: { orderId, method, amount } }).catch(() => {});
   return data;
 }
 
@@ -83,4 +85,28 @@ export async function verifyPayment(paymentId: string, adminId: string, verified
     .update({ verified, verified_by: adminId })
     .eq('id', paymentId);
   if (error) throw error;
+}
+
+export async function confirmPayment(paymentId: string, userId: string) {
+  if (!isSupabaseReady) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.from('payments').update({ verified: true, verified_by: userId }).eq('id', paymentId);
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'PAYMENT_CONFIRMED', entityType: 'payment', entityId: paymentId }).catch(() => {});
+}
+
+export async function failPayment(paymentId: string, userId: string) {
+  if (!isSupabaseReady) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.from('payments').update({ verified: false, verified_by: userId }).eq('id', paymentId);
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'PAYMENT_FAILED', entityType: 'payment', entityId: paymentId }).catch(() => {});
+}
+
+export async function initiateRefund(paymentId: string, userId: string, reason?: string) {
+  if (!isSupabaseReady) return;
+  const supabase = getSupabase();
+  const { error } = await supabase.from('payments').update({ verified: false, verified_by: userId }).eq('id', paymentId);
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'REFUND_INITIATED', entityType: 'payment', entityId: paymentId, details: { reason } }).catch(() => {});
 }

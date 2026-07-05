@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, Clock, Store, Bike, User, Mail, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Store, Bike, User, Mail, Calendar } from 'lucide-react';
 import {
   getPendingStoreApplications, getPendingDriverApplications,
   approveStoreApplication, rejectStoreApplication,

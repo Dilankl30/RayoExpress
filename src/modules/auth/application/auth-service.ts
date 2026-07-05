@@ -1,5 +1,7 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import { hashText } from '../../../shared/validation';
+import { logAuditEvent } from '../../audit/application/audit.service';
+import { checkRateLimit, recordAttempt, resetAttempts } from '../../../shared/auth/rate-limiter';
 import type { Role } from '../../../shared/types';
 
 export type Profile = {
@@ -10,6 +12,34 @@ export type Profile = {
   avatar_url: string | null;
   is_suspended: boolean;
 };
+
+export async function loginUser(email: string, password: string) {
+  if (!isSupabaseReady) throw new Error('Supabase not configured');
+
+  if (!checkRateLimit(email, 5, 15 * 60 * 1000)) {
+    throw new Error('Demasiados intentos. Intenta de nuevo en 15 minutos.');
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) {
+    recordAttempt(email);
+    logAuditEvent({ userId: '', action: 'LOGIN_FAILED', entityType: 'user', details: { email } }).catch(() => {});
+    throw error;
+  }
+  resetAttempts(email);
+  logAuditEvent({ userId: data.user?.id ?? '', action: 'LOGIN', entityType: 'user', details: { email } }).catch(() => {});
+  return data;
+}
+
+export async function registerUser(email: string, password: string, options?: { data?: Record<string, unknown> }) {
+  if (!isSupabaseReady) throw new Error('Supabase not configured');
+  const supabase = getSupabase();
+  const { data, error } = await supabase.auth.signUp({ email, password, options });
+  if (error) throw error;
+  logAuditEvent({ userId: data.user?.id ?? '', action: 'REGISTER', entityType: 'user', entityId: data.user?.id, details: { email } }).catch(() => {});
+  return data;
+}
 
 export async function getProfile(userId: string): Promise<Profile | null> {
   if (!isSupabaseReady) return null;
@@ -90,4 +120,5 @@ export async function sendPasswordReset(email: string): Promise<void> {
   const supabase = getSupabase();
   const { error } = await supabase.auth.resetPasswordForEmail(email);
   if (error) throw error;
+  logAuditEvent({ userId: '', action: 'PASSWORD_RESET_REQUESTED', entityType: 'user', details: { email } }).catch(() => {});
 }

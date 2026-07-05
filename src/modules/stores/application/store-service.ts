@@ -2,6 +2,7 @@ import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/cli
 import {
   mockStores, mockCategories, getMockProductsByStore, getMockProductsByCategory,
 } from '../../../shared/lib/mockData';
+import { logAuditEvent } from '../../audit/application/audit.service';
 import type { Database } from '../../../shared/types';
 
 type Store = Database['public']['Tables']['stores']['Row'];
@@ -56,4 +57,72 @@ export async function getProductsByCategory(categoryId: string): Promise<Product
     .order('name');
   if (error) throw error;
   return data ?? [];
+}
+
+export async function createStore(data: { name: string; description?: string; emoji?: string; user_id: string }) {
+  if (!isSupabaseReady) {
+    const store = { id: `mock-store-${Date.now()}`, ...data };
+    logAuditEvent({ userId: data.user_id, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name } }).catch(() => {});
+    return store;
+  }
+  const supabase = getSupabase();
+  const { data: result, error } = await supabase
+    .from('stores')
+    .insert({ name: data.name, description: data.description ?? null, emoji: data.emoji ?? '🏪', user_id: data.user_id })
+    .select()
+    .single();
+  if (error) throw error;
+  logAuditEvent({ userId: data.user_id, action: 'STORE_CREATED', entityType: 'store', entityId: result.id, details: { name: data.name } }).catch(() => {});
+  return result;
+}
+
+export async function updateStore(storeId: string, userId: string, updates: Partial<{ name: string; description: string; emoji: string; is_open: boolean; min_order: number; delivery_fee: number }>) {
+  if (!isSupabaseReady) {
+    logAuditEvent({ userId, action: 'STORE_UPDATED', entityType: 'store', entityId: storeId, details: updates }).catch(() => {});
+    return { id: storeId, ...updates };
+  }
+  const supabase = getSupabase();
+  const { error } = await supabase.from('stores').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', storeId);
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'STORE_UPDATED', entityType: 'store', entityId: storeId, details: updates }).catch(() => {});
+}
+
+export async function createProduct(storeId: string, userId: string, product: { name: string; price: number; description?: string; category_id?: string; emoji?: string; image_url?: string }) {
+  if (!isSupabaseReady) {
+    const p = { ...product, id: `mock-prod-${Date.now()}`, store_id: storeId, is_active: true };
+    logAuditEvent({ userId, action: 'PRODUCT_CREATED', entityType: 'product', entityId: p.id, details: { storeId, name: product.name } }).catch(() => {});
+    return p;
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('products')
+    .insert({ ...product, store_id: storeId, is_active: true })
+    .select()
+    .single();
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'PRODUCT_CREATED', entityType: 'product', entityId: data.id, details: { storeId, name: product.name } }).catch(() => {});
+  return data;
+}
+
+export async function updateProduct(productId: string, userId: string, updates: Partial<{ name: string; price: number; description: string; category_id: string; emoji: string; image_url: string; is_active: boolean }>) {
+  if (!isSupabaseReady) {
+    logAuditEvent({ userId, action: 'PRODUCT_UPDATED', entityType: 'product', entityId: productId, details: updates }).catch(() => {});
+    return { id: productId, ...updates };
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase.from('products').update(updates).eq('id', productId).select().single();
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'PRODUCT_UPDATED', entityType: 'product', entityId: productId, details: updates }).catch(() => {});
+  return data;
+}
+
+export async function deleteProduct(productId: string, userId: string) {
+  if (!isSupabaseReady) {
+    logAuditEvent({ userId, action: 'PRODUCT_DELETED', entityType: 'product', entityId: productId }).catch(() => {});
+    return;
+  }
+  const supabase = getSupabase();
+  const { error } = await supabase.from('products').delete().eq('id', productId);
+  if (error) throw error;
+  logAuditEvent({ userId, action: 'PRODUCT_DELETED', entityType: 'product', entityId: productId }).catch(() => {});
 }

@@ -6,6 +6,9 @@ import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
+import type { Database } from '../../../shared/types';
+
+type Order = Database['public']['Tables']['orders']['Row'];
 
 const ORDER_HISTORY_KEY = 'rayoexpress-orders';
 
@@ -33,7 +36,7 @@ export function TrackingScreen() {
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [view, setView] = useState<'active' | 'history'>('active');
-  const [orders, setOrders] = useState<Record<string, unknown>[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [showChat, setShowChat] = useState(false);
 
@@ -45,11 +48,11 @@ export function TrackingScreen() {
         const userId = user.id;
         const data = await getMyOrders(userId);
         if (data && data.length > 0) {
-          setOrders(data as Record<string, unknown>[]);
-          const latest = data[0] as Record<string, unknown>;
-          const status = (latest.status as string) || 'pending';
+          setOrders(data as Order[]);
+          const latest = data[0];
+          const status = latest.status || 'pending';
           setCurrentStep(getStepIndex(status as OrderStatus));
-          saveOrderHistory(latest.id as string);
+          saveOrderHistory(latest.id);
         }
       } finally {
         setLoadingOrders(false);
@@ -217,7 +220,7 @@ export function TrackingScreen() {
             animate={{ left: `${driverPos.x}%`, top: `${driverPos.y}%` }}
             transition={{ duration: 1.5, ease: 'easeInOut' }}
           >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-3 border-white" style={{ backgroundColor: 'var(--brand)', border: '3px solid white' }}>
+            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-[3px] border-white" style={{ backgroundColor: 'var(--brand)', border: '3px solid white' }}>
               <span style={{ fontSize: 18 }}>🛵</span>
             </div>
             <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: 'var(--brand)' }}>

@@ -3,7 +3,7 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
 import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
-import { getStoreInfo, toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
+import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
 import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { PaymentVerification } from '../../../modules/payments/ui/PaymentVerification';
 import { FinancialReport } from '../../../modules/payments/ui/FinancialReport';

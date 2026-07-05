@@ -2,6 +2,8 @@ import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/cli
 import { createMockOrder, getMockOrders } from '../../../shared/lib/mockData';
 import { validateOrderInput, validateOrderStatus } from '../../../shared/validation/service-validators';
 import { logAuditEvent } from '../../audit/application/audit.service';
+import { canTransition } from '../domain/order-status.machine';
+import type { Role } from '../../../shared/types';
 
 export interface CreateOrderParams {
   storeId: string;
@@ -73,7 +75,7 @@ export async function getOrderById(orderId: string) {
     .from('orders')
     .select('*, order_items(*), order_status_history(*), driver:profiles!driver_id(full_name, avatar_url), store:stores(name, emoji)')
     .eq('id', orderId)
-    .single();
+    .maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -114,8 +116,14 @@ export async function getDriverOrders(driverId: string) {
   return data ?? [];
 }
 
-export async function updateOrderStatus(orderId: string, status: string, userId?: string) {
+export async function updateOrderStatus(orderId: string, status: string, role?: Role, userId?: string) {
   if (!validateOrderStatus(status)) throw new Error(`Estado de pedido inválido: ${status}`);
+  if (role) {
+    const current = await getOrderById(orderId);
+    if (current && !canTransition(current.status, status, role)) {
+      throw new Error(`Rol '${role}' no puede cambiar el pedido de '${current.status}' a '${status}'`);
+    }
+  }
   if (!isSupabaseReady) return { id: orderId, status };
   if (userId) {
     logAuditEvent({ userId, action: 'order_status_changed', entityType: 'order', entityId: orderId, details: { newStatus: status } }).catch(() => {});
@@ -131,7 +139,10 @@ export async function updateOrderStatus(orderId: string, status: string, userId?
   return data;
 }
 
-export async function assignDriver(orderId: string, driverId: string) {
+export async function assignDriver(orderId: string, driverId: string, role?: Role) {
+  if (role && role !== 'store' && role !== 'admin') {
+    throw new Error(`Rol '${role}' no puede asignar repartidores`);
+  }
   if (!isSupabaseReady) return { id: orderId, driver_id: driverId };
   const supabase = getSupabase();
   const { data, error } = await supabase

@@ -66,7 +66,7 @@ export function canTransition(from: OrderStatus, to: OrderStatus, role: Role): b
 export function getAvailableTransitions(from: OrderStatus, role: Role): OrderStatus[] {
   const allowed = ALLOWED_TRANSITIONS[from];
   if (!allowed) return [];
-  return allowed.to.filter(() => allowed.by.includes(role));
+  return allowed.to.filter((target) => canTransition(from, target, role));
 }
 
 export function getStepIndex(status: OrderStatus): number {

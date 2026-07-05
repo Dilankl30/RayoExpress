@@ -90,7 +90,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const profile = await getProfile(sessionUser.id);
+        let profile = await getProfile(sessionUser.id);
+        if (!profile) {
+          await upsertProfile(sessionUser.id, {
+            full_name: sessionUser.user_metadata?.full_name ?? sessionUser.email ?? null,
+          });
+          profile = await getProfile(sessionUser.id);
+        }
         if (profile) {
           setUser(profile);
           if (!profile.is_suspended) {
@@ -114,7 +120,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       try {
-        const profile = await getProfile(session.user.id);
+        let profile = await getProfile(session.user.id);
+        if (!profile) {
+          await upsertProfile(session.user.id, {
+            full_name: session.user.user_metadata?.full_name ?? session.user.email ?? null,
+          });
+          profile = await getProfile(session.user.id);
+        }
         if (profile) {
           setUser(profile);
           if (!profile.is_suspended) {

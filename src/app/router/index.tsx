@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import type { RouteObject } from 'react-router';
 import { AuthGuard } from './AuthGuard';
 import { RoleGuard } from './RoleGuard';
+import { ErrorBoundary } from '../../shared/components/ErrorBoundary';
 import type { Role } from '../../shared/types';
 
 const LandingScreen = lazy(() => import('../components/public/LandingScreen').then(m => ({ default: m.LandingScreen })));
@@ -33,7 +34,11 @@ function RouteLoader() {
 }
 
 function Lazy({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<RouteLoader />}>{children}</Suspense>;
+  return (
+    <Suspense fallback={<RouteLoader />}>
+      <ErrorBoundary>{children}</ErrorBoundary>
+    </Suspense>
+  );
 }
 
 export function ProtectedRoute({ element, allowedRoles }: { element: React.ReactElement; allowedRoles?: Role[] }) {

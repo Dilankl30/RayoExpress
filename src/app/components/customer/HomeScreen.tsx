@@ -7,8 +7,12 @@ import {
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
-import { getStores, getCategories } from '../../../modules/stores/application/store-service';
+import { getStores, getCategories, getProductsByStore } from '../../../modules/stores/application/store-service';
+import type { Database } from '../../../shared/types';
 import logo from '../../../imports/image-1.png';
+
+type Store = Database['public']['Tables']['stores']['Row'];
+type Category = Database['public']['Tables']['categories']['Row'];
 
 const banners = [
   {
@@ -40,8 +44,9 @@ export function HomeScreen() {
   const [search, setSearch] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [stores, setStores] = useState<any[]>([]);
-  const [categories, setCategories] = useState<any[]>([]);
+  const [stores, setStores] = useState<Store[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -62,6 +67,19 @@ export function HomeScreen() {
       ]);
       setStores(storesData);
       setCategories(catsData);
+      const map: Record<string, Set<string>> = {};
+      for (const store of storesData) {
+        try {
+          const products = await getProductsByStore(store.id);
+          for (const p of products) {
+            if (p.category_id) {
+              if (!map[p.category_id]) map[p.category_id] = new Set();
+              map[p.category_id].add(store.id);
+            }
+          }
+        } catch { /* store sin productos */ }
+      }
+      setCategoryStoreMap(map);
     } catch (err) {
       console.warn('Error loading data:', err);
     }
@@ -72,8 +90,9 @@ export function HomeScreen() {
   };
 
   const filteredStores = stores.filter((s) => {
-    const matchSearch = s.name?.toLowerCase().includes(search.toLowerCase());
-    return matchSearch;
+    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(s.id) ?? true);
+    return matchSearch && matchCategory;
   });
 
   return (

@@ -88,7 +88,7 @@ export function DriverDashboard() {
   const handleDeliveryEvidence = async (file: File, notes: string) => {
     if (!user) return;
     await uploadDeliveryEvidence('order-1', user.id, file, notes);
-    await updateOrderStatus('order-1', 'delivered', user?.id);
+    await updateOrderStatus('order-1', 'delivered', 'driver', user?.id);
     setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
   };
 
