@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Minus, Trash2, Tag,
-  CreditCard, Banknote, Smartphone, Zap, CheckCircle, Upload,
+  Banknote, Smartphone, Zap, CheckCircle, Upload, FileText, MapPin, Bike,
 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
@@ -10,9 +10,8 @@ import { createOrder } from '../../../modules/orders/application/order-service';
 import { uploadReceipt, savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 
 const paymentMethods = [
-  { id: 'cash', label: 'Efectivo', icon: Banknote, color: '#22C55E' },
-  { id: 'card', label: 'Tarjeta', icon: CreditCard, color: '#3B82F6' },
-  { id: 'transfer', label: 'Transferencia', icon: Smartphone, color: '#8B5CF6' },
+  { id: 'cash', label: 'Efectivo', icon: Banknote, color: '#118C62' },
+  { id: 'transfer', label: 'Transferencia', icon: Smartphone, color: '#6D28D9' },
 ];
 
 export function CartScreen() {
@@ -20,10 +19,14 @@ export function CartScreen() {
   const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart();
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
-  const [tip, setTip] = useState<number>(1);
-  const [payMethod, setPayMethod] = useState('card');
+  const [tip, setTip] = useState<number>(0);
+  const [payMethod, setPayMethod] = useState('cash');
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('Av. Amazonas, Quito');
+  const [billingName, setBillingName] = useState('');
+  const [billingId, setBillingId] = useState('');
+  const [cashAmount, setCashAmount] = useState('');
+  const [replacement, setReplacement] = useState('Elegir reemplazos');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -59,9 +62,9 @@ export function CartScreen() {
         productIds: cart.map((i) => i.id),
         quantities: cart.map((i) => i.quantity),
         deliveryAddress: address,
-        paymentMethod: payMethod as 'cash' | 'transfer' | 'card',
+        paymentMethod: payMethod as 'cash' | 'transfer',
         couponCode: couponApplied ? coupon : undefined,
-        notes: note || undefined,
+        notes: [note, replacement ? `Agotados: ${replacement}` : '', billingName ? `Factura: ${billingName} ${billingId}` : '', cashAmount ? `Cambio para ${cashAmount}` : ''].filter(Boolean).join(' | ') || undefined,
         tip,
       });
       if (payMethod === 'transfer' && receiptFile) {
@@ -193,6 +196,34 @@ export function CartScreen() {
               />
             </div>
 
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm space-y-4">
+              <h3 className="text-2xl font-bold text-[#12001f]">Datos de entrega</h3>
+              <div className="flex gap-3">
+                <Bike size={24} className="text-[#12001f]" />
+                <div className="flex-1">
+                  <p className="font-bold text-[#12001f]">Delivery</p>
+                  <p className="text-gray-500">20-40 min</p>
+                </div>
+                <button className="font-bold text-[#12001f]">Cambiar</button>
+              </div>
+              <div className="flex gap-3">
+                <MapPin size={24} className="text-[#12001f]" />
+                <div className="flex-1">
+                  <p className="font-bold text-[#12001f]">Lo recibes en</p>
+                  <p className="text-gray-500">{address}</p>
+                </div>
+                <button className="font-bold text-[#12001f]">Cambiar</button>
+              </div>
+              <div className="flex gap-3">
+                <FileText size={24} className="text-[#12001f]" />
+                <div className="flex-1">
+                  <p className="font-bold text-[#12001f]">Instrucciones de entrega</p>
+                  <p className="text-gray-500">{note || 'Sin instrucciones'}</p>
+                </div>
+                <button className="font-bold text-[#12001f]">Editar</button>
+              </div>
+            </div>
+
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
               <p className="text-sm text-text-primary font-medium mb-2">Nota para el restaurante</p>
               <textarea
@@ -202,6 +233,29 @@ export function CartScreen() {
                 className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-text-primary outline-none resize-none placeholder:text-text-secondary"
                 rows={2}
               />
+            </div>
+
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-bold text-[#12001f]">Que prefieres si hay productos agotados?</p>
+                  <p className="text-gray-500">{replacement}</p>
+                </div>
+                <button
+                  onClick={() => setReplacement(replacement === 'Elegir reemplazos' ? 'Cancelar productos agotados' : 'Elegir reemplazos')}
+                  className="font-bold text-[#12001f]"
+                >
+                  Editar
+                </button>
+              </div>
+            </div>
+
+            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
+              <h3 className="text-2xl font-bold text-[#12001f] mb-3">Datos de facturacion</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Nombre o razon social" className="bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm" />
+                <input value={billingId} onChange={(e) => setBillingId(e.target.value)} placeholder="Cedula/RUC" className="bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm" />
+              </div>
             </div>
 
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
@@ -310,6 +364,16 @@ export function CartScreen() {
                       const f = e.target.files?.[0];
                       if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)); }
                     }}
+                  />
+                </div>
+              )}
+              {payMethod === 'cash' && (
+                <div className="mt-3">
+                  <input
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    placeholder="Con cuanto pagas? Ej. 10.00"
+                    className="w-full bg-gray-50 rounded-xl px-3 py-3 outline-none text-sm"
                   />
                 </div>
               )}

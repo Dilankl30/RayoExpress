@@ -10,6 +10,13 @@ const HomeScreen = lazy(() => import('../components/customer/HomeScreen').then(m
 const StoreDetailScreen = lazy(() => import('../components/customer/StoreDetailScreen').then(m => ({ default: m.StoreDetailScreen })));
 const CartScreen = lazy(() => import('../components/customer/CartScreen').then(m => ({ default: m.CartScreen })));
 const TrackingScreen = lazy(() => import('../components/customer/TrackingScreen').then(m => ({ default: m.TrackingScreen })));
+const OrdersScreen = lazy(() => import('../components/customer/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
+const PromotionsScreen = lazy(() => import('../components/customer/PromotionsScreen').then(m => ({ default: m.PromotionsScreen })));
+const FavoritesScreen = lazy(() => import('../components/customer/FavoritesScreen').then(m => ({ default: m.FavoritesScreen })));
+const AddressesScreen = lazy(() => import('../components/customer/AddressesScreen').then(m => ({ default: m.AddressesScreen })));
+const PersonalInfoScreen = lazy(() => import('../components/customer/PersonalInfoScreen').then(m => ({ default: m.PersonalInfoScreen })));
+const NotificationSettingsScreen = lazy(() => import('../components/customer/NotificationSettingsScreen').then(m => ({ default: m.NotificationSettingsScreen })));
+const WalletScreen = lazy(() => import('../components/customer/WalletScreen').then(m => ({ default: m.WalletScreen })));
 const DriverDashboard = lazy(() => import('../components/driver/DriverDashboard').then(m => ({ default: m.DriverDashboard })));
 const StoreDashboard = lazy(() => import('../components/store/StoreDashboard').then(m => ({ default: m.StoreDashboard })));
 const AdminDashboard = lazy(() => import('../components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -44,7 +51,7 @@ export function ProtectedRoute({ element, allowedRoles }: { element: React.React
 }
 
 const roleRoutes: Record<Role, string[]> = {
-  customer: ['home', 'store-detail', 'cart', 'tracking', 'profile'],
+  customer: ['home', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
   driver: ['driver', 'profile'],
   store: ['store-admin', 'profile'],
   admin: ['admin', 'profile'],
@@ -70,6 +77,34 @@ export const screenRoutes: RouteObject[] = [
   {
     path: '/tracking',
     element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<TrackingScreen />} /></Lazy>,
+  },
+  {
+    path: '/orders',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<OrdersScreen />} /></Lazy>,
+  },
+  {
+    path: '/promotions',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<PromotionsScreen />} /></Lazy>,
+  },
+  {
+    path: '/favorites',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<FavoritesScreen />} /></Lazy>,
+  },
+  {
+    path: '/addresses',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<AddressesScreen />} /></Lazy>,
+  },
+  {
+    path: '/personal-info',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<PersonalInfoScreen />} /></Lazy>,
+  },
+  {
+    path: '/notification-settings',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<NotificationSettingsScreen />} /></Lazy>,
+  },
+  {
+    path: '/wallet',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<WalletScreen />} /></Lazy>,
   },
   {
     path: '/driver',
@@ -98,6 +133,13 @@ export const screenPathMap: Record<string, string> = {
   'store-detail': '/store-detail',
   cart: '/cart',
   tracking: '/tracking',
+  orders: '/orders',
+  promotions: '/promotions',
+  favorites: '/favorites',
+  addresses: '/addresses',
+  'personal-info': '/personal-info',
+  'notification-settings': '/notification-settings',
+  wallet: '/wallet',
   driver: '/driver',
   'store-admin': '/store-admin',
   admin: '/admin',

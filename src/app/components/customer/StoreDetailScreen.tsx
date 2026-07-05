@@ -4,10 +4,11 @@ import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCa
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { getStoreById, getProductsByStore } from '../../../modules/stores/application/store-service';
+import { customerStorage } from './customerLocalState';
 
 export function StoreDetailScreen() {
   const { navigate, navigationParams } = useAuth();
-  const { addToCart, cartCount } = useCart();
+  const { addToCart, cartCount, updateQuantity, cart } = useCart();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState('Todo');
@@ -34,6 +35,7 @@ export function StoreDetailScreen() {
       ]);
       setStore(storeData);
       setProducts(productsData);
+      setLiked(customerStorage.isFavorite(storeId, 'store'));
     } catch (err) {
       console.warn('Error loading store:', err);
     } finally {
@@ -55,10 +57,20 @@ export function StoreDetailScreen() {
   const increment = (item: any) => {
     const newQty = getQty(item.id) + 1;
     setQuantities((prev) => ({ ...prev, [item.id]: newQty }));
-    addToCart({ id: item.id, name: item.name, price: item.price, quantity: 1, emoji: item.emoji });
+    addToCart({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: 1,
+      emoji: item.emoji,
+      storeId: store?.id,
+      storeName: store?.name,
+    });
   };
 
   const decrement = (id: string) => {
+    const currentCartQty = cart.find((item) => item.id === id)?.quantity || 0;
+    updateQuantity(id, currentCartQty - 1);
     setQuantities((prev) => ({ ...prev, [id]: Math.max(0, (prev[id] || 0) - 1) }));
   };
 
@@ -92,7 +104,17 @@ export function StoreDetailScreen() {
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setLiked(!liked)}
+              onClick={() => {
+                if (!store) return;
+                const next = customerStorage.toggleFavorite({
+                  id: store.id,
+                  kind: 'store',
+                  name: store.name,
+                  subtitle: store.description || 'Local disponible',
+                  emoji: store.emoji || '🏪',
+                });
+                setLiked(next.some((fav) => fav.id === store.id && fav.kind === 'store'));
+              }}
               className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
             >
               <Heart size={18} fill={liked ? 'var(--danger)' : 'none'} style={{ color: liked ? 'var(--danger)' : '#374151' }} />
@@ -201,7 +223,22 @@ export function StoreDetailScreen() {
                   </div>
                   <p className="text-xs text-text-secondary mt-0.5 line-clamp-2">{item.description || ''}</p>
                   <div className="flex items-center justify-between mt-2">
-                    <p className="font-bold" style={{ color: 'var(--brand)' }}>${item.price?.toFixed(2)}</p>
+                    <div>
+                      <p className="font-bold" style={{ color: 'var(--brand)' }}>${item.price?.toFixed(2)}</p>
+                      <button
+                        className="text-xs font-bold text-text-secondary"
+                        onClick={() => customerStorage.toggleFavorite({
+                          id: item.id,
+                          kind: 'product',
+                          name: item.name,
+                          subtitle: store?.name || 'Producto',
+                          emoji: item.emoji || '🛒',
+                          price: item.price,
+                        })}
+                      >
+                        Guardar favorito
+                      </button>
+                    </div>
                     <div className="flex items-center gap-2">
                       {getQty(item.id) > 0 ? (
                         <div className="flex items-center gap-2 rounded-xl border border-border px-1">

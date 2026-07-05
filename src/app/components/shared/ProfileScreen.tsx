@@ -1,160 +1,119 @@
-import { useState } from 'react';
-import { motion } from 'motion/react';
-import { User, Save, ArrowLeft, Camera } from 'lucide-react';
+import {
+  Bell,
+  ChevronRight,
+  CircleHelp,
+  Heart,
+  Info,
+  LogOut,
+  MapPin,
+  Store,
+  Ticket,
+  User,
+  Users,
+  Wallet,
+} from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { updateProfile } from '../../../modules/auth/application/update-profile.use-case';
-import { uploadFileWithUpsert, getPublicUrl } from '../../../shared/storage/storage.service';
-import { isSupabaseReady } from '../../../integrations/supabase/client';
+
+function MenuRow({
+  icon: Icon,
+  label,
+  sub,
+  badge,
+  onClick,
+}: {
+  icon: typeof User;
+  label: string;
+  sub?: string;
+  badge?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button onClick={onClick} className="w-full flex items-center gap-4 py-4 text-left">
+      <Icon size={28} className="text-text-primary" />
+      <span className="flex-1">
+        <span className="text-lg text-text-primary">{label}</span>
+        {sub && <span className="block text-sm text-text-secondary">{sub}</span>}
+      </span>
+      {badge && <span className="rounded-full bg-cyan-300 px-2 py-0.5 text-xs font-bold text-text-primary">{badge}</span>}
+      <ChevronRight size={28} className="text-text-primary" />
+    </button>
+  );
+}
 
 export function ProfileScreen() {
-  const { user, setUser, navigate, logout } = useAuth();
-  const [fullName, setFullName] = useState(user?.full_name || '');
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState('');
-
+  const { user, navigate, logout } = useAuth();
   if (!user) return null;
 
-  const handleSave = async () => {
-    setSaving(true);
-    setError('');
-    setSaved(false);
-    try {
-      if (isSupabaseReady) {
-        await updateProfile(user.id, { full_name: fullName, phone });
-      }
-      setUser({ ...user, full_name: fullName, phone });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al guardar');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleAvatarUpload = async () => {
-    if (!isSupabaseReady) return;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.onchange = async () => {
-      const file = input.files?.[0];
-      if (!file) return;
-      setSaving(true);
-      try {
-        const { path } = await uploadFileWithUpsert('avatars', user.id, file);
-        const avatarUrl = await getPublicUrl('avatars', path);
-        await updateProfile(user.id, { avatar_url: avatarUrl });
-        setUser({ ...user, avatar_url: avatarUrl });
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : 'Error al subir imagen');
-      } finally {
-        setSaving(false);
-      }
-    };
-    input.click();
-  };
-
   return (
-    <div className="min-h-screen bg-surface">
-      <div className="bg-card border-b border-border-light px-4 py-4 flex items-center gap-3">
-        <button onClick={() => navigate('home')} className="text-text-secondary">
-          <ArrowLeft size={20} />
-        </button>
-        <h1 className="font-bold text-text-primary">Mi Perfil</h1>
-      </div>
-
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
-        <motion.div
-          className="flex flex-col items-center"
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
-          <div className="relative">
-            <div className="w-24 h-24 rounded-full bg-brand-light flex items-center justify-center text-4xl overflow-hidden">
-              {user.avatar_url ? (
-                <img src={user.avatar_url} alt="" className="w-full h-full object-cover" />
-              ) : (
-                <User className="text-brand" size={36} />
-              )}
-            </div>
-            {isSupabaseReady && (
-              <button
-                onClick={handleAvatarUpload}
-                className="absolute bottom-0 right-0 w-8 h-8 bg-brand text-white rounded-full flex items-center justify-center shadow-lg"
-              >
-                <Camera size={14} />
-              </button>
-            )}
+    <div className="min-h-screen bg-surface pb-28">
+      <header className="px-4 pt-12 pb-6 text-center">
+        <div className="flex items-center justify-end">
+          <div className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center font-bold">
+            {(user.full_name || 'R').charAt(0).toLowerCase()}
           </div>
-          <p className="text-sm text-text-secondary mt-2 capitalize">{user.role}</p>
-        </motion.div>
-
-        {error && (
-          <div className="bg-danger-light border border-red-200 rounded-xl px-4 py-3">
-            <p className="text-red-600 text-sm">{error}</p>
-          </div>
-        )}
-
-        {saved && (
-          <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
-            <p className="text-success text-sm">Perfil actualizado</p>
-          </div>
-        )}
-
-        <div className="bg-card rounded-2xl p-5 space-y-4 shadow-sm border border-border-light">
-          <div>
-            <p className="text-xs text-text-secondary mb-1 font-medium">Nombre completo</p>
-            <input
-              type="text"
-              value={fullName}
-              onChange={(e) => setFullName(e.target.value)}
-              placeholder="Tu nombre"
-              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
-            />
-          </div>
-
-          <div>
-            <p className="text-xs text-text-secondary mb-1 font-medium">Teléfono</p>
-            <input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+593 99 999 9999"
-              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
-            />
-          </div>
-
-          <div>
-            <p className="text-xs text-text-secondary mb-1 font-medium">Correo</p>
-            <p className="w-full bg-surface rounded-xl px-4 py-3 text-text-secondary text-sm">
-              {user.id.startsWith('mock-') ? 'demo@rayoexpress.com' : 'Correo registrado'}
-            </p>
-          </div>
-
-          <motion.button
-            onClick={handleSave}
-            disabled={saving}
-            className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--brand)' }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Save size={16} />
-            {saving ? 'Guardando...' : 'Guardar cambios'}
-          </motion.button>
         </div>
+        <h1 className="text-2xl font-bold text-text-primary">Hola, {user.full_name || 'cliente'}!</h1>
+      </header>
 
-        <div className="bg-card rounded-2xl p-5 shadow-sm border border-border-light">
-          <button
-            onClick={logout}
-            className="w-full py-3 rounded-xl text-danger font-medium border border-red-200 hover:bg-danger-light transition-colors text-sm"
-          >
-            Cerrar sesión
+      <main className="px-4 space-y-8">
+        <section className="rounded-2xl bg-brand text-white p-5 flex items-center gap-4">
+          <div className="w-14 h-14 rounded-2xl bg-white text-brand flex items-center justify-center font-bold">plus</div>
+          <div className="flex-1">
+            <h2 className="text-xl font-bold">Prueba Plus!</h2>
+            <p className="text-white/85 text-sm">Envios gratis y beneficios especiales para clientes frecuentes.</p>
+          </div>
+          <ChevronRight />
+        </section>
+
+        <section className="grid grid-cols-4 gap-3 text-center">
+          {[
+            ['Informacion personal', User, 'personal-info'],
+            ['Cupones', Ticket, 'promotions'],
+            ['Rayo Plus', Wallet, 'wallet'],
+            ['Ayuda', CircleHelp, 'orders'],
+          ].map(([label, Icon, screen]) => (
+            <button key={label as string} onClick={() => navigate(screen as any)} className="space-y-2">
+              <span className="h-16 rounded-2xl bg-card flex items-center justify-center shadow-sm"><Icon size={26} /></span>
+              <span className="block text-sm text-text-primary">{label as string}</span>
+            </button>
+          ))}
+        </section>
+
+        <section className="rounded-2xl bg-card p-5 shadow-sm">
+          <h2 className="text-xl font-bold text-text-primary">Completa tu perfil</h2>
+          <p className="text-text-secondary">1 de 3</p>
+          <div className="grid grid-cols-3 gap-2 mt-4">
+            <span className="h-1.5 rounded-full bg-brand" />
+            <span className="h-1.5 rounded-full bg-surface" />
+            <span className="h-1.5 rounded-full bg-surface" />
+          </div>
+          <p className="text-text-secondary mt-2">Describe como se compone tu hogar.</p>
+        </section>
+
+        <section>
+          <h2 className="text-3xl font-bold text-text-primary mb-2">Perfil</h2>
+          <MenuRow icon={MapPin} label="Direcciones" onClick={() => navigate('addresses')} />
+          <MenuRow icon={Heart} label="Favoritos" onClick={() => navigate('favorites')} />
+          <MenuRow icon={Users} label="Grupo familiar" badge="Nuevo" onClick={() => navigate('wallet')} />
+        </section>
+
+        <section>
+          <h2 className="text-3xl font-bold text-text-primary mb-2">Actividad</h2>
+          <MenuRow icon={Wallet} label="Billetera RayoExpress" onClick={() => navigate('wallet')} />
+          <MenuRow icon={Ticket} label="Cupones y promociones" onClick={() => navigate('promotions')} />
+        </section>
+
+        <section>
+          <h2 className="text-3xl font-bold text-text-primary mb-2">Configuracion</h2>
+          <MenuRow icon={Bell} label="Notificaciones" onClick={() => navigate('notification-settings')} />
+          <MenuRow icon={Info} label="Informacion legal" />
+          <MenuRow icon={Store} label="Registrar mi negocio" onClick={() => navigate('register-store')} />
+          <button onClick={logout} className="w-full flex items-center gap-4 py-4 text-left text-text-primary">
+            <LogOut size={28} />
+            <span className="text-lg">Cerrar sesion</span>
           </button>
-        </div>
-      </div>
+        </section>
+      </main>
     </div>
   );
 }
