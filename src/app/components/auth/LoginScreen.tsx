@@ -18,6 +18,9 @@ import logo from '../../../imports/image-1.png';
 
 type AuthStep = 'options' | 'email' | 'code';
 
+const OTP_MIN_LENGTH = 6;
+const OTP_MAX_LENGTH = 8;
+
 const brand = {
   ink: '#12051F',
   primary: '#4514D8',
@@ -179,8 +182,8 @@ export function LoginScreen() {
   };
 
   const verifyEmailCode = async () => {
-    if (cleanCode.length < 6) {
-      setError('Ingresa el codigo de 6 digitos.');
+    if (cleanCode.length < OTP_MIN_LENGTH || cleanCode.length > OTP_MAX_LENGTH) {
+      setError(`Ingresa el codigo de ${OTP_MIN_LENGTH} a ${OTP_MAX_LENGTH} digitos.`);
       return;
     }
 
@@ -462,15 +465,15 @@ export function LoginScreen() {
                 <Field icon={<Sparkles size={20} />} label="Codigo">
                   <input
                     value={cleanCode}
-                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000"
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
+                    placeholder="00000000"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     className="mt-1 w-full bg-transparent text-2xl font-black tracking-[0.24em] text-[#12051F] outline-none placeholder:tracking-normal placeholder:text-[#9A94AA]"
                   />
                 </Field>
 
-                <PrimaryButton onClick={verifyEmailCode} disabled={cleanCode.length < 6} loading={loading}>
+                <PrimaryButton onClick={verifyEmailCode} disabled={cleanCode.length < OTP_MIN_LENGTH} loading={loading}>
                   Verificar codigo
                 </PrimaryButton>
 
