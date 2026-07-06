@@ -61,6 +61,7 @@ export async function upsertProfile(userId: string, data?: Partial<Profile>) {
     full_name: data?.full_name ?? null,
     phone: data?.phone ?? null,
     avatar_url: data?.avatar_url ?? null,
+    role: data?.role ?? 'customer',
     updated_at: new Date().toISOString(),
   };
   const { error } = await supabase.from('profiles').upsert(payload, { onConflict: 'id' });

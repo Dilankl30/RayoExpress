@@ -54,6 +54,8 @@ export function TrackingScreen() {
           setCurrentStep(getStepIndex(status as OrderStatus));
           saveOrderHistory(latest.id);
         }
+      } catch {
+        /* error silencioso — no hay pedidos que mostrar */
       } finally {
         setLoadingOrders(false);
       }
@@ -170,7 +172,7 @@ export function TrackingScreen() {
         className="pt-10 pb-4 px-4 flex items-center justify-between"
         style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}
       >
-        <button onClick={() => navigate('home')} className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+        <button onClick={() => navigate('home')} aria-label="Volver" className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
           <ArrowLeft size={18} className="text-white" />
         </button>
         <div className="text-center">
@@ -312,7 +314,7 @@ export function TrackingScreen() {
               <p className="text-white/70 text-sm mb-4">¿Cómo calificarías tu experiencia?</p>
               <div className="flex justify-center gap-2 mb-4">
                 {[1, 2, 3, 4, 5].map((s) => (
-                  <button key={s} onClick={() => setRating(s)}>
+                  <button key={s} onClick={() => setRating(s)} aria-label={`${s} estrella${s !== 1 ? 's' : ''}`}>
                     <Star size={28} fill={s <= rating ? '#FFD400' : 'none'} stroke={s <= rating ? '#FFD400' : 'rgba(255,255,255,0.5)'} />
                   </button>
                 ))}
@@ -320,7 +322,17 @@ export function TrackingScreen() {
               <button
                 className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
                 style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
-                onClick={() => navigate('home')}
+                onClick={() => {
+                  if (rating > 0 && orders[0]) {
+                    try {
+                      const key = 'rayoexpress-ratings';
+                      const existing = JSON.parse(localStorage.getItem(key) || '{}');
+                      existing[orders[0].id as string] = { rating, date: new Date().toISOString() };
+                      localStorage.setItem(key, JSON.stringify(existing));
+                    } catch { /* noop */ }
+                  }
+                  navigate('home');
+                }}
               >
                 Enviar calificación
               </button>

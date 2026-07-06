@@ -6,7 +6,7 @@ export function WalletScreen() {
   return (
     <div className="min-h-screen bg-white pb-16">
       <div className="bg-[#E90057] px-4 pt-10 pb-14 rounded-b-[32px]">
-        <button onClick={() => navigate('profile')} className="w-12 h-12 rounded-full bg-white flex items-center justify-center"><ArrowLeft size={24} /></button>
+        <button onClick={() => navigate('profile')} aria-label="Volver" className="w-12 h-12 rounded-full bg-white flex items-center justify-center"><ArrowLeft size={24} /></button>
         <section className="bg-white rounded-[28px] text-center mt-8 py-8">
           <h1 className="text-2xl font-bold text-[#12001f]">Saldo</h1>
           <div className="flex items-center justify-center gap-3 mt-3 text-[#12001f]">

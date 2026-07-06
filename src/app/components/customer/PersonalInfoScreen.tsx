@@ -2,18 +2,30 @@ import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 
+const PERSONAL_INFO_KEY = 'rayoexpress-personal-info';
+
+function loadPersonalInfo() {
+  try { return JSON.parse(localStorage.getItem(PERSONAL_INFO_KEY) || '{}'); } catch { return {}; }
+}
+
+function savePersonalInfo(data: Record<string, string>) {
+  try { localStorage.setItem(PERSONAL_INFO_KEY, JSON.stringify({ ...loadPersonalInfo(), ...data })); } catch { /* noop */ }
+}
+
 export function PersonalInfoScreen() {
   const { navigate, user, setUser } = useAuth();
+  const saved = loadPersonalInfo();
   const [firstName, setFirstName] = useState(user?.full_name?.split(' ')[0] || '');
   const [lastName, setLastName] = useState(user?.full_name?.split(' ').slice(1).join(' ') || '');
-  const [nickname, setNickname] = useState('');
-  const [birthDate, setBirthDate] = useState('');
-  const [gender, setGender] = useState('');
+  const [nickname, setNickname] = useState(saved.nickname || '');
+  const [birthDate, setBirthDate] = useState(saved.birthDate || '');
+  const [gender, setGender] = useState(saved.gender || '');
   const canSave = firstName.trim() && lastName.trim();
 
   const save = () => {
     if (!user || !canSave) return;
     setUser({ ...user, full_name: `${firstName} ${lastName}`.trim() });
+    savePersonalInfo({ nickname, birthDate, gender });
     navigate('profile');
   };
 
@@ -25,12 +37,12 @@ export function PersonalInfoScreen() {
       </header>
       <h2 className="text-2xl font-bold text-[#12001f] mb-5">Como te llamas?</h2>
       <div className="space-y-4">
-        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Nombre(s)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
-        <input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Apellido(s)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
-        <input value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Apodo (opcional)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
+        <input aria-label="Nombre" value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Nombre(s)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
+        <input aria-label="Apellido" value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Apellido(s)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
+        <input aria-label="Apodo" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="Apodo (opcional)" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
       </div>
       <h2 className="text-2xl font-bold text-[#12001f] mt-8 mb-5">Cuando naciste?</h2>
-      <input value={birthDate} onChange={(e) => setBirthDate(e.target.value)} placeholder="DD/MM/AAAA" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
+      <input aria-label="Fecha de nacimiento" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} placeholder="DD/MM/AAAA" className="w-full rounded-2xl border border-gray-200 px-4 py-4 outline-none" />
       <h2 className="text-2xl font-bold text-[#12001f] mt-8 mb-5">Con que genero te identificas?</h2>
       <div className="flex flex-wrap gap-2">
         {['Femenino', 'Masculino', 'No binario', 'Prefiero no decirlo'].map((item) => (

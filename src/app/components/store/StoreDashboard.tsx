@@ -4,7 +4,10 @@ import { NotificationBell } from '../../../modules/notifications/ui/Notification
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
 import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
 import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
-import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
+import { getStoreByOwner, getStoreDashboardStats, getStoreRecentOrders } from '../../../modules/stores/application/store-analytics.service';
+import type { OrderSummary } from '../../../modules/stores/application/store-analytics.service';
+import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
+import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import { PaymentVerification } from '../../../modules/payments/ui/PaymentVerification';
 import { FinancialReport } from '../../../modules/payments/ui/FinancialReport';
 
@@ -17,6 +20,8 @@ export function StoreDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ salesToday: 0, activeOrders: 0, productCount: 0, rating: 0 });
+  const [recentOrders, setRecentOrders] = useState<OrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -39,6 +44,12 @@ export function StoreDashboard() {
     };
     load();
   }, [user]);
+
+  useEffect(() => {
+    if (!storeId || activeTab !== 'orders') return;
+    setOrdersLoading(true);
+    getStoreRecentOrders(storeId).then(setRecentOrders).catch(() => {}).finally(() => setOrdersLoading(false));
+  }, [storeId, activeTab]);
 
   const handleToggleOpen = async () => {
     const next = !isOpen;
@@ -140,6 +151,49 @@ export function StoreDashboard() {
             >
               Cerrar sesión
             </button>
+          </div>
+        )}
+
+        {activeTab === 'orders' && (
+          <div className="px-4 pt-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-text-primary font-semibold">Pedidos recientes</h3>
+              <button
+                onClick={() => { if (storeId) { setOrdersLoading(true); getStoreRecentOrders(storeId).then(setRecentOrders).catch(() => {}).finally(() => setOrdersLoading(false)); } }}
+                className="text-sm text-brand font-medium"
+              >
+                Recargar
+              </button>
+            </div>
+            {ordersLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : recentOrders.length === 0 ? (
+              <div className="bg-card rounded-2xl p-8 shadow-sm text-center">
+                <p className="text-3xl mb-2">📋</p>
+                <p className="text-text-primary font-medium">No hay pedidos recientes</p>
+                <p className="text-sm text-text-secondary mt-1">Los pedidos aparecerán aquí cuando lleguen.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {recentOrders.map((order) => (
+                  <div key={order.id} className="bg-card rounded-2xl p-4 shadow-sm flex items-center justify-between">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-2xl">{STATUS_ICONS[order.status as OrderStatus] || '📋'}</span>
+                      <div className="min-w-0">
+                        <p className="text-text-primary font-medium truncate">{order.customer_name || 'Cliente'}</p>
+                        <p className="text-xs text-text-secondary">{STATUS_LABELS[order.status as OrderStatus] || order.status}</p>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <p className="text-text-primary font-bold">${order.total.toFixed(2)}</p>
+                      <p className="text-xs text-text-secondary">{new Date(order.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

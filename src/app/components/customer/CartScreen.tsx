@@ -90,6 +90,7 @@ export function CartScreen() {
       >
         <button
           onClick={() => navigate('home')}
+          aria-label="Volver"
           className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center"
         >
           <ArrowLeft size={18} className="text-white" />
@@ -162,6 +163,7 @@ export function CartScreen() {
                     <div className="flex items-center gap-1.5 flex-shrink-0">
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        aria-label="Disminuir cantidad"
                         className="w-8 h-8 rounded-xl border border-border flex items-center justify-center"
                       >
                         <Minus size={13} className="text-text-secondary" />
@@ -169,6 +171,7 @@ export function CartScreen() {
                       <span className="w-5 text-center text-sm font-medium">{item.quantity}</span>
                       <button
                         onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        aria-label="Aumentar cantidad"
                         className="w-8 h-8 rounded-xl flex items-center justify-center"
                         style={{ backgroundColor: 'var(--brand)' }}
                       >
@@ -176,6 +179,7 @@ export function CartScreen() {
                       </button>
                       <button
                         onClick={() => removeFromCart(item.id)}
+                        aria-label="Eliminar producto"
                         className="w-8 h-8 rounded-xl bg-danger-light flex items-center justify-center ml-1"
                       >
                         <Trash2 size={13} className="text-danger" />
@@ -189,6 +193,7 @@ export function CartScreen() {
             <div className="mx-4 mt-4 bg-card rounded-2xl p-4 shadow-sm">
               <p className="text-sm text-text-primary font-medium mb-2">Dirección de entrega</p>
               <input
+                aria-label="Direccion de entrega"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
                 placeholder="Tu dirección"
@@ -227,6 +232,7 @@ export function CartScreen() {
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
               <p className="text-sm text-text-primary font-medium mb-2">Nota para el restaurante</p>
               <textarea
+                aria-label="Nota para el restaurante"
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Sin cebolla, extra salsa..."
@@ -253,8 +259,8 @@ export function CartScreen() {
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
               <h3 className="text-2xl font-bold text-text-primary mb-3">Datos de facturacion</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <input value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Nombre o razon social" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
-                <input value={billingId} onChange={(e) => setBillingId(e.target.value)} placeholder="Cedula/RUC" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
+                <input aria-label="Nombre o razon social" value={billingName} onChange={(e) => setBillingName(e.target.value)} placeholder="Nombre o razon social" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
+                <input aria-label="Cedula o RUC" value={billingId} onChange={(e) => setBillingId(e.target.value)} placeholder="Cedula/RUC" className="bg-surface rounded-xl px-3 py-3 outline-none text-sm" />
               </div>
             </div>
 
@@ -269,6 +275,7 @@ export function CartScreen() {
                   <div className="flex-1 bg-surface rounded-xl flex items-center gap-2 px-3 py-2.5">
                     <Tag size={15} className="text-text-secondary" />
                     <input
+                      aria-label="Codigo de descuento"
                       value={coupon}
                       onChange={(e) => setCoupon(e.target.value)}
                       placeholder="Código de descuento"
@@ -370,6 +377,7 @@ export function CartScreen() {
               {payMethod === 'cash' && (
                 <div className="mt-3">
                   <input
+                    aria-label="Monto en efectivo"
                     value={cashAmount}
                     onChange={(e) => setCashAmount(e.target.value)}
                     placeholder="Con cuanto pagas? Ej. 10.00"

@@ -17,10 +17,10 @@ export function StoreApplicationScreen() {
 
   useEffect(() => {
     if (!user) return;
-    getMyStoreApplication(user.id).then((app) => {
-      setExisting(app as { status: string } | null);
-      setChecking(false);
-    });
+    getMyStoreApplication(user.id)
+      .then((app) => { setExisting(app as { status: string } | null); })
+      .catch(() => { /* no hay solicitud previa */ })
+      .finally(() => setChecking(false));
   }, [user]);
 
   if (!user || checking) {

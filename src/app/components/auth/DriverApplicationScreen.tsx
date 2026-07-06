@@ -17,10 +17,10 @@ export function DriverApplicationScreen() {
 
   useEffect(() => {
     if (!user) return;
-    getMyDriverApplication(user.id).then((app) => {
-      setExisting(app as { status: string } | null);
-      setChecking(false);
-    });
+    getMyDriverApplication(user.id)
+      .then((app) => { setExisting(app as { status: string } | null); })
+      .catch(() => { /* no hay solicitud previa */ })
+      .finally(() => setChecking(false));
   }, [user]);
 
   if (!user || checking) {

@@ -1,5 +1,5 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
-import { createMockOrder, getMockOrders } from '../../../shared/lib/mockData';
+import { createMockOrder, getMockOrders, getMockOrdersByStore, getMockOrdersByDriver, assignDriverToMockOrder } from '../../../shared/lib/mockData';
 import { validateOrderInput, validateOrderStatus } from '../../../shared/validation/service-validators';
 import { logAuditEvent } from '../../audit/application/audit.service';
 import { canTransition } from '../domain/order-status.machine';
@@ -93,7 +93,7 @@ export async function getMyOrders(userId: string) {
 }
 
 export async function getStoreOrders(storeId: string) {
-  if (!isSupabaseReady) return [];
+  if (!isSupabaseReady) return getMockOrdersByStore(storeId);
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -105,7 +105,7 @@ export async function getStoreOrders(storeId: string) {
 }
 
 export async function getDriverOrders(driverId: string) {
-  if (!isSupabaseReady) return [];
+  if (!isSupabaseReady) return getMockOrdersByDriver(driverId);
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -143,7 +143,7 @@ export async function assignDriver(orderId: string, driverId: string, role?: Rol
   if (role && role !== 'store' && role !== 'admin') {
     throw new Error(`Rol '${role}' no puede asignar repartidores`);
   }
-  if (!isSupabaseReady) return { id: orderId, driver_id: driverId };
+  if (!isSupabaseReady) { assignDriverToMockOrder(orderId, driverId); return { id: orderId, driver_id: driverId }; }
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')

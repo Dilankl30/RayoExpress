@@ -16,6 +16,7 @@ export function StoreDetailScreen() {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const storeId = navigationParams.storeId || '';
 
@@ -36,14 +37,14 @@ export function StoreDetailScreen() {
       setStore(storeData);
       setProducts(productsData);
       setLiked(customerStorage.isFavorite(storeId, 'store'));
-    } catch (err) {
-      console.warn('Error loading store:', err);
+    } catch {
+      setLoadError('No pudimos cargar la tienda. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
   };
 
-  const categories = ['Todo', ...new Set(products.map((p) => p.category || '').filter(Boolean))];
+  const categories = ['Todo', ...new Set(products.map((p) => p.category_id || p.category || '').filter(Boolean))];
 
   const filtered = products.filter((item) => {
     if (!item) return false;
@@ -84,6 +85,21 @@ export function StoreDetailScreen() {
     );
   }
 
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <p className="text-4xl mb-3">😕</p>
+          <p className="text-text-primary font-bold mb-1">Algo salio mal</p>
+          <p className="text-sm text-text-secondary mb-4">{loadError}</p>
+          <button onClick={() => { setLoadError(null); setLoading(true); loadStore(); }} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-surface pb-16 lg:pb-0">
       <div
@@ -98,6 +114,7 @@ export function StoreDetailScreen() {
         <div className="absolute top-10 left-0 right-0 flex items-center justify-between px-4">
           <button
             onClick={() => navigate('home')}
+            aria-label="Volver"
             className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
           >
             <ArrowLeft size={18} className="text-text-primary" />
@@ -115,14 +132,15 @@ export function StoreDetailScreen() {
                 });
                 setLiked(next.some((fav) => fav.id === store.id && fav.kind === 'store'));
               }}
+              aria-label={liked ? 'Quitar de favoritos' : 'Agregar a favoritos'}
               className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
             >
               <Heart size={18} fill={liked ? 'var(--danger)' : 'none'} style={{ color: liked ? 'var(--danger)' : '#374151' }} />
             </button>
-            <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
+            <button className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md" aria-label="Compartir">
               <Share2 size={18} className="text-text-primary" />
             </button>
-            <button className="relative" onClick={() => navigate('cart')}>
+            <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
               <div className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md">
                 <ShoppingCart size={18} className="text-text-primary" />
               </div>
@@ -162,6 +180,7 @@ export function StoreDetailScreen() {
           <div className="bg-surface-hover rounded-xl flex items-center gap-2 px-3 py-2.5 md:mt-4">
             <Search size={15} className="text-text-secondary" />
             <input
+              aria-label="Buscar en el menu"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar en el menú..."
@@ -244,6 +263,7 @@ export function StoreDetailScreen() {
                         <div className="flex items-center gap-2 rounded-xl border border-border px-1">
                           <button
                             onClick={() => decrement(item.id)}
+                            aria-label="Disminuir cantidad"
                             className="w-7 h-7 flex items-center justify-center rounded-lg"
                           >
                             <Minus size={14} className="text-text-secondary" />
@@ -251,6 +271,7 @@ export function StoreDetailScreen() {
                           <span className="text-sm text-text-primary w-4 text-center font-medium">{getQty(item.id)}</span>
                           <button
                             onClick={() => increment(item)}
+                            aria-label="Aumentar cantidad"
                             className="w-7 h-7 flex items-center justify-center rounded-lg"
                             style={{ backgroundColor: 'var(--brand)' }}
                           >
@@ -260,6 +281,7 @@ export function StoreDetailScreen() {
                       ) : (
                         <motion.button
                           onClick={() => increment(item)}
+                          aria-label="Agregar al carrito"
                           className="w-9 h-9 rounded-xl flex items-center justify-center"
                           style={{ backgroundColor: 'var(--brand)' }}
                           whileTap={{ scale: 0.9 }}

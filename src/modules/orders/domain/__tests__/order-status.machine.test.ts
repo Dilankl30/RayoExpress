@@ -26,6 +26,7 @@ describe('order-status.machine', () => {
     it('allows admin any valid transition', () => {
       expect(canTransition('pending', 'cancelled', 'admin')).toBe(true);
       expect(canTransition('delivered', 'refunded', 'admin')).toBe(true);
+      expect(canTransition('cancelled', 'refunded', 'admin')).toBe(true);
     });
 
     it('allows store to prepare accepted order', () => {
@@ -48,9 +49,14 @@ describe('order-status.machine', () => {
       expect(transitions).toEqual([]);
     });
 
-    it('returns arrived transitions for customer (delivered or cancelled)', () => {
+    it('returns arrived transitions for customer (delivered)', () => {
       const transitions = getAvailableTransitions('arrived', 'customer');
-      expect(transitions).toEqual(['delivered', 'cancelled']);
+      expect(transitions).toEqual(['delivered']);
+    });
+
+    it('returns refunded transitions for admin on delivered', () => {
+      const transitions = getAvailableTransitions('delivered', 'admin');
+      expect(transitions).toEqual(['refunded']);
     });
   });
 

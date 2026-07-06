@@ -7,10 +7,12 @@ vi.mock('../../../../integrations/supabase/client', () => ({
 
 const mockCreateOrder = vi.hoisted(() => vi.fn());
 const mockGetMockOrders = vi.hoisted(() => vi.fn().mockReturnValue([]));
+const mockAssignDriverToMockOrder = vi.hoisted(() => vi.fn());
 
 vi.mock('../../../../shared/lib/mockData', () => ({
   createMockOrder: mockCreateOrder,
   getMockOrders: mockGetMockOrders,
+  assignDriverToMockOrder: mockAssignDriverToMockOrder,
 }));
 
 vi.mock('../../../audit/application/audit.service', () => ({

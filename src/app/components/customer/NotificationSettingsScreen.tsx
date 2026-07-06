@@ -28,7 +28,7 @@ export function NotificationSettingsScreen() {
 
   return (
     <div className="min-h-screen bg-white px-4 pt-10 pb-12">
-      <button onClick={() => navigate('profile')} className="w-10 h-10 flex items-center justify-center mb-8"><ArrowLeft size={24} /></button>
+      <button onClick={() => navigate('profile')} aria-label="Volver" className="w-10 h-10 flex items-center justify-center mb-8"><ArrowLeft size={24} /></button>
       <h1 className="text-3xl font-bold text-[#12001f]">Notificaciones</h1>
       <p className="text-gray-600 mt-3 text-lg">Recuerda que vas a recibir notificaciones de tu pedido en curso, pero podras personalizar las siguientes comunicaciones:</p>
       {Object.entries(groups).map(([title, items]) => (
@@ -43,6 +43,9 @@ export function NotificationSettingsScreen() {
                 </div>
                 <button
                   onClick={() => setEnabled((prev) => ({ ...prev, [label]: !prev[label] }))}
+                  aria-label={label}
+                  role="switch"
+                  aria-checked={enabled[label]}
                   className="w-16 h-9 rounded-full p-1 transition"
                   style={{ background: enabled[label] ? '#12001f' : '#fff', border: enabled[label] ? '0' : '2px solid #12001f' }}
                 >

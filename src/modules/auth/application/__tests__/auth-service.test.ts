@@ -32,7 +32,7 @@ describe('upsertProfile', () => {
     const upsertMock = mockFrom.mock.results[0].value.upsert;
     expect(upsertMock).toHaveBeenCalledTimes(1);
     const payload = upsertMock.mock.calls[0][0];
-    expect(payload).not.toHaveProperty('role');
+    expect(payload).toHaveProperty('role', 'customer');
     expect(payload.full_name).toBe('Test User');
   });
 });

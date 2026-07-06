@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, CalendarDays, Filter, Headphones, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { getMockOrders } from '../../../shared/lib/mockData';
+import { getMyOrders } from '../../../modules/orders/application/order-service';
 
 const periodOptions = ['Ultima semana', 'Ultimos 15 dias', 'Ultimos 30 dias', 'Ultimos 3 meses', 'Ultimos 6 meses'];
 
@@ -10,15 +10,21 @@ export function OrdersScreen() {
   const [status, setStatus] = useState<'delivered' | 'cancelled'>('delivered');
   const [period, setPeriod] = useState(periodOptions[2]);
   const [showFilters, setShowFilters] = useState(false);
-  const orders = useMemo(() => (user ? getMockOrders(user.id) : []), [user]);
+  const [orders, setOrders] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    getMyOrders(user.id).then(setOrders).catch(() => {});
+  }, [user]);
+
   const visible = orders.filter((order) => status === 'delivered' ? order.status !== 'cancelled' : order.status === 'cancelled');
 
   return (
     <div className="min-h-screen bg-white pb-24">
       <header className="sticky top-0 z-20 bg-white px-4 pt-10 pb-4 flex items-center justify-between border-b border-gray-100">
-        <button onClick={() => navigate('home')} className="w-10 h-10 flex items-center justify-center"><ArrowLeft size={24} /></button>
+        <button onClick={() => navigate('home')} aria-label="Volver" className="w-10 h-10 flex items-center justify-center"><ArrowLeft size={24} /></button>
         <h1 className="text-xl font-bold text-[#12001f]">Mis pedidos</h1>
-        <button onClick={() => navigate('cart')} className="w-10 h-10 flex items-center justify-center"><ShoppingCart size={24} /></button>
+        <button onClick={() => navigate('cart')} aria-label="Carrito" className="w-10 h-10 flex items-center justify-center"><ShoppingCart size={24} /></button>
       </header>
 
       <div className="px-4 pt-6">

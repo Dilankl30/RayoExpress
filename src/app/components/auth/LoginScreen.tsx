@@ -99,7 +99,7 @@ function authErrorMessage(err: unknown, fallback: string) {
 }
 
 export function LoginScreen() {
-  const { login } = useAuth();
+  const { login, mockLogin } = useAuth();
   const [step, setStep] = useState<AuthStep>('options');
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -143,7 +143,9 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        throw new Error('Supabase no esta configurado para iniciar sesion real.');
+        const role = await mockLogin(normalizedEmail, password);
+        if (!role) { setError('Credenciales invalidas.'); return; }
+        return;
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -170,7 +172,8 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        throw new Error('Supabase no esta configurado para enviar codigos reales.');
+        setError('Modo demo: usa "Ingresar" con correo@demo.cl / 123456');
+        return;
       }
 
       const { error: signUpError } = await supabase.auth.signUp({
@@ -232,7 +235,8 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        throw new Error('Supabase no esta configurado para verificar codigos reales.');
+        setError('Modo demo: usa "Ingresar" con correo@demo.cl / 123456');
+        return;
       }
 
       const { error: verifyError } = await supabase.auth.verifyOtp({
@@ -436,6 +440,7 @@ export function LoginScreen() {
                 {isRegistering ? (
                   <Field icon={<UserRound size={20} />} label="Nombre">
                     <input
+                      aria-label="Nombre completo"
                       value={fullName}
                       onChange={(event) => setFullName(event.target.value)}
                       placeholder="Tu nombre completo"
@@ -446,6 +451,7 @@ export function LoginScreen() {
 
                 <Field icon={<Mail size={20} />} label="Correo">
                   <input
+                    aria-label="Correo electronico"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="correo@ejemplo.com"
@@ -457,6 +463,7 @@ export function LoginScreen() {
 
                 <Field icon={<LockKeyhole size={20} />} label="Clave">
                   <input
+                    aria-label="Clave"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     placeholder="Minimo 6 caracteres"
@@ -469,6 +476,7 @@ export function LoginScreen() {
                 {isRegistering ? (
                   <Field icon={<LockKeyhole size={20} />} label="Confirmar clave">
                     <input
+                      aria-label="Confirmar clave"
                       value={passwordConfirm}
                       onChange={(event) => setPasswordConfirm(event.target.value)}
                       placeholder="Repite tu clave"
@@ -497,14 +505,15 @@ export function LoginScreen() {
                 </div>
 
                 <Field icon={<Sparkles size={20} />} label="Codigo">
-                  <input
-                    value={cleanCode}
-                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
-                    placeholder="00000000"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    className="mt-1 w-full bg-transparent text-2xl font-black tracking-[0.24em] text-[#12051F] outline-none placeholder:tracking-normal placeholder:text-[#9A94AA]"
-                  />
+                <input
+                  aria-label="Codigo de verificacion"
+                  value={code}
+                  onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
+                  placeholder="00000000"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  className="mt-1 w-full bg-transparent text-2xl font-black tracking-[0.24em] text-[#12051F] outline-none placeholder:tracking-normal placeholder:text-[#9A94AA]"
+                />
                 </Field>
 
                 <PrimaryButton onClick={verifyEmailCode} disabled={cleanCode.length < OTP_MIN_LENGTH} loading={loading}>

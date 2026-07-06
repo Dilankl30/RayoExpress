@@ -57,11 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone ?? null,
       });
       const profile = await getProfile(userData.id);
-      if (profile) {
-        if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
-        setUser(profile);
-        navigate(roleToScreen(profile.role));
-      }
+      if (!profile) throw new Error('No pudimos cargar tu perfil despues del inicio.');
+      if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
+      setUser(profile);
+      navigate(roleToScreen(profile.role));
     }
   }, [navigate, roleToScreen]);
 

@@ -126,7 +126,7 @@ export function createMockOrder(params: any, userId: string) {
   }, 0);
   const deliveryFee = 1.5;
   const discount = params.couponCode === 'RAYO15' ? Math.min(subtotal * 0.15, 5) : 0;
-  const tax = (subtotal - discount) * 0.08;
+  const tax = (subtotal - discount) * 0.12;
   const tip = params.tip || 0;
   const total = subtotal + deliveryFee - discount + tax + tip;
   const orderId = `order-${Date.now()}`;
@@ -169,6 +169,26 @@ export function createMockOrder(params: any, userId: string) {
 
 export function getMockOrders(userId: string) {
   return mockOrders[userId] || [];
+}
+
+export function getAllMockOrders() {
+  return Object.values(mockOrders).flat();
+}
+
+export function getMockOrdersByStore(storeId: string) {
+  return getAllMockOrders().filter((o) => o.store_id === storeId);
+}
+
+export function getMockOrdersByDriver(driverId: string) {
+  return getAllMockOrders().filter((o) => o.driver_id === driverId);
+}
+
+export function assignDriverToMockOrder(orderId: string, driverId: string) {
+  for (const userId of Object.keys(mockOrders)) {
+    mockOrders[userId] = mockOrders[userId].map((o) =>
+      o.id === orderId ? { ...o, driver_id: driverId } : o
+    );
+  }
 }
 
 export const mockNotifications: Record<string, any[]> = {

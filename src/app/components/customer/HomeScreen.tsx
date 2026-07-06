@@ -47,6 +47,8 @@ export function HomeScreen() {
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -60,6 +62,8 @@ export function HomeScreen() {
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setLoadError(null);
     try {
       const [storesData, catsData] = await Promise.all([
         getStores(),
@@ -80,8 +84,10 @@ export function HomeScreen() {
         } catch { /* store sin productos */ }
       }
       setCategoryStoreMap(map);
-    } catch (err) {
-      console.warn('Error loading data:', err);
+    } catch {
+      setLoadError('No pudimos cargar la informacion. Revisa tu conexion.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -94,6 +100,32 @@ export function HomeScreen() {
     const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(s.id) ?? true);
     return matchSearch && matchCategory;
   });
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-text-secondary">Cargando tiendas...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <p className="text-4xl mb-3">😕</p>
+          <p className="text-text-primary font-bold mb-1">Error</p>
+          <p className="text-sm text-text-secondary mb-4">{loadError}</p>
+          <button onClick={loadData} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
@@ -117,7 +149,7 @@ export function HomeScreen() {
             </div>
             <div className="flex items-center gap-3">
               <NotificationBell />
-              <button className="relative" onClick={() => navigate('cart')}>
+              <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
                 <ShoppingCart size={22} className="text-white" />
                 {cartCount > 0 && (
                   <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}>
@@ -132,12 +164,13 @@ export function HomeScreen() {
           <div className="bg-card rounded-2xl flex items-center gap-2 px-4 py-3">
             <Search size={17} className="text-text-secondary flex-shrink-0" />
             <input
+              aria-label="Buscar tiendas"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar tiendas..."
               className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent"
             />
-            <button className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand)' }}>
+            <button className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand)' }} aria-label="Filtrar">
               <Filter size={14} className="text-white" />
             </button>
           </div>

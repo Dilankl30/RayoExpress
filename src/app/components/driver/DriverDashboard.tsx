@@ -33,6 +33,7 @@ export function DriverDashboard() {
   const [showChat, setShowChat] = useState(false);
   const [chatOrder, setChatOrder] = useState<{ orderId: string; storeId: string; storeName: string; storeEmoji: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [incomingOrder, setIncomingOrder] = useState<{ storeName: string; storeEmoji: string; storeAddress: string; customerAddress: string; total: number } | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -63,13 +64,19 @@ export function DriverDashboard() {
 
   useEffect(() => {
     if (!isOnline) return;
-    const timer = setTimeout(() => setShowOrder(true), 3000);
+    const timer = setTimeout(() => {
+      setShowOrder(true);
+      setIncomingOrder({
+        storeName: 'Burger King', storeEmoji: '🍔', storeAddress: 'Av. Amazonas N21-147',
+        customerAddress: 'Calle República E7-123', total: 12.50,
+      });
+    }, 3000);
     return () => clearTimeout(timer);
   }, [isOnline]);
 
   useEffect(() => {
     if (!showOrder) { setAcceptCountdown(30); return; }
-    if (acceptCountdown <= 0) { setShowOrder(false); return; }
+    if (acceptCountdown <= 0) { setShowOrder(false); setIncomingOrder(null); return; }
     const t = setTimeout(() => setAcceptCountdown((p) => p - 1), 1000);
     return () => clearTimeout(t);
   }, [showOrder, acceptCountdown]);
@@ -82,14 +89,16 @@ export function DriverDashboard() {
 
   const handleAccept = () => {
     setShowOrder(false);
-    setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
+    if (incomingOrder) setEarnings((p) => ({ ...p, today: p.today + incomingOrder.total }));
+    setIncomingOrder(null);
   };
 
   const handleDeliveryEvidence = async (file: File, notes: string) => {
     if (!user) return;
-    await uploadDeliveryEvidence('order-1', user.id, file, notes);
-    await updateOrderStatus('order-1', 'delivered', 'driver', user?.id);
-    setEarnings((p) => ({ ...p, today: p.today + 3.8 }));
+    const orderId = todayOrders[0]?.id || 'order-1';
+    await uploadDeliveryEvidence(orderId, user.id, file, notes);
+    await updateOrderStatus(orderId, 'delivered', 'driver', user?.id);
+    setEarnings((p) => ({ ...p, today: p.today + (todayOrders[0]?.total || 3.8) }));
   };
 
   const maxEarnings = Math.max(...weeklyHistory.map((d) => d.earnings), 1);
@@ -369,10 +378,10 @@ export function DriverDashboard() {
               <p className="text-xs text-text-secondary mb-4">Se asignará automáticamente o expirará</p>
               <div className="bg-surface rounded-2xl p-4 mb-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <span style={{ fontSize: 28 }}>🍔</span>
+                  <span style={{ fontSize: 28 }}>{incomingOrder?.storeEmoji || '🍔'}</span>
                   <div>
-                    <p className="text-text-primary font-medium">Burger King</p>
-                    <p className="text-xs text-text-secondary">Av. Amazonas N21-147</p>
+                    <p className="text-text-primary font-medium">{incomingOrder?.storeName || 'Tienda'}</p>
+                    <p className="text-xs text-text-secondary">{incomingOrder?.storeAddress || 'Dirección'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -381,7 +390,7 @@ export function DriverDashboard() {
                   </div>
                   <div>
                     <p className="text-text-primary text-sm">Cliente</p>
-                    <p className="text-xs text-text-secondary">Calle República E7-123</p>
+                    <p className="text-xs text-text-secondary">{incomingOrder?.customerAddress || 'Dirección'}</p>
                   </div>
                 </div>
               </div>

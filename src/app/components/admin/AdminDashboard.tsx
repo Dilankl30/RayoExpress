@@ -138,6 +138,7 @@ export function AdminDashboard() {
           </div>
           <div className="flex items-center gap-3">
             <select
+              aria-label="Periodo"
               value={period}
               onChange={(e) => setPeriod(e.target.value)}
               className="text-sm border rounded-lg px-3 py-1.5 text-text-secondary bg-card"
@@ -147,13 +148,13 @@ export function AdminDashboard() {
               <option value="30d">Últimos 30 días</option>
               <option value="90d">Últimos 90 días</option>
             </select>
-            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary">
+            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary" aria-label="Actualizar">
               <RefreshCw size={18} />
             </button>
-            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary">
+            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary" aria-label="Descargar">
               <Download size={18} />
             </button>
-            <button onClick={logout} className="p-2 rounded-lg hover:bg-danger-light text-red-400">
+            <button onClick={logout} className="p-2 rounded-lg hover:bg-danger-light text-red-400" aria-label="Cerrar sesion">
               <LogOut size={18} />
             </button>
           </div>

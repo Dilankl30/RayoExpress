@@ -11,7 +11,7 @@ export function FavoritesScreen() {
   return (
     <div className="min-h-screen bg-white pb-24">
       <header className="px-4 pt-10 pb-4 flex items-center">
-        <button onClick={() => navigate('profile')} className="w-10 h-10 flex items-center justify-center"><ArrowLeft size={24} /></button>
+        <button onClick={() => navigate('profile')} aria-label="Volver" className="w-10 h-10 flex items-center justify-center"><ArrowLeft size={24} /></button>
         <h1 className="flex-1 text-center text-2xl font-bold text-[#12001f] pr-10">Favoritos</h1>
       </header>
       <div className="grid grid-cols-2 text-center text-xl font-bold text-[#12001f]">

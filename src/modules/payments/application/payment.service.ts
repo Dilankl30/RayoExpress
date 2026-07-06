@@ -88,7 +88,11 @@ export async function verifyPayment(paymentId: string, adminId: string, verified
 }
 
 export async function confirmPayment(paymentId: string, userId: string) {
-  if (!isSupabaseReady) return;
+  if (!isSupabaseReady) {
+    const tx = mockTransactions.find((t) => t.id === paymentId);
+    if (tx) { tx.verified = true; tx.verified_by = userId; }
+    return;
+  }
   const supabase = getSupabase();
   const { error } = await supabase.from('payments').update({ verified: true, verified_by: userId }).eq('id', paymentId);
   if (error) throw error;
@@ -96,7 +100,11 @@ export async function confirmPayment(paymentId: string, userId: string) {
 }
 
 export async function failPayment(paymentId: string, userId: string) {
-  if (!isSupabaseReady) return;
+  if (!isSupabaseReady) {
+    const tx = mockTransactions.find((t) => t.id === paymentId);
+    if (tx) { tx.verified = false; tx.verified_by = userId; }
+    return;
+  }
   const supabase = getSupabase();
   const { error } = await supabase.from('payments').update({ verified: false, verified_by: userId }).eq('id', paymentId);
   if (error) throw error;
@@ -104,7 +112,11 @@ export async function failPayment(paymentId: string, userId: string) {
 }
 
 export async function initiateRefund(paymentId: string, userId: string, reason?: string) {
-  if (!isSupabaseReady) return;
+  if (!isSupabaseReady) {
+    const tx = mockTransactions.find((t) => t.id === paymentId);
+    if (tx) { tx.verified = false; tx.verified_by = userId; }
+    return;
+  }
   const supabase = getSupabase();
   const { error } = await supabase.from('payments').update({ verified: false, verified_by: userId }).eq('id', paymentId);
   if (error) throw error;
