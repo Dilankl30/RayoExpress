@@ -106,7 +106,7 @@ export function LoginScreen() {
   const isValidPassword = password.length >= 6;
   const canLoginWithEmail = isValidEmail && isValidPassword;
   const canSendCode = isValidEmail && isValidPassword && fullName.trim().length >= 3 && password === passwordConfirm;
-  const cleanCode = code.replace(/\D/g, '').slice(0, 6);
+  const cleanCode = code.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH);
 
   const resetMessages = () => {
     setNotice('');
