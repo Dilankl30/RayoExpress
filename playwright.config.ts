@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test';
 
+const e2ePort = 5181;
+const e2eBaseUrl = `http://127.0.0.1:${e2ePort}`;
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: false,
@@ -7,7 +10,7 @@ export default defineConfig({
   workers: 1,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: e2eBaseUrl,
     trace: 'on-first-retry',
     headless: true,
   },
@@ -18,9 +21,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    command: `npm run dev -- --host 127.0.0.1 --port ${e2ePort}`,
+    url: e2eBaseUrl,
+    reuseExistingServer: false,
     timeout: 30000,
   },
 });
