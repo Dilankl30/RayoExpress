@@ -1,6 +1,6 @@
 import type { Role } from '../types';
 
-export const isMockMode = true;
+export const isMockMode = import.meta.env.VITE_MOCK_MODE === 'true';
 
 export const mockCredentials: Record<string, { password: string; role: Role; name: string }> = {
   'customer@rayo.com':  { password: 'customer123', role: 'customer', name: 'María García' },
