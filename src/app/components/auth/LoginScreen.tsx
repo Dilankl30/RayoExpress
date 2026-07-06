@@ -85,7 +85,7 @@ function PrimaryButton({
 }
 
 export function LoginScreen() {
-  const { login, mockLogin } = useAuth();
+  const { login } = useAuth();
   const [step, setStep] = useState<AuthStep>('options');
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -129,9 +129,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        const role = await mockLogin(normalizedEmail, password);
-        if (!role) throw new Error('Correo o clave incorrectos.');
-        return;
+        throw new Error('Supabase no esta configurado para iniciar sesion real.');
       }
 
       const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -158,9 +156,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setStep('code');
-        setNotice('Modo demo: usa el codigo 123456 para crear la cuenta.');
-        return;
+        throw new Error('Supabase no esta configurado para enviar codigos reales.');
       }
 
       const { error: otpError } = await supabase.auth.signInWithOtp({
@@ -192,9 +188,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        if (cleanCode !== '123456') throw new Error('Codigo demo incorrecto.');
-        await mockLogin('customer@rayo.com', 'customer123');
-        return;
+        throw new Error('Supabase no esta configurado para verificar codigos reales.');
       }
 
       const { error: verifyError } = await supabase.auth.verifyOtp({
@@ -224,7 +218,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Google necesita Supabase configurado. En modo demo entra con correo.');
+        setError('Google necesita Supabase configurado.');
         return;
       }
 
@@ -469,7 +463,7 @@ export function LoginScreen() {
                   <input
                     value={cleanCode}
                     onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="123456"
+                    placeholder="000000"
                     inputMode="numeric"
                     autoComplete="one-time-code"
                     className="mt-1 w-full bg-transparent text-2xl font-black tracking-[0.24em] text-[#12051F] outline-none placeholder:tracking-normal placeholder:text-[#9A94AA]"
@@ -512,11 +506,6 @@ export function LoginScreen() {
               </div>
             ) : null}
 
-            {!isSupabaseReady ? (
-              <p className="mt-5 text-center text-xs font-bold text-[#827B91]">
-                Modo demo activo. El codigo de prueba es 123456.
-              </p>
-            ) : null}
           </div>
 
           <p className="mx-auto mt-5 max-w-md text-center text-xs font-semibold leading-5 text-[#827B91]">

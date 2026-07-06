@@ -31,7 +31,7 @@ export function PromotionsScreen() {
         <div className="bg-white rounded-2xl p-5">
           <div className="flex items-center gap-2 font-bold"><Percent size={18} /> Promocion destacada</div>
           <h2 className="text-2xl font-bold mt-3">Ahorra hoy con cupones activos</h2>
-          <p className="text-gray-600 mt-2">Usa RAYO15 o RAYO1 en checkout para aplicar descuentos demo.</p>
+          <p className="text-gray-600 mt-2">Usa los cupones activos en checkout para aplicar descuentos disponibles.</p>
           <button className="mt-5 font-bold">Ir a todas las promociones</button>
         </div>
       </section>

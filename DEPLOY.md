@@ -42,12 +42,14 @@ Go to your project on [vercel.com](https://vercel.com) → **Settings** → **En
 |---------------------------|----------------------------------------|-----------------|
 | `VITE_SUPABASE_URL`       | `https://bxhnlwkhoeeqpifqvqxs.supabase.co` | Production, Preview, Development |
 | `VITE_SUPABASE_ANON_KEY`  | `sb_publishable__YLr43cEbtmlrRPdhOmMsA_CeN6c2-n` | Production, Preview, Development |
+| `VITE_MOCK_MODE`          | `false` | Production, Preview, Development |
 
 **Option B — Vercel CLI**
 
 ```bash
 npx vercel env add VITE_SUPABASE_URL
 npx vercel env add VITE_SUPABASE_ANON_KEY
+npx vercel env add VITE_MOCK_MODE
 ```
 
 ## 5. Deploy
@@ -86,6 +88,7 @@ Additionally, add the following environment variable secrets so they are availab
 |-------------------------------|----------------------------------------|
 | `VITE_SUPABASE_URL`           | `https://bxhnlwkhoeeqpifqvqxs.supabase.co` |
 | `VITE_SUPABASE_ANON_KEY`      | `sb_publishable__YLr43cEbtmlrRPdhOmMsA_CeN6c2-n` |
+| `VITE_MOCK_MODE`              | `false` |
 
 ### How to set GitHub Secrets
 
