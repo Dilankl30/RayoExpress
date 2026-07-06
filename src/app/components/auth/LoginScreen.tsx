@@ -1,6 +1,26 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Eye, EyeOff, Phone, Mail, Zap, ArrowRight, Info } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Bike,
+  Building2,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Headphones,
+  Info,
+  KeyRound,
+  Lock,
+  Mail,
+  Phone,
+  ShieldCheck,
+  ShoppingBag,
+  Sparkles,
+  Store,
+  UserRound,
+  Zap,
+} from 'lucide-react';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { sendPasswordReset } from '../../../modules/auth/application/auth-service';
@@ -8,17 +28,64 @@ import { hashText, isSecurePassword } from '../../../shared/validation';
 import type { Role } from '../../../shared/types';
 import logo from '../../../imports/image-1.png';
 
-const roles: { id: Role; label: string; icon: string; desc: string }[] = [
-  { id: 'customer', label: 'Cliente', icon: '👤', desc: 'Pide lo que quieras' },
-  { id: 'driver', label: 'Repartidor', icon: '🛵', desc: 'Reparte y gana' },
-  { id: 'store', label: 'Tienda', icon: '🏪', desc: 'Vende más' },
+const roles: {
+  id: Role;
+  label: string;
+  desc: string;
+  Icon: typeof ShoppingBag;
+}[] = [
+  { id: 'customer', label: 'Cliente', desc: 'Compra y sigue tus pedidos en tiempo real.', Icon: ShoppingBag },
+  { id: 'driver', label: 'Repartidor', desc: 'Recibe entregas y administra tu ruta.', Icon: Bike },
+  { id: 'store', label: 'Tienda', desc: 'Gestiona ventas, productos y pedidos.', Icon: Store },
 ];
 
 const mockDemoAccounts = [
-  { role: 'customer' as Role, email: 'customer@rayo.com', password: 'customer123', label: 'Cliente', icon: '👤' },
-  { role: 'driver' as Role, email: 'driver@rayo.com', password: 'driver123', label: 'Repartidor', icon: '🛵' },
-  { role: 'store' as Role, email: 'store@rayo.com', password: 'store123', label: 'Tienda', icon: '🏪' },
+  { role: 'customer' as Role, email: 'customer@rayo.com', password: 'customer123', label: 'Cliente', Icon: ShoppingBag },
+  { role: 'driver' as Role, email: 'driver@rayo.com', password: 'driver123', label: 'Repartidor', Icon: Bike },
+  { role: 'store' as Role, email: 'store@rayo.com', password: 'store123', label: 'Tienda', Icon: Store },
 ];
+
+const securityQuestions = [
+  'Cual es el nombre de tu primera mascota?',
+  'En que ciudad naciste?',
+  'Cual fue tu primera escuela?',
+];
+
+function GoogleMark() {
+  return (
+    <svg width="19" height="19" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+    </svg>
+  );
+}
+
+function FieldShell({
+  icon,
+  label,
+  children,
+  trailing,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
+  trailing?: React.ReactNode;
+}) {
+  return (
+    <label className="flex items-center gap-3 rounded-[22px] border border-black/5 bg-[#F5F5F7] px-4 py-3.5 transition focus-within:border-[#EC0055]/30 focus-within:bg-white focus-within:shadow-[0_12px_34px_rgba(17,10,35,0.08)]">
+      <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-white text-[#12051F] shadow-sm">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#77727F]">{label}</span>
+        {children}
+      </span>
+      {trailing}
+    </label>
+  );
+}
 
 export function LoginScreen() {
   const { login, mockLogin } = useAuth();
@@ -33,17 +100,19 @@ export function LoginScreen() {
   const [isRegister, setIsRegister] = useState(false);
   const [fullName, setFullName] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [securityQuestion, setSecurityQuestion] = useState('¿Cuál es el nombre de tu primera mascota?');
+  const [securityQuestion, setSecurityQuestion] = useState(securityQuestions[0]);
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [recoveryMode, setRecoveryMode] = useState(false);
   const [recoveryEmail, setRecoveryEmail] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [oauthLoading, setOauthLoading] = useState<'google' | null>(null);
 
-  const [oauthLoading, setOauthLoading] = useState<'google' | 'facebook' | null>(null);
+  const activeRole = roles.find((role) => role.id === selectedRole) ?? roles[0];
+  const primaryActionLabel = isRegister ? 'Crear cuenta' : 'Ingresar';
 
-  const loginWithProvider = async (provider: 'google' | 'facebook') => {
-    if (!supabase) return setError('No disponible en modo demo');
+  const loginWithProvider = async (provider: 'google') => {
+    if (!supabase) return setError('Google no esta disponible en modo demo.');
     setError('');
     setOauthLoading(provider);
     try {
@@ -53,22 +122,22 @@ export function LoginScreen() {
       });
       if (error) throw error;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al conectar con ' + provider);
+      setError(err instanceof Error ? err.message : 'No se pudo conectar con Google.');
     } finally {
       setOauthLoading(null);
     }
   };
 
-  const handleMockLogin = async (email: string, password: string) => {
+  const handleMockLogin = async (mockEmail: string, mockPassword: string) => {
     setError('');
     setLoading(true);
     try {
-      const role = await mockLogin(email, password);
+      const role = await mockLogin(mockEmail, mockPassword);
       if (!role) {
-        setError('Credenciales inválidas. Usa las cuentas demo de abajo.');
+        setError('Credenciales invalidas. Usa una cuenta demo o revisa tus datos.');
       }
     } catch {
-      setError('Error al iniciar sesión');
+      setError('Error al iniciar sesion.');
     } finally {
       setLoading(false);
     }
@@ -85,10 +154,10 @@ export function LoginScreen() {
       if (!supabase) throw new Error('Configura Supabase en .env');
 
       if (isRegister) {
-        if (!fullName.trim()) throw new Error('Ingresa tu nombre completo');
-        if (password !== confirmPassword) throw new Error('Las contraseñas no coinciden');
-        if (!isSecurePassword(password)) throw new Error('La contraseña debe tener 8+ caracteres, mayúscula, minúscula, número y carácter especial');
-        if (!securityAnswer.trim()) throw new Error('Responde tu pregunta de seguridad');
+        if (!fullName.trim()) throw new Error('Ingresa tu nombre completo.');
+        if (password !== confirmPassword) throw new Error('Las contrasenas no coinciden.');
+        if (!isSecurePassword(password)) throw new Error('La contrasena debe tener 8+ caracteres, mayuscula, minuscula, numero y caracter especial.');
+        if (!securityAnswer.trim()) throw new Error('Responde tu pregunta de seguridad.');
 
         const answerHash = await hashText(securityAnswer);
         const { error: signUpError } = await supabase.auth.signUp({
@@ -110,14 +179,14 @@ export function LoginScreen() {
 
       await login(selectedRole);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(err instanceof Error ? err.message : 'Error desconocido.');
     } finally {
       setLoading(false);
     }
   };
 
   const sendOtp = async () => {
-    if (!isSupabaseReady) return setError('No disponible en modo demo. Usa email.');
+    if (!isSupabaseReady) return setError('El ingreso por telefono no esta disponible en modo demo.');
     if (!supabase) return setError('Configura Supabase en .env');
     setError('');
     setLoading(true);
@@ -126,14 +195,14 @@ export function LoginScreen() {
       if (error) throw error;
       setOtpSent(true);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al enviar OTP');
+      setError(err instanceof Error ? err.message : 'Error al enviar el codigo.');
     } finally {
       setLoading(false);
     }
   };
 
   const verifyOtp = async () => {
-    if (!isSupabaseReady) return setError('No disponible en modo demo');
+    if (!isSupabaseReady) return setError('No disponible en modo demo.');
     if (!supabase) return setError('Configura Supabase en .env');
     setError('');
     setLoading(true);
@@ -146,400 +215,422 @@ export function LoginScreen() {
       if (error) throw error;
       await login(selectedRole);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al verificar OTP');
+      setError(err instanceof Error ? err.message : 'Error al verificar el codigo.');
     } finally {
       setLoading(false);
     }
   };
 
   const resetPassword = async () => {
-    if (!recoveryEmail) return setError('Ingresa tu correo');
+    if (!recoveryEmail) return setError('Ingresa tu correo.');
     setError('');
     setLoading(true);
     try {
       await sendPasswordReset(recoveryEmail);
-      alert('Correo de recuperación enviado. Revisa tu bandeja de entrada.');
+      window.alert('Correo de recuperacion enviado. Revisa tu bandeja de entrada.');
       setRecoveryMode(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error en recuperación');
+      setError(err instanceof Error ? err.message : 'Error en recuperacion.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col md:flex-row md:items-center md:justify-center relative overflow-hidden"
-      style={{ background: 'linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 100%)' }}
-    >
-      <div
-        className="absolute top-0 right-0 w-48 h-48 md:w-96 md:h-96 rounded-full opacity-20"
-        style={{ background: 'radial-gradient(circle, #FFD400, transparent)', transform: 'translate(30%, -30%)' }}
-      />
-      <div
-        className="absolute top-20 left-0 w-32 h-32 md:w-64 md:h-64 rounded-full opacity-10"
-        style={{ background: 'radial-gradient(circle, #ffffff, transparent)', transform: 'translate(-40%, 0)' }}
-      />
-
-      <div className="flex flex-col items-center pt-12 md:pt-0 pb-2 px-6 relative z-10 md:pr-12">
-        <motion.div
-          initial={{ scale: 0.7, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ duration: 0.5, type: 'spring' }}
-        >
-          <img src={logo} alt="Rayo Express" className="w-24 h-24 md:w-32 md:h-32 object-contain rounded-2xl" />
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="text-center mt-2"
-        >
-          <p className="text-white/60 text-sm tracking-widest uppercase">Tu delivery de confianza</p>
-        </motion.div>
-      </div>
-
-      <motion.div
-        className="flex-1 md:flex-none md:w-[480px] bg-card rounded-t-3xl md:rounded-3xl px-5 pt-6 pb-8 md:pb-6 relative z-10 md:shadow-2xl md:max-h-[90vh] md:overflow-y-auto"
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
-      >
-        <div className="flex gap-2 mb-4 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-          {roles.map((r) => (
+    <main className="min-h-screen bg-[#F6F6F8] text-[#12051F] md:flex md:items-center md:justify-center md:p-6">
+      <section className="relative mx-auto flex min-h-screen w-full max-w-[1180px] flex-col overflow-hidden bg-white shadow-none md:min-h-[820px] md:grid-cols-[0.92fr_1.08fr] md:flex-row md:rounded-[34px] md:shadow-[0_32px_100px_rgba(17,10,35,0.16)]">
+        <div className="relative overflow-hidden bg-[#EC0055] px-6 pb-28 pt-8 text-white md:flex md:w-[44%] md:flex-col md:px-10 md:pb-10">
+          <div className="absolute inset-0 opacity-20" style={{ background: 'radial-gradient(circle at 25% 15%, #FFFFFF 0, transparent 28%), radial-gradient(circle at 82% 74%, #53EBC4 0, transparent 26%)' }} />
+          <div className="relative z-10 flex items-center justify-between">
             <button
-              key={r.id}
-              onClick={() => setSelectedRole(r.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-full text-sm whitespace-nowrap flex-shrink-0 transition-all ${
-                selectedRole === r.id ? 'text-white shadow-md' : 'bg-surface-hover text-text-secondary'
-              }`}
-              style={selectedRole === r.id ? { backgroundColor: 'var(--brand)' } : {}}
+              type="button"
+              onClick={() => window.history.back()}
+              className="flex h-12 w-12 items-center justify-center rounded-full bg-white/16 text-white backdrop-blur"
+              aria-label="Volver"
             >
-              <span>{r.icon}</span>
-              <span>{r.label}</span>
+              <ArrowLeft size={22} />
             </button>
-          ))}
+            <div className="flex items-center gap-2 rounded-full bg-white/16 px-3 py-2 text-sm font-semibold backdrop-blur">
+              <ShieldCheck size={16} />
+              Acceso seguro
+            </div>
+          </div>
+
+          <div className="relative z-10 mt-10 md:mt-24">
+            <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-[26px] bg-white shadow-[0_18px_48px_rgba(18,5,31,0.18)]">
+              <img src={logo} alt="Rayo Express" className="h-14 w-14 object-contain" />
+            </div>
+            <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-white/16 px-3 py-1.5 text-sm font-semibold backdrop-blur">
+              <Sparkles size={15} />
+              Delivery, super y pedidos en un solo lugar
+            </p>
+            <h1 className="max-w-[460px] text-[36px] font-black leading-[1.02] tracking-normal md:text-[46px]">
+              Entra a RayoExpress sin perder el ritmo.
+            </h1>
+            <p className="mt-4 max-w-[430px] text-[16px] leading-7 text-white/88">
+              Gestiona tus pedidos, direcciones, cupones y seguimiento en tiempo real con una cuenta lista para crecer.
+            </p>
+          </div>
+
+          <div className="relative z-10 mt-8 hidden grid-cols-3 gap-3 md:grid">
+            {[
+              { label: 'Pedidos', value: '24/7' },
+              { label: 'Soporte', value: 'En linea' },
+              { label: 'Estado', value: 'En vivo' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-[22px] bg-white/14 p-4 backdrop-blur">
+                <p className="text-lg font-black">{item.value}</p>
+                <p className="mt-1 text-xs font-semibold text-white/72">{item.label}</p>
+              </div>
+            ))}
+          </div>
         </div>
 
-        <h2 className="text-text-primary mb-1">
-          {recoveryMode ? 'Recuperar contraseña' : isRegister ? 'Crear cuenta gratis' : 'Iniciar sesión'}
-        </h2>
-        <p className="text-text-secondary text-sm mb-3">
-          {isRegister ? `Crear cuenta · ${roles.find((r) => r.id === selectedRole)?.desc}` : roles.find((r) => r.id === selectedRole)?.desc}
-        </p>
+        <motion.div
+          className="relative z-20 -mt-20 flex-1 rounded-t-[34px] bg-white px-5 pb-8 pt-5 md:mt-0 md:flex md:items-center md:rounded-none md:px-10 md:py-10"
+          initial={{ y: 32, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.45, type: 'spring' }}
+        >
+          <div className="mx-auto w-full max-w-[520px]">
+            <div className="mx-auto mb-5 h-1.5 w-14 rounded-full bg-[#DDDDE3] md:hidden" />
 
-        {error && (
-          <div className="bg-danger-light border border-red-200 rounded-xl px-4 py-3 mb-4">
-            <p className="text-danger text-sm">{error}</p>
-          </div>
-        )}
-
-        {/* Demo mode banner */}
-        {!isSupabaseReady && !recoveryMode && (
-          <div className="bg-warning-light border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-start gap-2">
-            <Info size={15} className="text-amber-600 mt-0.5 flex-shrink-0" />
-            <div className="text-xs text-amber-800">
-              <p className="font-semibold mb-1">Modo demo — Sin base de datos</p>
-              <p>Usa las cuentas demo de abajo para ingresar.</p>
+            <div className="mb-5">
+              <p className="text-sm font-bold text-[#EC0055]">
+                {recoveryMode ? 'Recuperacion de acceso' : isRegister ? 'Registro de cuenta' : 'Bienvenido de nuevo'}
+              </p>
+              <h2 className="mt-1 text-[30px] font-black leading-tight tracking-normal">
+                {recoveryMode ? 'Recupera tu cuenta' : isRegister ? 'Crea tu perfil' : 'Inicia sesion'}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-[#69636F]">
+                {recoveryMode
+                  ? 'Te enviaremos un enlace para restablecer tu contrasena.'
+                  : isRegister
+                    ? activeRole.desc
+                    : 'Continua con Google o ingresa con tus credenciales.'}
+              </p>
             </div>
-          </div>
-        )}
 
-        {!isSupabaseReady ? (
-          <>
-            <div className="space-y-3 mb-4">
-              <div className="bg-surface rounded-xl px-4 py-3">
-                <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="correo@ejemplo.com"
-                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                />
-              </div>
-              <div className="bg-surface rounded-xl px-4 py-3 flex items-center">
-                <div className="flex-1">
-                  <p className="text-xs text-text-secondary mb-1">Contraseña</p>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                  />
-                </div>
-                <button onClick={() => setShowPassword(!showPassword)} className="text-text-secondary ml-2 flex-shrink-0">
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+            {!recoveryMode && (
+              <div className="mb-5 grid grid-cols-2 rounded-[22px] bg-[#F0F0F3] p-1.5">
+                <button
+                  type="button"
+                  onClick={() => setIsRegister(false)}
+                  className={`rounded-[18px] py-3 text-sm font-black transition ${!isRegister ? 'bg-white text-[#12051F] shadow-sm' : 'text-[#77727F]'}`}
+                >
+                  Ingresar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsRegister(true)}
+                  className={`rounded-[18px] py-3 text-sm font-black transition ${isRegister ? 'bg-white text-[#12051F] shadow-sm' : 'text-[#77727F]'}`}
+                >
+                  Registrarme
                 </button>
               </div>
+            )}
 
-              <motion.button
-                onClick={loginWithEmail}
-                disabled={loading}
-                className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ backgroundColor: 'var(--brand)' }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-                {loading ? 'Ingresando...' : 'Ingresar'}
-                <ArrowRight size={16} />
-              </motion.button>
-            </div>
-
-            <div className="border-t border-border-light pt-4">
-              <p className="text-xs text-text-secondary text-center mb-3 font-medium">CUENTAS DE DEMO</p>
-              <div className="grid grid-cols-2 gap-2">
-                {mockDemoAccounts.map((acc) => (
+            {!recoveryMode && (
+              <div className="mb-5 grid grid-cols-3 gap-2">
+                {roles.map(({ id, label, Icon }) => (
                   <button
-                    key={acc.role}
-                    onClick={() => {
-                      setEmail(acc.email);
-                      setPassword(acc.password);
-                      setSelectedRole(acc.role);
-                    }}
-                    className={`flex items-center gap-2 px-3 py-2.5 rounded-xl text-left text-xs transition-all ${
-                      selectedRole === acc.role ? 'ring-2 ring-brand bg-brand-light' : 'bg-surface hover:bg-surface-hover'
+                    key={id}
+                    type="button"
+                    onClick={() => setSelectedRole(id)}
+                    className={`flex min-h-[82px] flex-col items-center justify-center gap-2 rounded-[22px] border px-2 text-center text-xs font-black transition ${
+                      selectedRole === id
+                        ? 'border-[#EC0055] bg-[#FFF0F5] text-[#EC0055] shadow-[0_12px_30px_rgba(236,0,85,0.12)]'
+                        : 'border-transparent bg-[#F5F5F7] text-[#12051F]'
                     }`}
                   >
-                    <span className="text-lg">{acc.icon}</span>
-                    <div>
-                      <p className="font-semibold text-text-primary">{acc.label}</p>
-                      <p className="text-[10px] text-text-secondary mt-0.5">{acc.email}</p>
-                    </div>
+                    <Icon size={22} />
+                    <span>{label}</span>
                   </button>
                 ))}
               </div>
-              <p className="text-[10px] text-text-secondary text-center mt-2">Selecciona una cuenta y presiona Ingresar</p>
-            </div>
-          </>
-        ) : (
-          <>
-        <div className="flex gap-3 mb-5">
-          <button onClick={() => loginWithProvider('google')} disabled={loading || !!oauthLoading} className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-3 hover:bg-surface-hover transition-colors text-sm text-text-secondary disabled:opacity-50">
-            <svg width="16" height="16" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
-            </svg>
-            Google
-          </button>
-          <button onClick={() => loginWithProvider('facebook')} disabled={loading || !!oauthLoading} className="flex-1 flex items-center justify-center gap-2 border border-border rounded-xl py-3 hover:bg-surface-hover transition-colors text-sm text-text-secondary disabled:opacity-50">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="#1877F2">
-              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
-            </svg>
-            Facebook
-          </button>
-        </div>
+            )}
 
-        <div className="flex items-center gap-3 mb-5">
-          <div className="flex-1 h-px bg-border" />
-          <span className="text-text-secondary text-xs">o continúa con</span>
-          <div className="flex-1 h-px bg-border" />
-        </div>
-
-        <div className="flex bg-surface-hover rounded-xl p-1 mb-4">
-          <button
-            onClick={() => setTab('email')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'email' ? 'bg-card shadow-sm text-text-primary' : 'text-text-secondary'}`}
-          >
-            <Mail size={14} />
-            Email
-          </button>
-          <button
-            onClick={() => setTab('phone')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm transition-all ${tab === 'phone' ? 'bg-card shadow-sm text-text-primary' : 'text-text-secondary'}`}
-          >
-            <Phone size={14} />
-            Teléfono
-          </button>
-        </div>
-
-        {recoveryMode ? (
-          <div className="space-y-3">
-            <div className="bg-surface rounded-xl px-4 py-3">
-              <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
-              <input
-                type="email"
-                value={recoveryEmail}
-                onChange={(e) => setRecoveryEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-              />
-            </div>
-            <button
-              onClick={resetPassword}
-              disabled={loading}
-              className="w-full py-3 rounded-xl text-white text-sm font-medium disabled:opacity-50"
-              style={{ backgroundColor: 'var(--brand)' }}
-            >
-              {loading ? 'Enviando...' : 'Enviar correo de recuperación'}
-            </button>
-          </div>
-        ) : tab === 'email' ? (
-          <div className="space-y-3">
-            {isRegister && (
-              <div className="bg-surface rounded-xl px-4 py-3">
-                <p className="text-xs text-text-secondary mb-1">Nombre completo</p>
-                <input
-                  type="text"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Tu nombre completo"
-                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                />
+            {error && (
+              <div className="mb-4 rounded-[20px] border border-red-100 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                {error}
               </div>
             )}
-            <div className="bg-surface rounded-xl px-4 py-3">
-              <p className="text-xs text-text-secondary mb-1">Correo electrónico</p>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="correo@ejemplo.com"
-                className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-              />
-            </div>
-            <div className="bg-surface rounded-xl px-4 py-3 flex items-center">
-              <div className="flex-1">
-                <p className="text-xs text-text-secondary mb-1">Contraseña</p>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                />
+
+            {!isSupabaseReady && !recoveryMode && (
+              <div className="mb-4 flex items-start gap-3 rounded-[22px] border border-amber-100 bg-[#FFF8E2] px-4 py-3 text-sm text-[#6F5200]">
+                <Info size={18} className="mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-black">Modo demo activo</p>
+                  <p className="mt-1 text-xs leading-5">Puedes probar el app con las cuentas demo de abajo.</p>
+                </div>
               </div>
-              <button onClick={() => setShowPassword(!showPassword)} className="text-text-secondary ml-2 flex-shrink-0">
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-            {isRegister && (
+            )}
+
+            {recoveryMode ? (
+              <div className="space-y-4">
+                <FieldShell icon={<Mail size={19} />} label="Correo">
+                  <input
+                    type="email"
+                    value={recoveryEmail}
+                    onChange={(e) => setRecoveryEmail(e.target.value)}
+                    placeholder="correo@ejemplo.com"
+                    className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                  />
+                </FieldShell>
+                <button
+                  type="button"
+                  onClick={resetPassword}
+                  disabled={loading}
+                  className="flex w-full items-center justify-center gap-2 rounded-[26px] bg-[#EC0055] py-4 text-base font-black text-white shadow-[0_18px_44px_rgba(236,0,85,0.25)] disabled:opacity-55"
+                >
+                  {loading ? 'Enviando...' : 'Enviar enlace'}
+                  <ArrowRight size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRecoveryMode(false)}
+                  className="w-full rounded-[22px] bg-[#F5F5F7] py-3 text-sm font-black text-[#12051F]"
+                >
+                  Volver al login
+                </button>
+              </div>
+            ) : (
               <>
-                <div className="bg-surface rounded-xl px-4 py-3">
-                  <p className="text-xs text-text-secondary mb-1">Confirmar contraseña</p>
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                  />
+                {isSupabaseReady && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => loginWithProvider('google')}
+                      disabled={loading || !!oauthLoading}
+                      className="mb-4 flex w-full items-center justify-center gap-3 rounded-[24px] border border-black/8 bg-white py-4 text-sm font-black text-[#12051F] shadow-[0_12px_34px_rgba(17,10,35,0.08)] transition hover:bg-[#FAFAFB] disabled:opacity-55"
+                    >
+                      <GoogleMark />
+                      {oauthLoading === 'google' ? 'Conectando...' : 'Continuar con Google'}
+                    </button>
+
+                    <div className="mb-4 flex items-center gap-3">
+                      <span className="h-px flex-1 bg-[#ECECF0]" />
+                      <span className="text-xs font-bold uppercase tracking-[0.1em] text-[#85808B]">o usa tus datos</span>
+                      <span className="h-px flex-1 bg-[#ECECF0]" />
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-2 rounded-[22px] bg-[#F0F0F3] p-1.5">
+                      <button
+                        type="button"
+                        onClick={() => setTab('email')}
+                        className={`flex items-center justify-center gap-2 rounded-[18px] py-3 text-sm font-black transition ${tab === 'email' ? 'bg-white text-[#12051F] shadow-sm' : 'text-[#77727F]'}`}
+                      >
+                        <Mail size={16} />
+                        Email
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTab('phone')}
+                        className={`flex items-center justify-center gap-2 rounded-[18px] py-3 text-sm font-black transition ${tab === 'phone' ? 'bg-white text-[#12051F] shadow-sm' : 'text-[#77727F]'}`}
+                      >
+                        <Phone size={16} />
+                        Telefono
+                      </button>
+                    </div>
+                  </>
+                )}
+
+                <div className="space-y-3.5">
+                  {tab === 'email' || !isSupabaseReady ? (
+                    <>
+                      {isRegister && (
+                        <FieldShell icon={<UserRound size={19} />} label="Nombre completo">
+                          <input
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
+                            placeholder="Tu nombre completo"
+                            className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                          />
+                        </FieldShell>
+                      )}
+                      <FieldShell icon={<Mail size={19} />} label="Correo">
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          placeholder="correo@ejemplo.com"
+                          className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                        />
+                      </FieldShell>
+                      <FieldShell
+                        icon={<Lock size={19} />}
+                        label="Contrasena"
+                        trailing={
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full text-[#77727F]"
+                            aria-label={showPassword ? 'Ocultar contrasena' : 'Mostrar contrasena'}
+                          >
+                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        }
+                      >
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Tu contrasena"
+                          className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                        />
+                      </FieldShell>
+
+                      {isRegister && isSupabaseReady && (
+                        <>
+                          <FieldShell icon={<KeyRound size={19} />} label="Confirmar contrasena">
+                            <input
+                              type={showPassword ? 'text' : 'password'}
+                              value={confirmPassword}
+                              onChange={(e) => setConfirmPassword(e.target.value)}
+                              placeholder="Repite tu contrasena"
+                              className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                            />
+                          </FieldShell>
+                          <label className="block rounded-[22px] border border-black/5 bg-[#F5F5F7] px-4 py-3.5">
+                            <span className="mb-2 block text-[11px] font-semibold uppercase tracking-[0.08em] text-[#77727F]">Pregunta de seguridad</span>
+                            <select
+                              value={securityQuestion}
+                              onChange={(e) => setSecurityQuestion(e.target.value)}
+                              className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none"
+                            >
+                              {securityQuestions.map((question) => (
+                                <option key={question}>{question}</option>
+                              ))}
+                            </select>
+                          </label>
+                          <FieldShell icon={<ShieldCheck size={19} />} label="Respuesta">
+                            <input
+                              type="text"
+                              value={securityAnswer}
+                              onChange={(e) => setSecurityAnswer(e.target.value)}
+                              placeholder="Tu respuesta privada"
+                              className="w-full bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                            />
+                          </FieldShell>
+                        </>
+                      )}
+
+                      {isSupabaseReady && !isRegister && (
+                        <div className="flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => setRecoveryMode(true)}
+                            className="text-sm font-black text-[#EC0055]"
+                          >
+                            Olvide mi contrasena
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <FieldShell icon={<Phone size={19} />} label="Telefono">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[15px] font-black text-[#12051F]">+593</span>
+                          <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="98 765 4321"
+                            className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                          />
+                        </div>
+                      </FieldShell>
+                      {!otpSent ? (
+                        <button
+                          type="button"
+                          onClick={sendOtp}
+                          disabled={loading}
+                          className="w-full rounded-[24px] border-2 border-[#EC0055] py-3.5 text-sm font-black text-[#EC0055] disabled:opacity-55"
+                        >
+                          {loading ? 'Enviando...' : 'Enviar codigo'}
+                        </button>
+                      ) : (
+                        <FieldShell icon={<KeyRound size={19} />} label="Codigo OTP">
+                          <input
+                            type="text"
+                            value={otp}
+                            onChange={(e) => setOtp(e.target.value)}
+                            placeholder="123456"
+                            maxLength={6}
+                            className="w-full bg-transparent text-[15px] font-semibold tracking-[0.16em] text-[#12051F] outline-none placeholder:text-[#9B97A2]"
+                          />
+                        </FieldShell>
+                      )}
+                    </>
+                  )}
                 </div>
-                <div className="bg-surface rounded-xl px-4 py-3">
-                  <p className="text-xs text-text-secondary mb-1">Pregunta de seguridad</p>
-                  <select
-                    value={securityQuestion}
-                    onChange={(e) => setSecurityQuestion(e.target.value)}
-                    className="w-full bg-transparent text-text-primary outline-none text-sm"
-                  >
-                    <option>¿Cuál es el nombre de tu primera mascota?</option>
-                    <option>¿En qué ciudad naciste?</option>
-                    <option>¿Cuál fue tu primera escuela?</option>
-                  </select>
-                </div>
-                <div className="bg-surface rounded-xl px-4 py-3">
-                  <p className="text-xs text-text-secondary mb-1">Respuesta de seguridad</p>
-                  <input
-                    type="text"
-                    value={securityAnswer}
-                    onChange={(e) => setSecurityAnswer(e.target.value)}
-                    placeholder="Tu respuesta"
-                    className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-                  />
-                </div>
+
+                <motion.button
+                  type="button"
+                  onClick={tab === 'email' || !isSupabaseReady ? loginWithEmail : verifyOtp}
+                  disabled={loading}
+                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-[28px] bg-[#EC0055] py-4 text-base font-black text-white shadow-[0_18px_44px_rgba(236,0,85,0.28)] disabled:opacity-55"
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <Zap size={18} fill="#FFE83D" className="text-[#FFE83D]" />
+                  {loading ? 'Procesando...' : primaryActionLabel}
+                  <ArrowRight size={18} />
+                </motion.button>
+
+                {!isSupabaseReady && (
+                  <div className="mt-5 rounded-[26px] bg-[#F5F5F7] p-3">
+                    <p className="mb-3 px-1 text-xs font-black uppercase tracking-[0.1em] text-[#77727F]">Cuentas demo</p>
+                    <div className="grid gap-2">
+                      {mockDemoAccounts.map(({ role, email: demoEmail, password: demoPassword, label, Icon }) => (
+                        <button
+                          key={role}
+                          type="button"
+                          onClick={() => {
+                            setEmail(demoEmail);
+                            setPassword(demoPassword);
+                            setSelectedRole(role);
+                          }}
+                          className={`flex items-center gap-3 rounded-[20px] bg-white p-3 text-left shadow-sm transition ${
+                            selectedRole === role ? 'ring-2 ring-[#EC0055]' : ''
+                          }`}
+                        >
+                          <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#FFF0F5] text-[#EC0055]">
+                            <Icon size={20} />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-black text-[#12051F]">{label}</span>
+                            <span className="block truncate text-xs font-semibold text-[#77727F]">{demoEmail}</span>
+                          </span>
+                          <CheckCircle2 size={18} className="text-[#19A974]" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
-            <div className="flex justify-end">
-              <button onClick={() => setRecoveryMode(true)} className="text-sm" style={{ color: 'var(--brand)' }}>
-                ¿Olvidaste tu contraseña?
-              </button>
+
+            <div className="mt-5 grid grid-cols-3 gap-2 text-center">
+              {[
+                { label: 'Seguro', Icon: ShieldCheck },
+                { label: 'Soporte', Icon: Headphones },
+                { label: 'Socios', Icon: Building2 },
+              ].map(({ label, Icon }) => (
+                <div key={label} className="rounded-[18px] bg-[#F8F8FA] px-2 py-3">
+                  <Icon size={17} className="mx-auto text-[#12051F]" />
+                  <p className="mt-1 text-[11px] font-black text-[#77727F]">{label}</p>
+                </div>
+              ))}
             </div>
+
+            <p className="mt-5 text-center text-xs leading-5 text-[#77727F]">
+              Al continuar aceptas los terminos de uso y la politica de privacidad de RayoExpress.
+            </p>
           </div>
-        ) : (
-          <div className="space-y-3">
-            <div className="bg-surface rounded-xl px-4 py-3 flex items-center gap-2">
-              <span className="text-sm text-text-secondary flex-shrink-0">🇪🇨 +593</span>
-              <div className="w-px h-5 bg-border flex-shrink-0" />
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="98 765 4321"
-                className="flex-1 bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm"
-              />
-            </div>
-            {!otpSent ? (
-              <button
-                onClick={sendOtp}
-                disabled={loading}
-                className="w-full py-3 rounded-xl border-2 text-sm font-medium transition-colors disabled:opacity-50"
-                style={{ borderColor: 'var(--brand)', color: 'var(--brand)' }}
-              >
-                {loading ? 'Enviando...' : 'Enviar código OTP'}
-              </button>
-            ) : (
-              <div className="bg-surface rounded-xl px-4 py-3">
-                <p className="text-xs text-text-secondary mb-1">Código OTP</p>
-                <input
-                  type="text"
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
-                  maxLength={6}
-                  className="w-full bg-transparent text-text-primary outline-none placeholder:text-text-secondary text-sm tracking-widest"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {!recoveryMode && (
-          <motion.button
-            onClick={tab === 'email' ? loginWithEmail : verifyOtp}
-            disabled={loading}
-            className="w-full mt-5 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--brand)' }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-            {loading ? 'Procesando...' : isRegister ? 'Registrarse gratis' : `Ingresar como ${roles.find((r) => r.id === selectedRole)?.label}`}
-            <ArrowRight size={16} />
-          </motion.button>
-        )} {/* end of !isSupabaseReady else block */}
-          </>
-        )}
-
-        {isSupabaseReady && (
-        <p className="text-center text-sm text-text-secondary mt-4">
-          {recoveryMode ? (
-            <button onClick={() => setRecoveryMode(false)} className="font-medium" style={{ color: 'var(--brand)' }}>
-              Volver a inicio de sesión
-            </button>
-          ) : (
-            <>
-              ¿No tienes cuenta?{' '}
-              <button
-                type="button"
-                onClick={() => setIsRegister((prev) => !prev)}
-                className="cursor-pointer font-medium"
-                style={{ color: 'var(--brand)' }}
-              >
-                {isRegister ? 'Volver a iniciar sesión' : 'Regístrate gratis'}
-              </button>
-            </>
-          )}
-        </p>
-        )}
-
-        <p className="text-center text-xs text-text-secondary mt-4">
-          Al continuar aceptas nuestros{' '}
-          <span className="underline cursor-pointer">Términos de uso</span> y{' '}
-          <span className="underline cursor-pointer">Política de privacidad</span>
-        </p>
-      </motion.div>
-    </div>
+        </motion.div>
+      </section>
+    </main>
   );
 }
