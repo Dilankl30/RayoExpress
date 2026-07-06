@@ -192,6 +192,36 @@ export function LoginScreen() {
     }
   };
 
+  const resendEmailCode = async () => {
+    if (!isValidEmail) {
+      setError('Ingresa un correo valido para reenviar el codigo.');
+      return;
+    }
+
+    setLoading(true);
+    resetMessages();
+    try {
+      if (!isSupabaseReady || !supabase) {
+        throw new Error('Supabase no esta configurado para reenviar codigos reales.');
+      }
+
+      const { error: resendError } = await supabase.auth.resend({
+        type: 'signup',
+        email: normalizedEmail,
+        options: {
+          emailRedirectTo: `${window.location.origin}/login`,
+        },
+      });
+
+      if (resendError) throw resendError;
+      setNotice(`Reenviamos un codigo nuevo a ${normalizedEmail}.`);
+    } catch (err) {
+      setError(authErrorMessage(err, 'No pudimos reenviar el codigo. Intenta de nuevo.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const verifyEmailCode = async () => {
     if (cleanCode.length < OTP_MIN_LENGTH || cleanCode.length > OTP_MAX_LENGTH) {
       setError(`Ingresa el codigo de ${OTP_MIN_LENGTH} a ${OTP_MAX_LENGTH} digitos.`);
@@ -491,7 +521,7 @@ export function LoginScreen() {
                   </button>
                   <button
                     type="button"
-                    onClick={sendEmailCode}
+                    onClick={resendEmailCode}
                     disabled={loading}
                     className="h-12 rounded-[20px] bg-[#FFF6B8] text-sm font-extrabold text-[#3B2B00] transition hover:bg-[#FFE83D] disabled:opacity-60"
                   >
