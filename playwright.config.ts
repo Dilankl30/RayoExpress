@@ -22,6 +22,7 @@ export default defineConfig({
   ],
   webServer: {
     command: `npm run dev -- --host 127.0.0.1 --port ${e2ePort}`,
+    env: { VITE_MOCK_MODE: 'true' },
     url: e2eBaseUrl,
     reuseExistingServer: false,
     timeout: 30000,

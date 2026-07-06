@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  LockKeyhole,
   Loader2,
   Mail,
   ShieldCheck,
@@ -89,6 +90,8 @@ export function LoginScreen() {
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [code, setCode] = useState('');
   const [notice, setNotice] = useState('');
   const [error, setError] = useState('');
@@ -96,7 +99,10 @@ export function LoginScreen() {
   const [googleLoading, setGoogleLoading] = useState(false);
 
   const normalizedEmail = useMemo(() => email.trim().toLowerCase(), [email]);
-  const canSendCode = normalizedEmail.includes('@') && (!isRegistering || fullName.trim().length >= 3);
+  const isValidEmail = normalizedEmail.includes('@') && normalizedEmail.includes('.');
+  const isValidPassword = password.length >= 6;
+  const canLoginWithEmail = isValidEmail && isValidPassword;
+  const canSendCode = isValidEmail && isValidPassword && fullName.trim().length >= 3 && password === passwordConfirm;
   const cleanCode = code.replace(/\D/g, '').slice(0, 6);
 
   const resetMessages = () => {
@@ -108,12 +114,43 @@ export function LoginScreen() {
     setIsRegistering(register);
     setStep('email');
     setCode('');
+    setPassword('');
+    setPasswordConfirm('');
     resetMessages();
+  };
+
+  const signInWithEmail = async () => {
+    if (!canLoginWithEmail) {
+      setError('Ingresa tu correo y una clave valida.');
+      return;
+    }
+
+    setLoading(true);
+    resetMessages();
+    try {
+      if (!isSupabaseReady || !supabase) {
+        const role = await mockLogin(normalizedEmail, password);
+        if (!role) throw new Error('Correo o clave incorrectos.');
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
+
+      if (signInError) throw signInError;
+      await login('customer');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos iniciar sesion.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const sendEmailCode = async () => {
     if (!canSendCode) {
-      setError(isRegistering ? 'Completa tu nombre y correo para crear la cuenta.' : 'Ingresa un correo valido.');
+      setError(password !== passwordConfirm ? 'Las claves no coinciden.' : 'Completa nombre, correo y una clave de al menos 6 caracteres.');
       return;
     }
 
@@ -122,20 +159,20 @@ export function LoginScreen() {
     try {
       if (!isSupabaseReady || !supabase) {
         setStep('code');
-        setNotice('Modo demo: usa el codigo 123456 para entrar.');
+        setNotice('Modo demo: usa el codigo 123456 para crear la cuenta.');
         return;
       }
 
-      const { error: otpError } = await supabase.auth.signInWithOtp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
+        password,
         options: {
-          shouldCreateUser: isRegistering,
           emailRedirectTo: `${window.location.origin}/login`,
-          data: isRegistering ? { full_name: fullName.trim() } : undefined,
+          data: { full_name: fullName.trim() },
         },
       });
 
-      if (otpError) throw otpError;
+      if (signUpError) throw signUpError;
       setStep('code');
       setNotice(`Te enviamos un codigo de verificacion a ${normalizedEmail}.`);
     } catch (err) {
@@ -163,13 +200,13 @@ export function LoginScreen() {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: normalizedEmail,
         token: cleanCode,
-        type: 'email',
+        type: 'signup',
       });
 
       if (verifyError) throw verifyError;
       await login('customer');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos verificar el codigo.');
+      setError(err instanceof Error ? err.message : 'No pudimos crear la cuenta con ese codigo.');
     } finally {
       setLoading(false);
     }
@@ -228,14 +265,14 @@ export function LoginScreen() {
                 </div>
               </div>
               <p className="mt-8 max-w-md text-lg font-medium leading-8 text-white/82">
-                Accede con Google o recibe un codigo en tu correo. Sin pantallas pesadas, sin pasos de mas.
+                Accede con Google o entra con correo y clave. Para crear cuenta validamos tu correo con un codigo.
               </p>
             </div>
 
             <div className="grid gap-4">
               {[
                 ['Codigo seguro', 'Cada ingreso por correo se confirma con un codigo temporal.'],
-                ['Cuenta lista', 'Google crea o abre tu cuenta en segundos.'],
+                ['Clave protegida', 'Tu cuenta queda lista solo despues de verificar el codigo.'],
                 ['Perfil limpio', 'Tus datos se completan despues, dentro de la app.'],
               ].map(([title, text]) => (
                 <div key={title} className="flex items-start gap-3 rounded-[26px] bg-white/12 p-4 backdrop-blur">
@@ -278,7 +315,9 @@ export function LoginScreen() {
                   {step === 'code'
                     ? 'Escribe el codigo que acabamos de enviarte.'
                     : step === 'email'
-                      ? 'Te enviaremos un codigo para iniciar sesion.'
+                      ? isRegistering
+                        ? 'Crea tu cuenta y valida tu correo con un codigo.'
+                        : 'Ingresa con tu correo y clave.'
                       : 'Elige como quieres entrar a RayoExpress.'}
                 </p>
               </div>
@@ -325,7 +364,7 @@ export function LoginScreen() {
                 <div className="mt-5 flex items-start gap-3 rounded-[24px] bg-[#F6F5FA] p-4">
                   <ShieldCheck size={22} className="mt-0.5 text-[#4514D8]" />
                   <p className="text-sm leading-6 text-[#686174]">
-                    No usamos contrasena en este acceso. Si entras por correo, recibiras un codigo temporal.
+                    Google entra directo. El registro por correo se activa solo cuando el codigo enviado coincide.
                   </p>
                 </div>
               </div>
@@ -378,8 +417,36 @@ export function LoginScreen() {
                   />
                 </Field>
 
-                <PrimaryButton onClick={sendEmailCode} disabled={!canSendCode} loading={loading}>
-                  Enviar codigo
+                <Field icon={<LockKeyhole size={20} />} label="Clave">
+                  <input
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Minimo 6 caracteres"
+                    type="password"
+                    autoComplete={isRegistering ? 'new-password' : 'current-password'}
+                    className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                  />
+                </Field>
+
+                {isRegistering ? (
+                  <Field icon={<LockKeyhole size={20} />} label="Confirmar clave">
+                    <input
+                      value={passwordConfirm}
+                      onChange={(event) => setPasswordConfirm(event.target.value)}
+                      placeholder="Repite tu clave"
+                      type="password"
+                      autoComplete="new-password"
+                      className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                    />
+                  </Field>
+                ) : null}
+
+                <PrimaryButton
+                  onClick={isRegistering ? sendEmailCode : signInWithEmail}
+                  disabled={isRegistering ? !canSendCode : !canLoginWithEmail}
+                  loading={loading}
+                >
+                  {isRegistering ? 'Enviar codigo' : 'Iniciar sesion'}
                 </PrimaryButton>
               </div>
             ) : null}
