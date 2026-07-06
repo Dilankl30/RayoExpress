@@ -12,26 +12,10 @@ interface NavItem {
 const itemsByRole: Record<string, NavItem[]> = {
   customer: [
     { id: 'home', label: 'Inicio', icon: Home, screen: 'home' },
-    { id: 'super', label: 'Super', icon: ShoppingBasket, screen: 'home' },
+    { id: 'super', label: 'Súper', icon: ShoppingBasket, screen: 'super' },
     { id: 'promotions', label: 'Promos', icon: Percent, screen: 'promotions' },
     { id: 'orders', label: 'Pedidos', icon: ClipboardList, screen: 'orders' },
     { id: 'profile', label: 'Mi perfil', icon: User, screen: 'profile' },
-  ],
-  driver: [
-    { id: 'driver', label: 'Inicio', icon: Home, screen: 'driver' },
-    { id: 'orders', label: 'Ordenes', icon: ClipboardList, screen: 'driver' },
-    { id: 'profile', label: 'Perfil', icon: User, screen: 'profile' },
-  ],
-  store: [
-    { id: 'store-admin', label: 'Inicio', icon: Home, screen: 'store-admin' },
-    { id: 'orders', label: 'Pedidos', icon: ClipboardList, screen: 'store-admin' },
-    { id: 'catalog', label: 'Catalogo', icon: ShoppingBasket, screen: 'store-admin' },
-    { id: 'settings', label: 'Ajustes', icon: User, screen: 'profile' },
-  ],
-  admin: [
-    { id: 'admin', label: 'Dashboard', icon: Home, screen: 'admin' },
-    { id: 'users', label: 'Usuarios', icon: User, screen: 'admin' },
-    { id: 'settings', label: 'Config', icon: ClipboardList, screen: 'profile' },
   ],
 };
 
@@ -43,15 +27,24 @@ export function BottomNav() {
 
   const items = itemsByRole[user.role] || itemsByRole.customer;
 
+  const isActiveTab = (item: NavItem) => {
+    if (item.id === 'super') return screen === 'super' || screen === 'store-detail';
+    if (item.id === 'home') return screen === 'home' || screen === 'cart' || screen === 'tracking';
+    if (item.id === 'profile') return screen === 'profile' || screen === 'personal-info' || screen === 'addresses' || screen === 'favorites' || screen === 'notification-settings' || screen === 'wallet';
+    return screen === item.screen;
+  };
+
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border-light flex items-center justify-around px-2 py-2 z-50 lg:hidden shadow-lg">
+    <div className="fixed bottom-0 left-0 right-0 bg-card border-t border-border-light flex items-center justify-around px-2 py-2 z-50 shadow-lg">
       {items.map((item) => {
         const Icon = item.icon;
-        const isActive = screen === item.screen || (item.id === 'super' && screen === 'store-detail');
+        const isActive = isActiveTab(item);
         return (
           <button
             key={item.id}
-            onClick={() => navigate(item.screen as any)}
+            onClick={() => {
+              navigate(item.screen as any);
+            }}
             className="flex flex-col items-center gap-0.5 flex-1 py-1 relative"
           >
             <div className="relative">

@@ -1,53 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 
-const mockNavigate = vi.fn();
-
-vi.mock('../../../../modules/auth/context/AuthContext', () => ({
-  useAuth: () => ({ navigate: mockNavigate }),
+const { mockNavigate, mockUser, mockGetFavorites, mockToggleFavorite } = vi.hoisted(() => ({
+  mockNavigate: vi.fn(),
+  mockUser: { id: 'u1' },
+  mockGetFavorites: vi.fn(),
+  mockToggleFavorite: vi.fn(),
 }));
 
-const mockFavorites: Array<{ id: string; kind: 'store' | 'product'; name: string; subtitle: string; emoji: string; price?: number }> = [];
+vi.mock('../../../../modules/auth/context/AuthContext', () => ({
+  useAuth: () => ({ navigate: mockNavigate, user: mockUser }),
+}));
 
-vi.mock('../customerLocalState', () => ({
-  customerStorage: {
-    getFavorites: () => mockFavorites,
-  },
+vi.mock('../../../../modules/cart/context/CartContext', () => ({
+  useCart: () => ({ cartCount: 0 }),
+}));
+
+vi.mock('../../../../modules/client/application/client-service', () => ({
+  getFavorites: (...args: unknown[]) => mockGetFavorites(...args),
+  toggleFavorite: (...args: unknown[]) => mockToggleFavorite(...args),
 }));
 
 import { FavoritesScreen } from '../FavoritesScreen';
 
-function renderScreen() {
-  return render(<FavoritesScreen />);
-}
+afterEach(() => {
+  cleanup();
+});
 
 describe('FavoritesScreen', () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockFavorites.length = 0;
+  it('shows store tab by default', async () => {
+    mockGetFavorites.mockResolvedValue([{ id: 's1', kind: 'store', name: 'BK', subtitle: 'Burgers', emoji: '🍔' }]);
+    render(<FavoritesScreen />);
+    expect(await screen.findByText('BK')).toBeTruthy();
   });
 
-  it('renders empty state with CTA button', () => {
-    renderScreen();
-    expect(screen.getByText('Aun no tienes favoritos')).toBeTruthy();
-    fireEvent.click(screen.getByText('Buscar productos'));
-    expect(mockNavigate).toHaveBeenCalledWith('home');
-  });
-
-  it('shows store tab by default', () => {
-    mockFavorites.push({ id: 's1', kind: 'store', name: 'BK', subtitle: 'Burgers', emoji: '🍔' });
-    renderScreen();
-    expect(screen.getByText('BK')).toBeTruthy();
-  });
-
-  it('switches between store and product tabs', () => {
-    mockFavorites.push(
+  it('switches between store and product tabs', async () => {
+    mockGetFavorites.mockResolvedValue([
       { id: 's1', kind: 'store', name: 'BK', subtitle: 'Burgers', emoji: '🍔' },
       { id: 'p1', kind: 'product', name: 'Whopper', subtitle: 'BK', emoji: '🍔', price: 5.99 },
-    );
-    renderScreen();
-    expect(screen.getByText('BK')).toBeTruthy();
-    fireEvent.click(screen.getByText('Productos'));
-    expect(screen.getByText('Whopper')).toBeTruthy();
+    ]);
+    render(<FavoritesScreen />);
+    expect(await screen.findByText('BK')).toBeTruthy();
+    const productTab = await screen.findByText('Productos');
+    fireEvent.click(productTab);
+    expect(await screen.findByText('Whopper')).toBeTruthy();
+  });
+
+  it('renders empty state with CTA button', async () => {
+    mockGetFavorites.mockResolvedValue([]);
+    render(<FavoritesScreen />);
+    const btn = await screen.findByText('Explorar');
+    btn.click();
+    expect(mockNavigate).toHaveBeenCalledWith('home');
   });
 });

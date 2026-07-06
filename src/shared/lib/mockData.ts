@@ -191,6 +191,86 @@ export function assignDriverToMockOrder(orderId: string, driverId: string) {
   }
 }
 
+export const mockPromotions = [
+  { id: 'promo-1', title: '20% OFF en Restaurant', description: 'Disfruta de un 20% de descuento en todos los restaurants participantes', type: 'restaurant', discount: '20% OFF', code: 'RAYO20', store_id: null, store_name: null, store_emoji: null, bg_color: '#6D28D9', text_color: '#FFFFFF', emoji: '🍽️', expires_at: '2026-12-31', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-2', title: 'Envío GRATIS', description: 'Sin costo de envío en tu primer pedido', type: 'shipping', discount: 'Gratis', code: 'RAYO15', store_id: null, store_name: null, store_emoji: null, bg_color: '#FFD400', text_color: '#4C1D95', emoji: '🚚', expires_at: '2026-12-31', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-3', title: '15% OFF Súper', description: 'Descuento en tu compra de supermercado', type: 'super', discount: '15% OFF', code: 'SUPER15', store_id: 'store-8', store_name: 'Supermercado Más', store_emoji: '🛒', bg_color: '#2563EB', text_color: '#FFFFFF', emoji: '🛒', expires_at: '2026-12-31', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-4', title: 'Cupón $5 OFF', description: '$5 de descuento en pedidos mayores a $20', type: 'coupon', discount: '$5 OFF', code: 'RAYO5', store_id: null, store_name: null, store_emoji: null, bg_color: '#059669', text_color: '#FFFFFF', emoji: '🎫', expires_at: '2026-12-31', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-5', title: 'Combo Burger', description: 'Whopper + Papas + Bebida por solo $8.99', type: 'restaurant', discount: '30% OFF', code: null, store_id: 'store-1', store_name: 'Burger King', store_emoji: '👑', bg_color: '#FF6B35', text_color: '#FFFFFF', emoji: '🍔', expires_at: '2026-06-30', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-6', title: '2x1 en Tacos', description: 'Lleva 2 tacos dorados al precio de 1', type: 'restaurant', discount: '2x1', code: null, store_id: 'store-9', store_name: 'Taco Bell', store_emoji: '🌮', bg_color: '#702082', text_color: '#FFFFFF', emoji: '🌮', expires_at: '2026-06-30', is_active: true, created_at: '2026-01-01' },
+  { id: 'promo-7', title: 'Café + Donut', description: 'Café americano + dona glaseada por $3.49', type: 'coupon', discount: '30% OFF', code: 'COFFEE30', store_id: 'store-6', store_name: "Dunkin'", store_emoji: '🍩', bg_color: '#FF6E7F', text_color: '#FFFFFF', emoji: '☕', expires_at: '2026-07-31', is_active: true, created_at: '2026-01-01' },
+];
+
+export function getMockPromotions() {
+  return mockPromotions;
+}
+
+export function getMockPromotionsByType(type: string) {
+  if (type === 'all') return mockPromotions;
+  return mockPromotions.filter(p => p.type === type);
+}
+
+export const mockAddresses: Record<string, any[]> = {
+  'mock-customer': [
+    { id: 'addr-1', title: 'Casa', line1: 'Av. Amazonas N37-123', details: 'Cerca del parque', is_default: true },
+    { id: 'addr-2', title: 'Trabajo', line1: 'Calle República E7-456', details: 'Edificio Corporativo', is_default: false },
+  ],
+};
+
+export function getMockAddresses(userId: string) {
+  return mockAddresses[userId] || [];
+}
+
+export function addMockAddress(userId: string, address: any) {
+  if (!mockAddresses[userId]) mockAddresses[userId] = [];
+  mockAddresses[userId].push({ id: `addr-${Date.now()}`, ...address });
+  return mockAddresses[userId];
+}
+
+export function updateMockAddress(userId: string, addressId: string, updates: any) {
+  if (!mockAddresses[userId]) return [];
+  mockAddresses[userId] = mockAddresses[userId].map(a => a.id === addressId ? { ...a, ...updates } : a);
+  return mockAddresses[userId];
+}
+
+export function deleteMockAddress(userId: string, addressId: string) {
+  if (!mockAddresses[userId]) return [];
+  mockAddresses[userId] = mockAddresses[userId].filter(a => a.id !== addressId);
+  return mockAddresses[userId];
+}
+
+export function setDefaultMockAddress(userId: string, addressId: string) {
+  if (!mockAddresses[userId]) return [];
+  mockAddresses[userId] = mockAddresses[userId].map(a => ({ ...a, is_default: a.id === addressId }));
+  return mockAddresses[userId];
+}
+
+export const mockFavorites: Record<string, any[]> = {
+  'mock-customer': [
+    { id: 'store-1', kind: 'store', name: 'Burger King', subtitle: 'Las mejores whoppers', emoji: '👑' },
+    { id: 'store-10', kind: 'store', name: 'Starbucks', subtitle: 'El mejor café', emoji: '☕' },
+  ],
+};
+
+export function getMockFavorites(userId: string) {
+  return mockFavorites[userId] || [];
+}
+
+export function toggleMockFavorite(userId: string, item: any) {
+  if (!mockFavorites[userId]) mockFavorites[userId] = [];
+  const exists = mockFavorites[userId].some(f => f.id === item.id && f.kind === item.kind);
+  if (exists) {
+    mockFavorites[userId] = mockFavorites[userId].filter(f => !(f.id === item.id && f.kind === item.kind));
+  } else {
+    mockFavorites[userId].push(item);
+  }
+  return mockFavorites[userId];
+}
+
+export function isMockFavorite(userId: string, id: string, kind: string) {
+  return (mockFavorites[userId] || []).some(f => f.id === id && f.kind === kind);
+}
+
 export const mockNotifications: Record<string, any[]> = {
   'mock-customer': [
     { id: 'notif-1', user_id: 'mock-customer', title: 'Pedido en camino', body: 'Tu pedido de Burger King está en camino', read_at: null, created_at: new Date().toISOString() },

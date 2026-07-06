@@ -1,41 +1,21 @@
 import {
-  Bell,
-  ChevronRight,
-  CircleHelp,
-  Heart,
-  Info,
-  LogOut,
-  MapPin,
-  Store,
-  Ticket,
-  User,
-  Users,
-  Wallet,
+  Bell, ChevronRight, CircleHelp, Heart, Info, LogOut, MapPin, Store, Ticket, User, Wallet, ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
+import type { Screen } from '../../../shared/types';
 
-function MenuRow({
-  icon: Icon,
-  label,
-  sub,
-  badge,
-  onClick,
-}: {
-  icon: typeof User;
-  label: string;
-  sub?: string;
-  badge?: string;
-  onClick?: () => void;
-}) {
+function MenuRow({ icon: Icon, label, sub, badge, onClick }: { icon: typeof User; label: string; sub?: string; badge?: string; onClick?: () => void }) {
   return (
-    <button onClick={onClick} className="w-full flex items-center gap-4 py-4 text-left">
-      <Icon size={28} className="text-text-primary" />
+    <button onClick={onClick} className="w-full flex items-center gap-4 py-4 text-left border-b border-border-light last:border-0">
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-light)' }}>
+        <Icon size={20} style={{ color: 'var(--brand)' }} />
+      </div>
       <span className="flex-1">
-        <span className="text-lg text-text-primary">{label}</span>
-        {sub && <span className="block text-sm text-text-secondary">{sub}</span>}
+        <span className="text-sm font-medium text-text-primary">{label}</span>
+        {sub && <span className="block text-xs text-text-secondary mt-0.5">{sub}</span>}
       </span>
-      {badge && <span className="rounded-full bg-cyan-300 px-2 py-0.5 text-xs font-bold text-text-primary">{badge}</span>}
-      <ChevronRight size={28} className="text-text-primary" />
+      {badge && <span className="rounded-full px-2 py-0.5 text-[10px] font-bold text-white" style={{ backgroundColor: 'var(--brand)' }}>{badge}</span>}
+      <ChevronRight size={18} className="text-text-secondary" />
     </button>
   );
 }
@@ -44,73 +24,76 @@ export function ProfileScreen() {
   const { user, navigate, logout } = useAuth();
   if (!user) return null;
 
+  const quickActions = [
+    { label: 'Perfil', icon: User, screen: 'personal-info' as Screen },
+    { label: 'Cupones', icon: Ticket, screen: 'promotions' as Screen },
+    { label: 'Rayo+', icon: Wallet, screen: 'wallet' as Screen },
+    { label: 'Ayuda', icon: CircleHelp, screen: 'orders' as Screen },
+  ] as const;
+
   return (
-    <div className="min-h-screen bg-surface pb-28">
-      <header className="px-4 pt-12 pb-6 text-center">
-        <div className="flex items-center justify-end">
-          <div className="w-10 h-10 rounded-xl bg-brand text-white flex items-center justify-center font-bold">
-            {(user.full_name || 'R').charAt(0).toLowerCase()}
+    <div className="min-h-screen bg-surface pb-16 lg:pb-0">
+      <div className="pt-10 pb-6 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl text-white font-bold">
+            {(user.full_name || 'U').charAt(0).toUpperCase()}
+          </div>
+          <div className="text-right">
+            <p className="text-white font-bold text-lg">{user.full_name || 'Cliente'}</p>
+            <p className="text-white/60 text-xs">{user.phone || 'Agrega tu teléfono'}</p>
           </div>
         </div>
-        <h1 className="text-2xl font-bold text-text-primary">Hola, {user.full_name || 'cliente'}!</h1>
-      </header>
+      </div>
 
-      <main className="px-4 space-y-8">
-        <section className="rounded-2xl bg-brand text-white p-5 flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-white text-brand flex items-center justify-center font-bold">plus</div>
-          <div className="flex-1">
-            <h2 className="text-xl font-bold">Prueba Plus!</h2>
-            <p className="text-white/85 text-sm">Envios gratis y beneficios especiales para clientes frecuentes.</p>
+      <main className="px-4 -mt-4">
+        <section className="bg-card rounded-2xl p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-text-primary mb-1">Rayo Plus</h2>
+          <p className="text-sm text-text-secondary">Envíos gratis y beneficios especiales para clientes frecuentes.</p>
+          <div className="mt-3 flex items-center gap-2">
+            <div className="flex-1 h-2 rounded-full bg-surface overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: '30%', backgroundColor: 'var(--brand)' }} />
+            </div>
+            <span className="text-xs font-medium" style={{ color: 'var(--brand)' }}>30%</span>
           </div>
-          <ChevronRight />
         </section>
 
-        <section className="grid grid-cols-4 gap-3 text-center">
-          {[
-            ['Informacion personal', User, 'personal-info'],
-            ['Cupones', Ticket, 'promotions'],
-            ['Rayo Plus', Wallet, 'wallet'],
-            ['Ayuda', CircleHelp, 'orders'],
-          ].map(([label, Icon, screen]) => (
-            <button key={label as string} onClick={() => navigate(screen as any)} className="space-y-2">
-              <span className="h-16 rounded-2xl bg-card flex items-center justify-center shadow-sm"><Icon size={26} /></span>
-              <span className="block text-sm text-text-primary">{label as string}</span>
-            </button>
-          ))}
-        </section>
-
-        <section className="rounded-2xl bg-card p-5 shadow-sm">
-          <h2 className="text-xl font-bold text-text-primary">Completa tu perfil</h2>
-          <p className="text-text-secondary">1 de 3</p>
-          <div className="grid grid-cols-3 gap-2 mt-4">
-            <span className="h-1.5 rounded-full bg-brand" />
-            <span className="h-1.5 rounded-full bg-surface" />
-            <span className="h-1.5 rounded-full bg-surface" />
+        <section className="bg-card rounded-2xl mt-3 p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-text-primary mb-3">Acceso rápido</h2>
+          <div className="grid grid-cols-4 gap-3 text-center">
+            {quickActions.map(({ label, icon: Icon, screen }) => (
+              <button key={label} onClick={() => navigate(screen)} className="space-y-1.5">
+                <div className="h-14 rounded-2xl bg-surface flex items-center justify-center">
+                  <Icon size={24} style={{ color: 'var(--brand)' }} />
+                </div>
+                <span className="block text-[11px] text-text-secondary">{label}</span>
+              </button>
+            ))}
           </div>
-          <p className="text-text-secondary mt-2">Describe como se compone tu hogar.</p>
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold text-text-primary mb-2">Perfil</h2>
-          <MenuRow icon={MapPin} label="Direcciones" onClick={() => navigate('addresses')} />
-          <MenuRow icon={Heart} label="Favoritos" onClick={() => navigate('favorites')} />
-          <MenuRow icon={Users} label="Grupo familiar" badge="Nuevo" onClick={() => navigate('wallet')} />
+        <section className="bg-card rounded-2xl mt-3 p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-text-primary mb-1">Perfil</h2>
+          <MenuRow icon={MapPin} label="Direcciones" sub="Administra tus direcciones" onClick={() => navigate('addresses')} />
+          <MenuRow icon={Heart} label="Favoritos" sub="Tus tiendas y productos favoritos" onClick={() => navigate('favorites')} />
+          <MenuRow icon={ShoppingBag} label="Mis pedidos" sub="Historial de pedidos" onClick={() => navigate('orders')} />
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold text-text-primary mb-2">Actividad</h2>
+        <section className="bg-card rounded-2xl mt-3 p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-text-primary mb-1">Actividad</h2>
           <MenuRow icon={Wallet} label="Billetera RayoExpress" onClick={() => navigate('wallet')} />
-          <MenuRow icon={Ticket} label="Cupones y promociones" onClick={() => navigate('promotions')} />
+          <MenuRow icon={Ticket} label="Cupones y promociones" sub="Códigos y descuentos" onClick={() => navigate('promotions')} />
         </section>
 
-        <section>
-          <h2 className="text-3xl font-bold text-text-primary mb-2">Configuracion</h2>
-          <MenuRow icon={Bell} label="Notificaciones" onClick={() => navigate('notification-settings')} />
-          <MenuRow icon={Info} label="Informacion legal" />
-          <MenuRow icon={Store} label="Registrar mi negocio" onClick={() => navigate('register-store')} />
-          <button onClick={logout} className="w-full flex items-center gap-4 py-4 text-left text-text-primary">
-            <LogOut size={28} />
-            <span className="text-lg">Cerrar sesion</span>
+        <section className="bg-card rounded-2xl mt-3 p-5 shadow-sm">
+          <h2 className="text-sm font-bold text-text-primary mb-1">Configuración</h2>
+          <MenuRow icon={Bell} label="Notificaciones" sub="Personaliza tus alertas" onClick={() => navigate('notification-settings')} />
+          <MenuRow icon={Info} label="Información legal" sub="Términos y condiciones" />
+          <MenuRow icon={Store} label="Registrar mi negocio" sub="Únete como tienda" onClick={() => navigate('register-store')} />
+          <button onClick={logout} className="w-full flex items-center gap-4 py-4 text-left border-b border-border-light last:border-0">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50">
+              <LogOut size={20} className="text-red-500" />
+            </div>
+            <span className="text-sm font-medium text-red-500">Cerrar sesión</span>
           </button>
         </section>
       </main>

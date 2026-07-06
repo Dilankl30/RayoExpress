@@ -12,6 +12,7 @@ const StoreDetailScreen = lazy(() => import('../components/customer/StoreDetailS
 const CartScreen = lazy(() => import('../components/customer/CartScreen').then(m => ({ default: m.CartScreen })));
 const TrackingScreen = lazy(() => import('../components/customer/TrackingScreen').then(m => ({ default: m.TrackingScreen })));
 const OrdersScreen = lazy(() => import('../components/customer/OrdersScreen').then(m => ({ default: m.OrdersScreen })));
+const SuperScreen = lazy(() => import('../components/customer/SuperScreen').then(m => ({ default: m.SuperScreen })));
 const PromotionsScreen = lazy(() => import('../components/customer/PromotionsScreen').then(m => ({ default: m.PromotionsScreen })));
 const FavoritesScreen = lazy(() => import('../components/customer/FavoritesScreen').then(m => ({ default: m.FavoritesScreen })));
 const AddressesScreen = lazy(() => import('../components/customer/AddressesScreen').then(m => ({ default: m.AddressesScreen })));
@@ -56,7 +57,7 @@ export function ProtectedRoute({ element, allowedRoles }: { element: React.React
 }
 
 const roleRoutes: Record<Role, string[]> = {
-  customer: ['home', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
+  customer: ['home', 'super', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
   driver: ['driver', 'profile'],
   store: ['store-admin', 'profile'],
   admin: ['admin', 'profile'],
@@ -70,6 +71,10 @@ export const screenRoutes: RouteObject[] = [
   {
     path: '/home',
     element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<HomeScreen />} /></Lazy>,
+  },
+  {
+    path: '/super',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<SuperScreen />} /></Lazy>,
   },
   {
     path: '/store-detail/:storeId',
@@ -135,6 +140,7 @@ export const screenPathMap: Record<string, string> = {
   'register-store': '/register-store',
   'register-driver': '/register-driver',
   home: '/home',
+  super: '/super',
   'store-detail': '/store-detail',
   cart: '/cart',
   tracking: '/tracking',

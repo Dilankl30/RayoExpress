@@ -2,6 +2,7 @@ export type Screen =
   | 'landing'
   | 'login'
   | 'home'
+  | 'super'
   | 'store-detail'
   | 'cart'
   | 'tracking'
@@ -50,6 +51,50 @@ export type OrderStatus =
   | 'delivered'
   | 'cancelled'
   | 'refunded';
+
+export interface Address {
+  id: string;
+  title: string;
+  line1: string;
+  details: string;
+  is_default: boolean;
+  lat?: number;
+  lng?: number;
+}
+
+export interface Promotion {
+  id: string;
+  title: string;
+  description: string;
+  type: 'restaurant' | 'super' | 'shipping' | 'coupon';
+  discount: string;
+  code?: string;
+  store_id?: string;
+  store_name?: string;
+  store_emoji?: string;
+  bg_color: string;
+  text_color: string;
+  emoji: string;
+  expires_at: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface FavoriteItem {
+  id: string;
+  kind: 'store' | 'product';
+  name: string;
+  subtitle: string;
+  emoji: string;
+  price?: number;
+  storeId?: string;
+}
+
+export interface NotificationSetting {
+  label: string;
+  description: string;
+  enabled: boolean;
+}
 
 export type Database = {
   public: {
@@ -114,6 +159,23 @@ export type Database = {
           notes: string | null;
           created_at: string;
           updated_at: string;
+        };
+      };
+      promotions: {
+        Row: {
+          id: string;
+          title: string;
+          description: string;
+          type: string;
+          discount: string;
+          code: string | null;
+          store_id: string | null;
+          bg_color: string;
+          text_color: string;
+          emoji: string;
+          expires_at: string;
+          is_active: boolean;
+          created_at: string;
         };
       };
     };

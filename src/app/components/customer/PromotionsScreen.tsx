@@ -1,40 +1,213 @@
-import { CreditCard, Percent, ShoppingBasket, Utensils } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { ShoppingCart, Copy, CheckCircle } from 'lucide-react';
+import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { useCart } from '../../../modules/cart/context/CartContext';
+import { getPromotions, applyCoupon } from '../../../modules/client/application/promotions-service';
+import type { Promotion } from '../../../shared/types';
+
+const TABS = [
+  { id: 'all', label: 'Todas', emoji: '🎉' },
+  { id: 'restaurant', label: 'Restaurantes', emoji: '🍽️' },
+  { id: 'super', label: 'Súper', emoji: '🛒' },
+  { id: 'shipping', label: 'Envío', emoji: '🚚' },
+  { id: 'coupon', label: 'Cupones', emoji: '🎫' },
+] as const;
 
 export function PromotionsScreen() {
-  return (
-    <div className="min-h-screen bg-white px-4 pt-12 pb-24">
-      <h1 className="text-center text-2xl font-bold text-[#12001f] mb-10">Promociones</h1>
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          ['Restaurantes', Utensils],
-          ['Mercados', ShoppingBasket],
-          ['Medios de pago', CreditCard],
-        ].map(([label, Icon]) => (
-          <button key={label as string} className="rounded-2xl bg-[#F3F3F5] py-6 flex flex-col items-center gap-3">
-            <Icon size={24} /><span className="text-sm">{label as string}</span>
-          </button>
-        ))}
-      </div>
-      <h2 className="text-2xl font-bold text-[#12001f] mt-10 mb-6">Descubre las promos mas buscadas</h2>
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        {['Combo familiar', 'Hamburguesas', 'Super ahorro'].map((title, index) => (
-          <article key={title} className="min-w-[260px] rounded-2xl bg-gray-100 overflow-hidden">
-            <div className="h-28 bg-gradient-to-br from-amber-200 to-rose-200 flex items-center justify-center text-5xl">{index === 0 ? '🍗' : index === 1 ? '🍔' : '🛒'}</div>
-            <div className="p-4">
-              <span className="inline-flex rounded-md bg-[#FFE943] px-2 py-1 text-xs font-bold">Hasta 36% DSCTO</span>
-              <h3 className="font-bold mt-3 text-[#12001f]">{title}</h3>
-            </div>
-          </article>
-        ))}
-      </div>
-      <section className="mt-4 rounded-[28px] bg-[#E90057] p-5 text-[#12001f]">
-        <div className="bg-white rounded-2xl p-5">
-          <div className="flex items-center gap-2 font-bold"><Percent size={18} /> Promocion destacada</div>
-          <h2 className="text-2xl font-bold mt-3">Ahorra hoy con cupones activos</h2>
-          <p className="text-gray-600 mt-2">Usa los cupones activos en checkout para aplicar descuentos disponibles.</p>
-          <button className="mt-5 font-bold">Ir a todas las promociones</button>
+  const { navigate } = useAuth();
+  const { cartCount } = useCart();
+  const [promotions, setPromotions] = useState<Promotion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<string>('all');
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [couponResult, setCouponResult] = useState<{ valid: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    loadPromotions();
+  }, []);
+
+  useEffect(() => {
+    if (copiedCode) {
+      const timer = setTimeout(() => setCopiedCode(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [copiedCode]);
+
+  const loadPromotions = async () => {
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getPromotions('all');
+      setPromotions(data as Promotion[]);
+    } catch {
+      setLoadError('No pudimos cargar las promociones.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    const result = await applyCoupon(couponInput.trim());
+    setCouponResult(result);
+    if (result.valid) setCouponInput('');
+  };
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code).catch(() => {});
+    setCopiedCode(code);
+  };
+
+  const filtered = activeType === 'all' ? promotions : promotions.filter(p => p.type === activeType);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-text-secondary">Cargando promociones...</p>
         </div>
-      </section>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <span className="text-4xl mb-3 block">😕</span>
+          <p className="text-text-primary font-bold mb-1">Error</p>
+          <p className="text-sm text-text-secondary mb-4">{loadError}</p>
+          <button onClick={loadPromotions} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
+      <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-white font-bold text-lg">Promociones</h2>
+            <p className="text-xs text-white/60">Ahorra en cada pedido</p>
+          </div>
+          <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
+            <ShoppingCart size={22} className="text-white" />
+            {cartCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="bg-card/20 rounded-2xl p-4">
+          <p className="text-white text-sm font-medium mb-2">¿Tienes un cupón?</p>
+          <div className="flex gap-2">
+            <input
+              aria-label="Código de cupón"
+              value={couponInput}
+              onChange={(e) => setCouponInput(e.target.value)}
+              placeholder="Ingresa el código"
+              className="flex-1 bg-white/20 rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/50"
+              onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+            />
+            <button
+              onClick={handleApplyCoupon}
+              className="px-4 py-2.5 rounded-xl text-sm font-semibold"
+              style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
+            >
+              Aplicar
+            </button>
+          </div>
+          {couponResult && (
+            <div className={`mt-2 text-xs flex items-center gap-1 ${couponResult.valid ? 'text-green-300' : 'text-red-300'}`}>
+              {couponResult.valid ? <CheckCircle size={12} /> : <span>✕</span>}
+              {couponResult.message}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-4 mt-4">
+        <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveType(tab.id)}
+              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm whitespace-nowrap transition-all ${
+                activeType === tab.id ? 'text-white' : 'bg-card text-text-secondary border border-border-light'
+              }`}
+              style={activeType === tab.id ? { backgroundColor: 'var(--brand)' } : {}}
+            >
+              <span>{tab.emoji}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {promotions.length === 0 ? (
+          <div className="py-16 text-center text-text-secondary">
+            <span className="text-4xl mb-3 block">🎉</span>
+            <p className="font-medium">No hay promociones activas</p>
+            <p className="text-sm mt-1">Vuelve pronto para nuevas ofertas</p>
+            <button onClick={() => navigate('home')} className="mt-4 px-6 py-2 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+              Explorar tiendas
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center text-text-secondary">
+            <span className="text-4xl mb-3 block">🔍</span>
+            <p className="font-medium">Sin promociones en esta categoría</p>
+          </div>
+        ) : (
+          <div className="space-y-3 mt-3">
+            {filtered.map((promo, i) => (
+              <motion.div
+                key={promo.id}
+                className="bg-card rounded-2xl overflow-hidden shadow-sm"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <div className="p-4 flex items-center gap-4" style={{ background: promo.bg_color || 'var(--brand)' }}>
+                  <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl flex-shrink-0">
+                    {promo.emoji || '🎉'}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold" style={{ color: promo.text_color || '#FFFFFF' }}>{promo.title}</p>
+                    <p className="text-sm mt-0.5" style={{ color: promo.text_color || '#FFFFFF', opacity: 0.8 }}>{promo.description}</p>
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.3)', color: promo.text_color || '#FFFFFF' }}>
+                        {promo.discount}
+                      </span>
+                      {promo.code && (
+                        <button
+                          onClick={() => handleCopyCode(promo.code!)}
+                          className="flex items-center gap-1 text-xs font-medium"
+                          style={{ color: promo.text_color || '#FFFFFF' }}
+                        >
+                          {copiedCode === promo.code ? (
+                            <><CheckCircle size={12} /> Copiado</>
+                          ) : (
+                            <><Copy size={12} /> {promo.code}</>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

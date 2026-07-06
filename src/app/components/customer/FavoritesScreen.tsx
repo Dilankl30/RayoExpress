@@ -1,44 +1,150 @@
-import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { ArrowLeft, Heart, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { customerStorage } from './customerLocalState';
+import { useCart } from '../../../modules/cart/context/CartContext';
+import { getFavorites, toggleFavorite } from '../../../modules/client/application/client-service';
 
 export function FavoritesScreen() {
-  const { navigate } = useAuth();
+  const { navigate, user } = useAuth();
+  const { cartCount } = useCart();
   const [tab, setTab] = useState<'store' | 'product'>('store');
-  const favorites = customerStorage.getFavorites().filter((item) => item.kind === tab);
+  const [favorites, setFavorites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    loadFavorites();
+  }, [user]);
+
+  const loadFavorites = async () => {
+    if (!user) return;
+    setLoading(true);
+    setLoadError(null);
+    try {
+      const data = await getFavorites(user.id);
+      setFavorites(data || []);
+    } catch {
+      setLoadError('No pudimos cargar tus favoritos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemove = async (item: any) => {
+    if (!user) return;
+    const result = await toggleFavorite(user.id, item);
+    setFavorites(result);
+  };
+
+  const filtered = favorites.filter((item) => item.kind === tab);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-surface flex items-center justify-center p-4">
+        <div className="text-center max-w-sm">
+          <span className="text-4xl mb-3 block">😕</span>
+          <p className="text-text-primary font-bold mb-1">Error</p>
+          <p className="text-sm text-text-secondary mb-4">{loadError}</p>
+          <button onClick={loadFavorites} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-white pb-24">
-      <header className="px-4 pt-10 pb-4 flex items-center">
-        <button onClick={() => navigate('profile')} aria-label="Volver" className="w-10 h-10 flex items-center justify-center"><ArrowLeft size={24} /></button>
-        <h1 className="flex-1 text-center text-2xl font-bold text-[#12001f] pr-10">Favoritos</h1>
-      </header>
-      <div className="grid grid-cols-2 text-center text-xl font-bold text-[#12001f]">
-        <button onClick={() => setTab('store')} className={`py-5 border-b-4 ${tab === 'store' ? 'border-[#12001f]' : 'border-transparent text-gray-400'}`}>Locales</button>
-        <button onClick={() => setTab('product')} className={`py-5 border-b-4 ${tab === 'product' ? 'border-[#12001f]' : 'border-transparent text-gray-400'}`}>Productos</button>
+    <div className="min-h-screen bg-surface pb-16">
+      <div className="pt-10 pb-4 px-4 flex items-center gap-3" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+        <button onClick={() => navigate('profile')} aria-label="Volver" className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
+          <ArrowLeft size={18} className="text-white" />
+        </button>
+        <div className="flex-1">
+          <h2 className="text-white font-bold text-lg">Favoritos</h2>
+        </div>
+        <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
+          <ShoppingCart size={22} className="text-white" />
+          {cartCount > 0 && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}>
+              {cartCount}
+            </span>
+          )}
+        </button>
       </div>
-      {favorites.length === 0 ? (
-        <div className="min-h-[65vh] px-8 flex flex-col items-center justify-center text-center">
-          <div className="text-7xl mb-6">🏪</div>
-          <h2 className="text-2xl font-bold text-[#12001f]">Aun no tienes favoritos</h2>
-          <p className="text-gray-500 mt-3">Agrega lugares y productos para encontrarlos mas rapido aqui.</p>
-          <button onClick={() => navigate('home')} className="mt-7 px-8 py-3 rounded-full bg-[#E90057] text-white font-bold">Buscar productos</button>
+
+      <div className="px-4 mt-4">
+        <div className="flex bg-card rounded-2xl p-1 shadow-sm">
+          <button
+            onClick={() => setTab('store')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === 'store' ? 'text-white shadow-sm' : 'text-text-secondary'}`}
+            style={tab === 'store' ? { backgroundColor: 'var(--brand)' } : {}}
+          >
+            Tiendas
+          </button>
+          <button
+            onClick={() => setTab('product')}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-medium transition-all ${tab === 'product' ? 'text-white shadow-sm' : 'text-text-secondary'}`}
+            style={tab === 'product' ? { backgroundColor: 'var(--brand)' } : {}}
+          >
+            Productos
+          </button>
         </div>
-      ) : (
-        <div className="px-4 py-6 space-y-4">
-          {favorites.map((item) => (
-            <article key={`${item.kind}-${item.id}`} className="flex items-center gap-4 rounded-2xl border border-gray-100 p-4">
-              <div className="text-4xl w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">{item.emoji}</div>
-              <div className="flex-1">
-                <h2 className="font-bold text-[#12001f]">{item.name}</h2>
-                <p className="text-gray-500 text-sm">{item.subtitle}</p>
-              </div>
-              {item.price && <strong>${item.price.toFixed(2)}</strong>}
-            </article>
-          ))}
-        </div>
-      )}
+
+        {filtered.length === 0 ? (
+          <div className="py-16 text-center text-text-secondary">
+            <Heart size={48} className="mx-auto mb-3" style={{ color: 'var(--brand)' }} />
+            <p className="font-medium">Aún no tienes favoritos</p>
+            <p className="text-sm mt-1">
+              {tab === 'store' ? 'Agrega tiendas a favoritos para encontrarlas rápido' : 'Guarda productos que te gusten'}
+            </p>
+            <button
+              onClick={() => navigate('home')}
+              className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm font-medium"
+              style={{ backgroundColor: 'var(--brand)' }}
+            >
+              Explorar
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3 mt-4">
+            {filtered.map((item, i) => (
+              <motion.div
+                key={`${item.kind}-${item.id}`}
+                className="bg-card rounded-2xl p-4 shadow-sm flex items-center gap-3"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+              >
+                <div className="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl" style={{ backgroundColor: '#F3F4F6' }}>
+                  {item.emoji || '🏪'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-text-primary font-medium truncate">{item.name}</p>
+                  <p className="text-xs text-text-secondary truncate">{item.subtitle}</p>
+                  {item.price && <p className="text-sm font-bold mt-0.5" style={{ color: 'var(--brand)' }}>${item.price.toFixed(2)}</p>}
+                </div>
+                <button
+                  onClick={() => handleRemove(item)}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50"
+                  aria-label="Quitar de favoritos"
+                >
+                  <Heart size={16} className="text-red-500" fill="#EF4444" />
+                </button>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
