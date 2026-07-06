@@ -1,6 +1,8 @@
+import { useLocation, useNavigate } from 'react-router';
 import { Home, ShoppingBasket, Percent, User, ClipboardList } from 'lucide-react';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
+import { screenPathMap } from '../router';
 
 interface NavItem {
   id: string;
@@ -20,18 +22,31 @@ const itemsByRole: Record<string, NavItem[]> = {
 };
 
 export function BottomNav() {
-  const { navigate, user, screen } = useAuth();
+  const { user } = useAuth();
   const { cartCount } = useCart();
+  const location = useLocation();
+  const routerNavigate = useNavigate();
 
   if (!user) return null;
 
   const items = itemsByRole[user.role] || itemsByRole.customer;
 
-  const isActiveTab = (item: NavItem) => {
-    if (item.id === 'super') return screen === 'super' || screen === 'store-detail';
-    if (item.id === 'home') return screen === 'home' || screen === 'cart' || screen === 'tracking';
-    if (item.id === 'profile') return screen === 'profile' || screen === 'personal-info' || screen === 'addresses' || screen === 'favorites' || screen === 'notification-settings' || screen === 'wallet';
-    return screen === item.screen;
+  const isActiveTab = (item: NavItem): boolean => {
+    const path = location.pathname;
+    switch (item.screen) {
+      case 'home':
+        return path === '/home' || path === '/cart' || path === '/tracking' || path.startsWith('/store-detail/');
+      case 'super':
+        return path === '/super';
+      case 'promotions':
+        return path === '/promotions';
+      case 'orders':
+        return path === '/orders';
+      case 'profile':
+        return path === '/profile' || path === '/personal-info' || path === '/addresses' || path === '/favorites' || path === '/notification-settings' || path === '/wallet';
+      default:
+        return path === (screenPathMap[item.screen] || `/${item.screen}`);
+    }
   };
 
   return (
@@ -43,7 +58,8 @@ export function BottomNav() {
           <button
             key={item.id}
             onClick={() => {
-              navigate(item.screen as any);
+              const path = screenPathMap[item.screen] || `/${item.screen}`;
+              routerNavigate(path);
             }}
             className="flex flex-col items-center gap-0.5 flex-1 py-1 relative"
           >

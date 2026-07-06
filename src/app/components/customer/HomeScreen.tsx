@@ -22,7 +22,7 @@ const banners = [
 ];
 
 export function HomeScreen() {
-  const { navigate, user, navigationParams = {} } = useAuth();
+  const { navigate, user } = useAuth();
   const { cartCount } = useCart();
   const [search, setSearch] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
@@ -35,8 +35,6 @@ export function HomeScreen() {
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [userAddress, setUserAddress] = useState('Av. Amazonas, Quito');
-
-  const defaultCategory = navigationParams.tab === 'super' ? 'cat-8' : null;
 
   useEffect(() => {
     const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
@@ -69,7 +67,6 @@ export function HomeScreen() {
         } catch { /* store sin productos */ }
       }
       setCategoryStoreMap(map);
-      if (defaultCategory) setActiveCategory(defaultCategory);
     } catch {
       setLoadError('No pudimos cargar la información. Revisa tu conexión.');
     } finally {

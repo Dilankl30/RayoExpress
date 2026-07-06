@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
@@ -7,7 +8,8 @@ import { getStoreById, getProductsByStore } from '../../../modules/stores/applic
 import { customerStorage } from './customerLocalState';
 
 export function StoreDetailScreen() {
-  const { navigate, navigationParams } = useAuth();
+  const { navigate } = useAuth();
+  const { storeId = '' } = useParams<{ storeId: string }>();
   const { addToCart, cartCount, updateQuantity, cart } = useCart();
   const [store, setStore] = useState<any>(null);
   const [products, setProducts] = useState<any[]>([]);
@@ -17,8 +19,6 @@ export function StoreDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  const storeId = navigationParams.storeId || '';
 
   useEffect(() => {
     if (storeId) {

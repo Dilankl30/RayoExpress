@@ -11,7 +11,6 @@ interface AuthContextType {
   loading: boolean;
   screen: Screen;
   navigate: (s: Screen, params?: Record<string, string>) => void;
-  navigationParams: Record<string, string>;
   login: (role: Role) => Promise<void>;
   mockLogin: (email: string, password: string) => Promise<Role | null>;
   logout: () => Promise<void>;
@@ -24,11 +23,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [screen, setScreen] = useState<Screen>('landing');
-  const [navigationParams, setNavigationParams] = useState<Record<string, string>>({});
   const routerNavigate = useNavigate();
 
   const navigate = useCallback((s: Screen, params?: Record<string, string>) => {
-    if (params) setNavigationParams(params);
     setScreen(s);
     const basePath = screenPathMap[s] || '/';
     const path = params && params.storeId ? `${basePath}/${params.storeId}` : basePath;
@@ -140,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [navigate, roleToScreen]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, screen, navigate, navigationParams, login, mockLogin, logout, setUser }}>
+    <AuthContext.Provider value={{ user, loading, screen, navigate, login, mockLogin, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );
