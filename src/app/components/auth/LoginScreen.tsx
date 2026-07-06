@@ -163,16 +163,16 @@ export function LoginScreen() {
         return;
       }
 
-      const { error: signUpError } = await supabase.auth.signUp({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email: normalizedEmail,
-        password,
         options: {
+          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/login`,
           data: { full_name: fullName.trim() },
         },
       });
 
-      if (signUpError) throw signUpError;
+      if (otpError) throw otpError;
       setStep('code');
       setNotice(`Te enviamos un codigo de verificacion a ${normalizedEmail}.`);
     } catch (err) {
@@ -200,10 +200,17 @@ export function LoginScreen() {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: normalizedEmail,
         token: cleanCode,
-        type: 'signup',
+        type: 'email',
       });
 
       if (verifyError) throw verifyError;
+
+      const { error: passwordError } = await supabase.auth.updateUser({
+        password,
+        data: { full_name: fullName.trim() },
+      });
+
+      if (passwordError) throw passwordError;
       await login('customer');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No pudimos crear la cuenta con ese codigo.');
