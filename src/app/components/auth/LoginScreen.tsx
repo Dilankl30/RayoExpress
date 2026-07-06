@@ -87,6 +87,17 @@ function PrimaryButton({
   );
 }
 
+function authErrorMessage(err: unknown, fallback: string) {
+  if (err instanceof Error && err.message) return err.message;
+  if (typeof err === 'object' && err !== null) {
+    const maybeMessage = 'message' in err ? err.message : undefined;
+    const maybeDescription = 'error_description' in err ? err.error_description : undefined;
+    if (typeof maybeMessage === 'string' && maybeMessage) return maybeMessage;
+    if (typeof maybeDescription === 'string' && maybeDescription) return maybeDescription;
+  }
+  return fallback;
+}
+
 export function LoginScreen() {
   const { login } = useAuth();
   const [step, setStep] = useState<AuthStep>('options');
@@ -143,7 +154,7 @@ export function LoginScreen() {
       if (signInError) throw signInError;
       await login('customer');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos iniciar sesion.');
+      setError(authErrorMessage(err, 'No pudimos iniciar sesion.'));
     } finally {
       setLoading(false);
     }
@@ -162,20 +173,20 @@ export function LoginScreen() {
         throw new Error('Supabase no esta configurado para enviar codigos reales.');
       }
 
-      const { error: otpError } = await supabase.auth.signInWithOtp({
+      const { error: signUpError } = await supabase.auth.signUp({
         email: normalizedEmail,
+        password,
         options: {
-          shouldCreateUser: true,
           emailRedirectTo: `${window.location.origin}/login`,
           data: { full_name: fullName.trim() },
         },
       });
 
-      if (otpError) throw otpError;
+      if (signUpError) throw signUpError;
       setStep('code');
       setNotice(`Te enviamos un codigo de verificacion a ${normalizedEmail}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos enviar el codigo. Intenta de nuevo.');
+      setError(authErrorMessage(err, 'No pudimos enviar el codigo. Intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -197,20 +208,13 @@ export function LoginScreen() {
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: normalizedEmail,
         token: cleanCode,
-        type: 'email',
+        type: 'signup',
       });
 
       if (verifyError) throw verifyError;
-
-      const { error: passwordError } = await supabase.auth.updateUser({
-        password,
-        data: { full_name: fullName.trim() },
-      });
-
-      if (passwordError) throw passwordError;
       await login('customer');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos crear la cuenta con ese codigo.');
+      setError(authErrorMessage(err, 'No pudimos crear la cuenta con ese codigo.'));
     } finally {
       setLoading(false);
     }
@@ -235,7 +239,7 @@ export function LoginScreen() {
 
       if (oauthError) throw oauthError;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No pudimos iniciar con Google.');
+      setError(authErrorMessage(err, 'No pudimos iniciar con Google.'));
       setGoogleLoading(false);
     }
   };
