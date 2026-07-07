@@ -21,6 +21,10 @@ export interface DriverWorkOrder {
   customer_name: string;
 }
 
+export interface AvailableDriverOrder extends DriverWorkOrder {
+  distance_label: string;
+}
+
 export interface DriverLocation {
   lat: number;
   lng: number;
@@ -100,6 +104,92 @@ export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkO
       customer_name: (customer?.full_name as string) ?? 'Cliente',
     };
   });
+}
+
+export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]> {
+  if (!isSupabaseReady) {
+    return [{
+      id: 'order-demo-available',
+      total: 8.75,
+      status: 'preparing',
+      delivery_address: 'C. Manuelita Saenz, Quito',
+      notes: 'Pedido demo disponible',
+      created_at: new Date().toISOString(),
+      store_id: 'store-1',
+      store_name: 'Rayo Demo Market',
+      store_emoji: 'RE',
+      customer_name: 'Cliente Demo',
+      distance_label: '1.8 km',
+    }];
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, store:stores(name, emoji), customer:profiles!customer_id(full_name)')
+    .is('driver_id', null)
+    .in('status', ['accepted', 'preparing'])
+    .order('created_at', { ascending: true })
+    .limit(20);
+  if (error) throw error;
+
+  return (data ?? []).map((order: Record<string, unknown>) => {
+    const store = order.store as Record<string, unknown> | null;
+    const customer = order.customer as Record<string, unknown> | null;
+    return {
+      id: order.id as string,
+      total: Number(order.total ?? 0),
+      status: order.status as string,
+      delivery_address: order.delivery_address as string,
+      notes: (order.notes as string | null) ?? null,
+      created_at: order.created_at as string,
+      store_id: order.store_id as string,
+      store_name: (store?.name as string) ?? 'Tienda',
+      store_emoji: (store?.emoji as string) ?? 'RE',
+      customer_name: (customer?.full_name as string) ?? 'Cliente',
+      distance_label: 'Cerca de ti',
+    };
+  });
+}
+
+export async function claimDriverOrder(orderId: string, driverId: string): Promise<DriverWorkOrder> {
+  if (!isSupabaseReady) {
+    return {
+      id: orderId,
+      total: 8.75,
+      status: 'preparing',
+      delivery_address: 'C. Manuelita Saenz, Quito',
+      notes: 'Pedido demo disponible',
+      created_at: new Date().toISOString(),
+      store_id: 'store-1',
+      store_name: 'Rayo Demo Market',
+      store_emoji: 'RE',
+      customer_name: 'Cliente Demo',
+    };
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('driver_claim_order', { p_order_id: orderId });
+  if (error) throw error;
+  if (!data) throw new Error('No se pudo tomar el pedido. Puede que otro repartidor ya lo acepto.');
+
+  logAuditEvent({ userId: driverId, action: 'driver_claim_order', entityType: 'order', entityId: orderId }).catch(() => {});
+  const claimed = Array.isArray(data) ? data[0] : data;
+  const store = claimed.store as Record<string, unknown> | null;
+  const customer = claimed.customer as Record<string, unknown> | null;
+
+  return {
+    id: claimed.id as string,
+    total: Number(claimed.total ?? 0),
+    status: claimed.status as string,
+    delivery_address: claimed.delivery_address as string,
+    notes: (claimed.notes as string | null) ?? null,
+    created_at: claimed.created_at as string,
+    store_id: claimed.store_id as string,
+    store_name: (store?.name as string) ?? 'Tienda',
+    store_emoji: (store?.emoji as string) ?? 'RE',
+    customer_name: (customer?.full_name as string) ?? 'Cliente',
+  };
 }
 
 export async function saveDriverLocation(driverId: string, orderId: string, lat: number, lng: number): Promise<DriverLocation> {

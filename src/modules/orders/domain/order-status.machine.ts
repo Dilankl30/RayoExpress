@@ -24,7 +24,7 @@ export const ORDER_FLOW: OrderStatus[] = [
 export const ALLOWED_TRANSITIONS: Record<OrderStatus, { to: OrderStatus[]; by: Role[] }> = {
   pending:    { to: ['accepted', 'cancelled'], by: ['store', 'admin'] },
   accepted:   { to: ['preparing', 'cancelled'], by: ['store', 'admin'] },
-  preparing:  { to: ['picked_up', 'cancelled'], by: ['store', 'admin'] },
+  preparing:  { to: ['picked_up', 'cancelled'], by: ['store', 'driver', 'admin'] },
   picked_up:  { to: ['on_the_way'], by: ['driver', 'admin'] },
   on_the_way: { to: ['arrived', 'delivered'], by: ['driver', 'admin'] },
   arrived:    { to: ['delivered'], by: ['driver', 'admin', 'customer'] },

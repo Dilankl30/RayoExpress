@@ -20,6 +20,8 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import {
+  claimDriverOrder,
+  getAvailableDriverOrders,
   getDriverEarnings,
   getDriverOrdersToday,
   getDriverProfile,
@@ -29,6 +31,7 @@ import {
   saveDriverLocation,
   setDriverOnline,
   uploadDeliveryEvidence,
+  type AvailableDriverOrder,
   type DriverLocation,
   type DriverWorkOrder,
 } from '../../../modules/delivery/application/driver.service';
@@ -43,6 +46,7 @@ type DriverTab = 'dashboard' | 'orders' | 'wallet' | 'profile';
 const ACTIVE_DELIVERY_STATUSES = ['picked_up', 'on_the_way', 'arrived'];
 
 function nextDriverStatus(status: string): { status: OrderStatus; label: string } | null {
+  if (status === 'preparing') return { status: 'picked_up', label: 'Confirmar retiro' };
   if (status === 'picked_up') return { status: 'on_the_way', label: 'Iniciar ruta' };
   if (status === 'on_the_way') return { status: 'arrived', label: 'Llegue al destino' };
   if (status === 'arrived') return { status: 'delivered', label: 'Marcar entregado' };
@@ -66,8 +70,10 @@ export function DriverDashboard() {
   const [weeklyHistory, setWeeklyHistory] = useState<{ day: string; earnings: number; orders: number }[]>([]);
   const [todayOrders, setTodayOrders] = useState<{ id: string; store_name: string; store_emoji: string; total: number; status: string; created_at: string }[]>([]);
   const [workOrders, setWorkOrders] = useState<DriverWorkOrder[]>([]);
+  const [availableOrders, setAvailableOrders] = useState<AvailableDriverOrder[]>([]);
   const [tripCount, setTripCount] = useState(0);
   const [driverRating, setDriverRating] = useState(0);
+  const [claimingOrder, setClaimingOrder] = useState<string | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [chatOrder, setChatOrder] = useState<DriverWorkOrder | null>(null);
@@ -83,13 +89,14 @@ export function DriverDashboard() {
     if (!user) return;
     if (withSpinner) setRefreshing(true);
     try {
-      const [profile, earns, history, deliveredToday, trips, assigned] = await Promise.all([
+      const [profile, earns, history, deliveredToday, trips, assigned, available] = await Promise.all([
         getDriverProfile(user.id),
         getDriverEarnings(user.id),
         getDriverWeeklyHistory(user.id),
         getDriverOrdersToday(user.id),
         getDriverTripCount(user.id),
         getDriverWorkOrders(user.id),
+        getAvailableDriverOrders(),
       ]);
       if (profile) setIsOnline(profile.is_online);
       setDriverRating(profile?.rating ?? 0);
@@ -98,6 +105,7 @@ export function DriverDashboard() {
       setTodayOrders(deliveredToday);
       setTripCount(trips);
       setWorkOrders(assigned);
+      setAvailableOrders(available);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -147,6 +155,18 @@ export function DriverDashboard() {
       await loadDashboard(true);
     } finally {
       setUpdatingStatus(null);
+    }
+  };
+
+  const handleClaimOrder = async (order: AvailableDriverOrder) => {
+    if (!user) return;
+    setClaimingOrder(order.id);
+    try {
+      await claimDriverOrder(order.id, user.id);
+      await loadDashboard(true);
+      setActiveTab('orders');
+    } finally {
+      setClaimingOrder(null);
     }
   };
 
@@ -304,6 +324,50 @@ export function DriverDashboard() {
                 </div>
               </div>
 
+              <div className="px-4 pt-4">
+                <div className="bg-card rounded-2xl p-4 shadow-sm">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-text-primary font-medium text-sm">Pedidos disponibles</p>
+                      <p className="text-xs text-text-secondary">Toma un pedido cuando estes listo para repartir.</p>
+                    </div>
+                    <button
+                      onClick={() => loadDashboard(true)}
+                      disabled={refreshing}
+                      className="w-9 h-9 rounded-full bg-surface-hover text-text-primary flex items-center justify-center"
+                      aria-label="Actualizar disponibles"
+                    >
+                      <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+                    </button>
+                  </div>
+
+                  {availableOrders.length > 0 ? (
+                    <div className="grid md:grid-cols-2 gap-3">
+                      {availableOrders.slice(0, 4).map((order) => (
+                        <AvailableOrderCard
+                          key={order.id}
+                          order={order}
+                          busy={claimingOrder === order.id}
+                          disabled={!isOnline}
+                          onClaim={() => handleClaimOrder(order)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6">
+                      <Package size={32} className="mx-auto text-text-secondary" />
+                      <p className="text-sm text-text-secondary mt-2">No hay pedidos disponibles ahora.</p>
+                    </div>
+                  )}
+
+                  {!isOnline && availableOrders.length > 0 && (
+                    <p className="mt-3 text-xs text-yellow-800 bg-yellow-50 rounded-xl px-3 py-2">
+                      Conectate para poder tomar pedidos.
+                    </p>
+                  )}
+                </div>
+              </div>
+
               {!isOnline && (
                 <motion.div
                   className="mx-4 mt-4 rounded-2xl overflow-hidden flex items-center shadow-sm"
@@ -343,6 +407,22 @@ export function DriverDashboard() {
                 <div className="bg-card rounded-2xl p-8 shadow-sm text-center">
                   <Bike size={36} className="mx-auto text-text-secondary" />
                   <p className="text-text-secondary text-sm mt-2">No tienes pedidos pendientes.</p>
+                </div>
+              )}
+
+              <h3 className="text-text-primary font-semibold pt-3">Disponibles para tomar</h3>
+              {availableOrders.length > 0 ? availableOrders.map((order) => (
+                <AvailableOrderCard
+                  key={order.id}
+                  order={order}
+                  busy={claimingOrder === order.id}
+                  disabled={!isOnline}
+                  onClaim={() => handleClaimOrder(order)}
+                />
+              )) : (
+                <div className="bg-card rounded-2xl p-6 shadow-sm text-center">
+                  <Package size={32} className="mx-auto text-text-secondary" />
+                  <p className="text-text-secondary text-sm mt-2">No hay pedidos disponibles ahora.</p>
                 </div>
               )}
 
@@ -458,6 +538,61 @@ interface DriverOrderCardProps {
   onAction: () => void;
   onEvidence: () => void;
   onChat: () => void;
+}
+
+interface AvailableOrderCardProps {
+  order: AvailableDriverOrder;
+  busy?: boolean;
+  disabled?: boolean;
+  onClaim: () => void;
+}
+
+function AvailableOrderCard({ order, busy, disabled, onClaim }: AvailableOrderCardProps) {
+  return (
+    <div className="bg-surface rounded-2xl p-4 border border-border-light">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 bg-card border border-border-light">
+            <Package size={20} />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-text-primary truncate">{order.store_name}</p>
+            <p className="text-xs text-text-secondary">Pedido {order.id.slice(0, 8)}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="font-bold" style={{ color: 'var(--brand)' }}>${order.total.toFixed(2)}</p>
+          <span className="text-xs text-text-secondary">{order.distance_label}</span>
+        </div>
+      </div>
+
+      <div className="mt-4 space-y-2 text-sm">
+        <div className="flex gap-2">
+          <MapPin size={16} className="text-text-secondary mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-text-primary">Entregar a {order.customer_name}</p>
+            <p className="text-text-secondary">{order.delivery_address}</p>
+          </div>
+        </div>
+        {order.notes && (
+          <p className="text-xs text-text-secondary bg-card rounded-xl px-3 py-2 border border-border-light">{order.notes}</p>
+        )}
+        <span className="inline-flex text-xs px-2 py-1 rounded-full bg-brand-light text-brand font-medium">
+          {STATUS_LABELS[order.status as OrderStatus] || order.status}
+        </span>
+      </div>
+
+      <button
+        onClick={onClaim}
+        disabled={disabled || busy}
+        className="mt-4 w-full py-3 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-50"
+        style={{ backgroundColor: 'var(--brand)' }}
+      >
+        {busy ? <RefreshCw size={16} className="animate-spin" /> : <Bike size={16} />}
+        {disabled ? 'Conectate para tomarlo' : 'Tomar pedido'}
+      </button>
+    </div>
+  );
 }
 
 function DriverOrderCard({ order, primary = false, busy, location, locationError, onAction, onEvidence, onChat }: DriverOrderCardProps) {
