@@ -59,20 +59,21 @@ export async function getProductsByCategory(categoryId: string): Promise<Product
   return data ?? [];
 }
 
-export async function createStore(data: { name: string; description?: string; emoji?: string; user_id: string }) {
+export async function createStore(data: { name: string; description?: string; emoji?: string; user_id: string; owner_id?: string }) {
+  const ownerId = data.owner_id ?? data.user_id;
   if (!isSupabaseReady) {
-    const store = { id: `mock-store-${Date.now()}`, ...data };
-    logAuditEvent({ userId: data.user_id, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name } }).catch(() => {});
+    const store = { id: `mock-store-${Date.now()}`, ...data, owner_id: ownerId };
+    logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name } }).catch(() => {});
     return store;
   }
   const supabase = getSupabase();
   const { data: result, error } = await supabase
     .from('stores')
-    .insert({ name: data.name, description: data.description ?? null, emoji: data.emoji ?? '🏪', user_id: data.user_id })
+    .insert({ name: data.name, description: data.description ?? null, emoji: data.emoji ?? 'RE', owner_id: ownerId })
     .select()
     .single();
   if (error) throw error;
-  logAuditEvent({ userId: data.user_id, action: 'STORE_CREATED', entityType: 'store', entityId: result.id, details: { name: data.name } }).catch(() => {});
+  logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: result.id, details: { name: data.name } }).catch(() => {});
   return result;
 }
 

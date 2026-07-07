@@ -4,12 +4,13 @@ import { ArrowLeft, Heart, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { getFavorites, toggleFavorite } from '../../../modules/client/application/client-service';
+import type { FavoriteItem } from '../../../shared/types';
 
 export function FavoritesScreen() {
   const { navigate, user } = useAuth();
   const { cartCount } = useCart();
   const [tab, setTab] = useState<'store' | 'product'>('store');
-  const [favorites, setFavorites] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -32,7 +33,7 @@ export function FavoritesScreen() {
     }
   };
 
-  const handleRemove = async (item: any) => {
+  const handleRemove = async (item: FavoriteItem) => {
     if (!user) return;
     const result = await toggleFavorite(user.id, item);
     setFavorites(result);

@@ -1,13 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { CartProvider, useCart } from '../CartContext';
+import { AuthProvider } from '../../../auth/context/AuthContext';
 import type { CartItem } from '../../../../shared/types';
+import type { ReactNode } from 'react';
 
 const item1: CartItem = { id: 'p1', name: 'Whopper', price: 5.99, quantity: 1, emoji: '🍔', storeId: 's1', storeName: 'BK' };
 const item2: CartItem = { id: 'p2', name: 'Papas', price: 2.99, quantity: 2, emoji: '🍟', storeId: 's1', storeName: 'BK' };
 
 function renderCart() {
-  return renderHook(() => useCart(), { wrapper: CartProvider });
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <MemoryRouter>
+        <AuthProvider>
+          <CartProvider>{children}</CartProvider>
+        </AuthProvider>
+      </MemoryRouter>
+    );
+  }
+
+  return renderHook(() => useCart(), { wrapper: Wrapper });
 }
 
 beforeEach(() => {
@@ -125,7 +138,7 @@ describe('localStorage persistence', () => {
   it('saves cart to localStorage on change', () => {
     const { result } = renderCart();
     act(() => result.current.addToCart(item1));
-    const saved = JSON.parse(localStorage.getItem('rayoexpress-cart')!);
+    const saved = JSON.parse(localStorage.getItem('rayoexpress-cart:guest')!);
     expect(saved).toHaveLength(1);
     expect(saved[0].id).toBe('p1');
   });

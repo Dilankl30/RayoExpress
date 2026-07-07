@@ -4,7 +4,21 @@ import {
   getMockFavorites, toggleMockFavorite, isMockFavorite,
 } from '../../../shared/lib/mockData';
 import { logAuditEvent } from '../../audit/application/audit.service';
-import type { Address } from '../../../shared/types';
+import type { Address, Database, FavoriteItem } from '../../../shared/types';
+
+type FavoriteRow = Database['public']['Tables']['favorites']['Row'];
+
+function normalizeFavorite(row: FavoriteRow): FavoriteItem {
+  return {
+    id: row.item_id,
+    favorite_id: row.id,
+    kind: row.kind,
+    name: row.name,
+    subtitle: row.subtitle,
+    emoji: row.emoji,
+    price: row.price ?? undefined,
+  };
+}
 
 export async function getAddresses(userId: string): Promise<Address[]> {
   if (!isSupabaseReady) return getMockAddresses(userId) as Address[];
@@ -48,23 +62,44 @@ export async function markDefaultAddress(userId: string, addressId: string): Pro
   return getAddresses(userId);
 }
 
-export async function getFavorites(userId: string) {
-  if (!isSupabaseReady) return getMockFavorites(userId);
+export async function getFavorites(userId: string): Promise<FavoriteItem[]> {
+  if (!isSupabaseReady) return getMockFavorites(userId) as FavoriteItem[];
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('favorites').select('*').eq('user_id', userId);
+  const { data, error } = await supabase
+    .from('favorites')
+    .select('id,user_id,item_id,kind,name,subtitle,emoji,price,created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
-  return data ?? [];
+  return (data ?? []).map(normalizeFavorite);
 }
 
-export async function toggleFavorite(userId: string, item: { id: string; kind: string; name: string; subtitle: string; emoji: string; price?: number; storeId?: string }) {
-  if (!isSupabaseReady) return toggleMockFavorite(userId, item);
+export async function toggleFavorite(userId: string, item: FavoriteItem): Promise<FavoriteItem[]> {
+  if (!isSupabaseReady) return toggleMockFavorite(userId, item) as FavoriteItem[];
   const supabase = getSupabase();
-  const exists = await supabase.from('favorites').select('id').eq('user_id', userId).eq('item_id', item.id).eq('kind', item.kind).maybeSingle();
+  const exists = await supabase
+    .from('favorites')
+    .select('id')
+    .eq('user_id', userId)
+    .eq('item_id', item.id)
+    .eq('kind', item.kind)
+    .maybeSingle();
+
+  if (exists.error) throw exists.error;
+
   if (exists.data) {
-    const { error } = await supabase.from('favorites').delete().eq('id', exists.data.id);
+    const { error } = await supabase.from('favorites').delete().eq('id', exists.data.id).eq('user_id', userId);
     if (error) throw error;
   } else {
-    const { error } = await supabase.from('favorites').insert({ user_id: userId, item_id: item.id, kind: item.kind, name: item.name, subtitle: item.subtitle, emoji: item.emoji, price: item.price });
+    const { error } = await supabase.from('favorites').insert({
+      user_id: userId,
+      item_id: item.id,
+      kind: item.kind,
+      name: item.name,
+      subtitle: item.subtitle,
+      emoji: item.emoji,
+      price: item.price ?? null,
+    });
     if (error) throw error;
   }
   return getFavorites(userId);

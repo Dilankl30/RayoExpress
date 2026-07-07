@@ -9,6 +9,7 @@ import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { getStores, getCategories, getProductsByStore } from '../../../modules/stores/application/store-service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
+import { getAddresses } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
 import type { Database } from '../../../shared/types';
 
@@ -45,7 +46,7 @@ export function HomeScreen() {
     loadData();
     loadActiveOrder();
     loadAddress();
-  }, []);
+  }, [user?.id]);
 
   const loadData = async () => {
     setLoading(true);
@@ -85,13 +86,12 @@ export function HomeScreen() {
     }
   };
 
-  const loadAddress = () => {
+  const loadAddress = async () => {
+    if (!user) return;
     try {
-      const saved = localStorage.getItem('rayoexpress-addresses');
-      if (saved) {
-        const addrs = JSON.parse(saved);
-        if (addrs.length > 0) setUserAddress(addrs[0].line1);
-      }
+      const addresses = await getAddresses(user.id);
+      const selected = addresses.find((address) => address.is_default) ?? addresses[0];
+      if (selected?.line1) setUserAddress(selected.line1);
     } catch { /* ignore */ }
   };
 
@@ -99,7 +99,7 @@ export function HomeScreen() {
 
   const filteredStores = stores.filter((s) => {
     const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(s.id) ?? true);
+    const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(s.id) ?? false);
     return matchSearch && matchCategory;
   });
 

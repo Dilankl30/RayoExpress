@@ -82,6 +82,7 @@ export interface Promotion {
 
 export interface FavoriteItem {
   id: string;
+  favorite_id?: string;
   kind: 'store' | 'product';
   name: string;
   subtitle: string;
@@ -175,6 +176,26 @@ export type Database = {
           emoji: string;
           expires_at: string;
           is_active: boolean;
+          created_at: string;
+        };
+      };
+      addresses: {
+        Row: Address & {
+          user_id: string;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+      favorites: {
+        Row: {
+          id: string;
+          user_id: string;
+          item_id: string;
+          kind: 'store' | 'product';
+          name: string;
+          subtitle: string;
+          emoji: string;
+          price: number | null;
           created_at: string;
         };
       };

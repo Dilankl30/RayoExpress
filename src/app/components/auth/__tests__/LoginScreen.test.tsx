@@ -10,6 +10,10 @@ vi.mock('../../../../integrations/supabase/client', () => ({
   supabase: null,
 }));
 
+vi.mock('../../../../shared/lib/mockData', () => ({
+  isMockMode: false,
+}));
+
 vi.mock('../../../../modules/auth/context/AuthContext', () => ({
   useAuth: () => ({ navigate: mockNavigate, login: mockLogin, mockLogin: mockMockLogin }),
 }));
@@ -44,7 +48,7 @@ describe('LoginScreen', () => {
     expect(screen.getByText('Enviar codigo')).toBeTruthy();
   });
 
-  it('shows error in mock mode when sending email code', () => {
+  it('shows configuration error when Supabase is not ready for signup', () => {
     renderScreen();
     fireEvent.click(screen.getByText('Crear cuenta nueva'));
     const nameInput = screen.getByLabelText('Nombre completo');
@@ -56,11 +60,10 @@ describe('LoginScreen', () => {
     const confirmInput = screen.getByLabelText('Confirmar clave');
     fireEvent.change(confirmInput, { target: { value: '123456' } });
     fireEvent.click(screen.getByText('Enviar codigo'));
-    expect(screen.getByText(/Modo demo/)).toBeTruthy();
+    expect(screen.getByText(/Supabase no esta configurado/)).toBeTruthy();
   });
 
-  it('calls mockLogin in mock mode with valid credentials', async () => {
-    mockMockLogin.mockResolvedValue('customer');
+  it('does not use demo login when mock mode is disabled', async () => {
     renderScreen();
     fireEvent.click(screen.getByText('Correo electronico'));
     const emailInput = screen.getByLabelText('Correo electronico');
@@ -69,7 +72,8 @@ describe('LoginScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'customer123' } });
     fireEvent.click(screen.getByText('Iniciar sesion'));
     await vi.waitFor(() => {
-      expect(mockMockLogin).toHaveBeenCalledWith('customer@rayo.com', 'customer123');
+      expect(screen.getByText(/Supabase no esta configurado/)).toBeTruthy();
     });
+    expect(mockMockLogin).not.toHaveBeenCalled();
   });
 });

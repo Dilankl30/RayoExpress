@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { isMockMode } from '../../../shared/lib/mockData';
 import logo from '../../../imports/image-1.png';
 
 type AuthStep = 'options' | 'email' | 'code';
@@ -142,9 +143,14 @@ export function LoginScreen() {
     setLoading(true);
     resetMessages();
     try {
-      if (!isSupabaseReady || !supabase) {
+      if (isMockMode) {
         const role = await mockLogin(normalizedEmail, password);
         if (!role) { setError('Credenciales invalidas.'); return; }
+        return;
+      }
+
+      if (!isSupabaseReady || !supabase) {
+        setError('Supabase no esta configurado para iniciar sesiones reales.');
         return;
       }
 
@@ -172,7 +178,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Modo demo: usa "Ingresar" con correo@demo.cl / 123456');
+        setError('Supabase no esta configurado para crear cuentas reales.');
         return;
       }
 
@@ -235,7 +241,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Modo demo: usa "Ingresar" con correo@demo.cl / 123456');
+        setError('Supabase no esta configurado para verificar codigos reales.');
         return;
       }
 

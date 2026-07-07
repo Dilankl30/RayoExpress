@@ -1,18 +1,22 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { getStoreById, getProductsByStore } from '../../../modules/stores/application/store-service';
-import { customerStorage } from './customerLocalState';
+import { checkIsFavorite, toggleFavorite } from '../../../modules/client/application/client-service';
+import type { CartItem, Database, FavoriteItem } from '../../../shared/types';
+
+type Store = Database['public']['Tables']['stores']['Row'];
+type Product = Database['public']['Tables']['products']['Row'] & { category?: string };
 
 export function StoreDetailScreen() {
-  const { navigate } = useAuth();
+  const { navigate, user } = useAuth();
   const { storeId = '' } = useParams<{ storeId: string }>();
   const { addToCart, cartCount, updateQuantity, cart } = useCart();
-  const [store, setStore] = useState<any>(null);
-  const [products, setProducts] = useState<any[]>([]);
+  const [store, setStore] = useState<Store | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -26,7 +30,7 @@ export function StoreDetailScreen() {
     } else {
       setLoading(false);
     }
-  }, [storeId]);
+  }, [storeId, user?.id]);
 
   const loadStore = async () => {
     try {
@@ -36,7 +40,7 @@ export function StoreDetailScreen() {
       ]);
       setStore(storeData);
       setProducts(productsData);
-      setLiked(customerStorage.isFavorite(storeId, 'store'));
+      setLiked(user ? await checkIsFavorite(user.id, storeId, 'store') : false);
     } catch {
       setLoadError('No pudimos cargar la tienda. Intenta de nuevo.');
     } finally {
@@ -48,17 +52,17 @@ export function StoreDetailScreen() {
 
   const filtered = products.filter((item) => {
     if (!item) return false;
-    const matchCat = activeCategory === 'Todo' || item.category === activeCategory;
+    const matchCat = activeCategory === 'Todo' || (item.category_id || item.category) === activeCategory;
     const matchSearch = item.name?.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchSearch;
   });
 
   const getQty = (id: string) => quantities[id] || 0;
 
-  const increment = (item: any) => {
+  const increment = (item: Product) => {
     const newQty = getQty(item.id) + 1;
     setQuantities((prev) => ({ ...prev, [item.id]: newQty }));
-    addToCart({
+    const cartItem: CartItem = {
       id: item.id,
       name: item.name,
       price: item.price,
@@ -66,6 +70,33 @@ export function StoreDetailScreen() {
       emoji: item.emoji,
       storeId: store?.id,
       storeName: store?.name,
+    };
+    addToCart(cartItem);
+  };
+
+  const handleToggleStoreFavorite = async () => {
+    if (!user || !store) return;
+    const item: FavoriteItem = {
+      id: store.id,
+      kind: 'store',
+      name: store.name,
+      subtitle: store.description || 'Local disponible',
+      emoji: store.emoji || 'ðŸª',
+    };
+    const next = await toggleFavorite(user.id, item);
+    setLiked(next.some((fav) => fav.id === store.id && fav.kind === 'store'));
+  };
+
+  const handleToggleProductFavorite = async (item: Product) => {
+    if (!user || !store) return;
+    await toggleFavorite(user.id, {
+      id: item.id,
+      kind: 'product',
+      name: item.name,
+      subtitle: store.name,
+      emoji: item.emoji || 'ðŸ›’',
+      price: item.price,
+      storeId: store.id,
     });
   };
 
@@ -89,7 +120,7 @@ export function StoreDetailScreen() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <p className="text-4xl mb-3">😕</p>
+          <p className="text-4xl mb-3">ðŸ˜•</p>
           <p className="text-text-primary font-bold mb-1">Algo salio mal</p>
           <p className="text-sm text-text-secondary mb-4">{loadError}</p>
           <button onClick={() => { setLoadError(null); setLoading(true); loadStore(); }} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
@@ -107,7 +138,7 @@ export function StoreDetailScreen() {
         style={{ backgroundColor: store?.cover_color || 'var(--brand)' }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
+          <span style={{ fontSize: 80 }}>{store?.emoji || 'ðŸª'}</span>
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
@@ -121,17 +152,7 @@ export function StoreDetailScreen() {
           </button>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => {
-                if (!store) return;
-                const next = customerStorage.toggleFavorite({
-                  id: store.id,
-                  kind: 'store',
-                  name: store.name,
-                  subtitle: store.description || 'Local disponible',
-                  emoji: store.emoji || '🏪',
-                });
-                setLiked(next.some((fav) => fav.id === store.id && fav.kind === 'store'));
-              }}
+              onClick={handleToggleStoreFavorite}
               aria-label={liked ? 'Quitar de favoritos' : 'Agregar a favoritos'}
               className="w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-md"
             >
@@ -163,14 +184,14 @@ export function StoreDetailScreen() {
         <div className="flex items-center gap-4 flex-wrap">
           <span className="flex items-center gap-1 text-sm text-text-secondary">
             <Clock size={14} />
-            {store?.delivery_time || '25-35 min'}
+            25-35 min
           </span>
           <span className="flex items-center gap-1 text-sm" style={{ color: store?.delivery_fee === 0 ? 'var(--success)' : '#6B7280' }}>
             <Truck size={14} />
-            Envío {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
+            EnvÃ­o {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
           </span>
-          {store?.min_order > 0 && (
-            <span className="text-sm text-text-secondary">Mínimo ${store.min_order.toFixed(2)}</span>
+          {(store?.min_order ?? 0) > 0 && (
+            <span className="text-sm text-text-secondary">MÃ­nimo ${store?.min_order.toFixed(2)}</span>
           )}
         </div>
       </div>
@@ -183,7 +204,7 @@ export function StoreDetailScreen() {
               aria-label="Buscar en el menu"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar en el menú..."
+              placeholder="Buscar en el menÃº..."
               className="flex-1 bg-transparent text-text-primary placeholder:text-text-secondary text-sm outline-none"
             />
           </div>
@@ -217,7 +238,7 @@ export function StoreDetailScreen() {
       <div className="px-4 md:px-6 lg:px-8 py-4 pb-32 max-w-7xl mx-auto">
         {filtered.length === 0 ? (
           <div className="py-10 text-center text-text-secondary">
-            <p className="text-3xl mb-2">🍽️</p>
+            <p className="text-3xl mb-2">ðŸ½ï¸</p>
             <p>No hay productos disponibles</p>
           </div>
         ) : (
@@ -234,7 +255,7 @@ export function StoreDetailScreen() {
                   className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: '#F9FAFB', fontSize: 36 }}
                 >
-                  {item.emoji || '🍽️'}
+                  {item.emoji || 'ðŸ½ï¸'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">
@@ -246,14 +267,7 @@ export function StoreDetailScreen() {
                       <p className="font-bold" style={{ color: 'var(--brand)' }}>${item.price?.toFixed(2)}</p>
                       <button
                         className="text-xs font-bold text-text-secondary"
-                        onClick={() => customerStorage.toggleFavorite({
-                          id: item.id,
-                          kind: 'product',
-                          name: item.name,
-                          subtitle: store?.name || 'Producto',
-                          emoji: item.emoji || '🛒',
-                          price: item.price,
-                        })}
+                        onClick={() => handleToggleProductFavorite(item)}
                       >
                         Guardar favorito
                       </button>
@@ -327,3 +341,4 @@ export function StoreDetailScreen() {
     </div>
   );
 }
+

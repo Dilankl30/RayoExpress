@@ -1,6 +1,8 @@
+import { useLocation } from 'react-router';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
 import { useTheme } from '../../shared/theme/ThemeContext';
+import { screenPathMap } from '../router';
 
 const navByRole: Record<string, Array<{ id: string; label: string; icon: string }>> = {
   customer: [
@@ -26,13 +28,17 @@ const navByRole: Record<string, Array<{ id: string; label: string; icon: string 
 };
 
 export function DesktopSidebar() {
-  const { user, screen, logout, navigate } = useAuth();
+  const { user, logout, navigate } = useAuth();
   const { cartCount } = useCart();
   const { theme, toggle } = useTheme();
+  const location = useLocation();
   if (!user) return null;
 
   const navItems = navByRole[user.role] || navByRole.customer;
-  const isActive = (id: string) => screen === id;
+  const isActive = (id: string) => {
+    const path = screenPathMap[id] || `/${id}`;
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
   const isCustomer = user.role === 'customer';
 
   if (isCustomer) return null;
