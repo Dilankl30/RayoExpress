@@ -21,6 +21,27 @@ function emitAddressUpdated(addresses: Address[]) {
   window.dispatchEvent(new CustomEvent(ADDRESS_UPDATED_EVENT, { detail: addresses }));
 }
 
+function parseCoordinate(value: string, min: number, max: number): number | undefined {
+  const cleanValue = value.trim().replace(',', '.');
+  if (!cleanValue) return undefined;
+  const coordinate = Number(cleanValue);
+  if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) return Number.NaN;
+  return Number(coordinate.toFixed(6));
+}
+
+function getLocationErrorMessage(error: GeolocationPositionError) {
+  if (error.code === error.PERMISSION_DENIED) {
+    return 'El navegador bloqueó el GPS. Activa el permiso de ubicación o guarda la dirección manualmente.';
+  }
+  if (error.code === error.POSITION_UNAVAILABLE) {
+    return 'No pudimos detectar tu ubicación actual. Revisa el GPS o escribe la dirección manual.';
+  }
+  if (error.code === error.TIMEOUT) {
+    return 'La ubicación tardó demasiado. Intenta otra vez o escribe la dirección manual.';
+  }
+  return 'No pudimos obtener tu ubicación actual. Puedes guardar la dirección manualmente.';
+}
+
 export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialogProps) {
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [loading, setLoading] = useState(false);
@@ -29,6 +50,8 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [title, setTitle] = useState('');
   const [line1, setLine1] = useState('');
   const [details, setDetails] = useState('');
+  const [manualLat, setManualLat] = useState('');
+  const [manualLng, setManualLng] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const defaultAddress = useMemo(() => addresses.find((address) => address.is_default), [addresses]);
@@ -78,16 +101,30 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
     setSaving(true);
     setError(null);
     try {
+      const lat = parseCoordinate(manualLat, -90, 90);
+      const lng = parseCoordinate(manualLng, -180, 180);
+      if (Number.isNaN(lat) || Number.isNaN(lng)) {
+        setError('Revisa las coordenadas. La latitud debe estar entre -90 y 90, y la longitud entre -180 y 180.');
+        return;
+      }
+      if ((lat === undefined && lng !== undefined) || (lat !== undefined && lng === undefined)) {
+        setError('Ingresa latitud y longitud, o deja ambos campos vacíos.');
+        return;
+      }
+
       const next = await createAddress(userId, {
         title: title.trim() || 'Dirección guardada',
         line1: line1.trim(),
         details: details.trim(),
         is_default: true,
+        ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}),
       });
       publishAddresses(next);
       setTitle('');
       setLine1('');
       setDetails('');
+      setManualLat('');
+      setManualLng('');
       onClose();
     } catch {
       setError('No pudimos guardar la dirección.');
@@ -98,8 +135,9 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
 
   const handleCurrentLocation = async () => {
     setError(null);
-    if (!navigator.geolocation) {
-      setError('Tu navegador no permite obtener la ubicación actual.');
+    if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
+      setTitle((current) => current || 'Mi ubicación');
+      setError('Este navegador no permite obtener la ubicación actual. Guarda la dirección manualmente.');
       return;
     }
 
@@ -109,10 +147,11 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
         try {
           const lat = Number(position.coords.latitude.toFixed(6));
           const lng = Number(position.coords.longitude.toFixed(6));
+          const accuracy = Math.round(position.coords.accuracy);
           const next = await createAddress(userId, {
             title: 'Mi ubicación actual',
-            line1: 'Ubicación actual',
-            details: `Coordenadas: ${lat}, ${lng}`,
+            line1: `Ubicación actual (${lat}, ${lng})`,
+            details: `GPS del dispositivo - precisión aprox. ${accuracy} m`,
             is_default: true,
             lat,
             lng,
@@ -125,11 +164,12 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           setLocating(false);
         }
       },
-      () => {
+      (positionError) => {
         setLocating(false);
-        setError('Permite el acceso a tu ubicación o escribe una dirección manual.');
+        setTitle((current) => current || 'Mi ubicación');
+        setError(getLocationErrorMessage(positionError));
       },
-      { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 },
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
   };
 
@@ -211,6 +251,27 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
                 placeholder="Departamento, referencia, instrucciones"
                 className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
               />
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  aria-label="Latitud"
+                  value={manualLat}
+                  onChange={(event) => setManualLat(event.target.value)}
+                  placeholder="Latitud opcional"
+                  inputMode="decimal"
+                  className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
+                />
+                <input
+                  aria-label="Longitud"
+                  value={manualLng}
+                  onChange={(event) => setManualLng(event.target.value)}
+                  placeholder="Longitud opcional"
+                  inputMode="decimal"
+                  className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
+                />
+              </div>
+              <p className="text-xs text-text-secondary">
+                Las coordenadas son opcionales. Se completan automáticamente cuando usas el GPS.
+              </p>
               <button
                 onClick={handleSaveManual}
                 disabled={!line1.trim() || saving}
