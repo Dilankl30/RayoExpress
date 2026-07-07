@@ -2,9 +2,12 @@ import { useLocation } from 'react-router';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
 import { useTheme } from '../../shared/theme/ThemeContext';
+import type { Role, Screen } from '../../shared/types';
 import { screenPathMap } from '../router';
 
-const navByRole: Record<string, Array<{ id: string; label: string; icon: string }>> = {
+type SidebarItem = { id: Screen; label: string; icon: string };
+
+const navByRole: Record<Role, SidebarItem[]> = {
   customer: [
     { id: 'home', label: 'Inicio', icon: '🏠' },
     { id: 'cart', label: 'Carrito', icon: '🛒' },
@@ -12,18 +15,15 @@ const navByRole: Record<string, Array<{ id: string; label: string; icon: string 
   ],
   driver: [
     { id: 'driver', label: 'Inicio', icon: '🏠' },
-    { id: 'orders', label: 'Pedidos', icon: '📋' },
     { id: 'profile', label: 'Perfil', icon: '👤' },
   ],
   store: [
     { id: 'store-admin', label: 'Resumen', icon: '📊' },
-    { id: 'orders', label: 'Pedidos', icon: '📋' },
-    { id: 'catalog', label: 'Catálogo', icon: '📦' },
+    { id: 'profile', label: 'Perfil', icon: '👤' },
   ],
   admin: [
     { id: 'admin', label: 'Dashboard', icon: '📊' },
-    { id: 'users', label: 'Usuarios', icon: '👥' },
-    { id: 'map', label: 'Mapa', icon: '🗺️' },
+    { id: 'profile', label: 'Perfil', icon: '👤' },
   ],
 };
 
@@ -35,7 +35,7 @@ export function DesktopSidebar() {
   if (!user) return null;
 
   const navItems = navByRole[user.role] || navByRole.customer;
-  const isActive = (id: string) => {
+  const isActive = (id: Screen) => {
     const path = screenPathMap[id] || `/${id}`;
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
@@ -59,7 +59,7 @@ export function DesktopSidebar() {
         {navItems.map((item) => (
           <button
             key={item.id}
-            onClick={() => navigate(item.id as any)}
+            onClick={() => navigate(item.id)}
             className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm transition-all ${
               isActive(item.id)
                 ? 'bg-brand-light text-brand font-semibold'

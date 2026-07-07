@@ -15,12 +15,23 @@ import type { Database } from '../../../shared/types';
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
+type StoreSummary = { name?: string | null; emoji?: string | null };
+type CustomerOrder = {
+  id: string;
+  status: string;
+  created_at: string;
+  total?: number | null;
+  order_items?: unknown[] | null;
+  store?: StoreSummary | null;
+};
 
 const banners = [
   { id: '1', title: '¡Envío GRATIS!', sub: 'En tu primer pedido · Código RAYO15', bg: 'linear-gradient(135deg, #FFD400 0%, #FF8C00 100%)', text: '#4C1D95' },
   { id: '2', title: '20% OFF Restaurantes', sub: 'Solo hoy hasta las 22:00', bg: 'linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%)', text: '#FFFFFF' },
   { id: '3', title: 'Súper Express 24h', sub: 'Entrega en 15 minutos', bg: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)', text: '#FFD400' },
 ];
+
+const inactiveOrderStatuses = ['delivered', 'cancelled', 'refunded'];
 
 export function HomeScreen() {
   const { navigate, user } = useAuth();
@@ -33,7 +44,7 @@ export function HomeScreen() {
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeOrder, setActiveOrder] = useState<any>(null);
+  const [activeOrder, setActiveOrder] = useState<CustomerOrder | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [userAddress, setUserAddress] = useState('Av. Amazonas, Quito');
 
@@ -55,17 +66,20 @@ export function HomeScreen() {
       const [storesData, catsData] = await Promise.all([getStores(), getCategories()]);
       setStores(storesData);
       setCategories(catsData);
+
       const map: Record<string, Set<string>> = {};
       for (const store of storesData) {
         try {
           const products = await getProductsByStore(store.id);
-          for (const p of products) {
-            if (p.category_id) {
-              if (!map[p.category_id]) map[p.category_id] = new Set();
-              map[p.category_id].add(store.id);
+          for (const product of products) {
+            if (product.category_id) {
+              if (!map[product.category_id]) map[product.category_id] = new Set();
+              map[product.category_id].add(store.id);
             }
           }
-        } catch { /* store sin productos */ }
+        } catch {
+          // Some real stores may not have products yet.
+        }
       }
       setCategoryStoreMap(map);
     } catch {
@@ -76,12 +90,19 @@ export function HomeScreen() {
   };
 
   const loadActiveOrder = async () => {
-    if (!user) return;
+    if (!user) {
+      setActiveOrder(null);
+      setLoadingOrder(false);
+      return;
+    }
+    setLoadingOrder(true);
     try {
-      const orders = await getMyOrders(user.id);
-      const active = orders.find((o: any) => !['delivered', 'cancelled', 'refunded'].includes(o.status));
+      const orders = await getMyOrders(user.id) as CustomerOrder[];
+      const active = orders.find((order) => !inactiveOrderStatuses.includes(order.status));
       setActiveOrder(active || null);
-    } catch { /* ignore */ } finally {
+    } catch {
+      setActiveOrder(null);
+    } finally {
       setLoadingOrder(false);
     }
   };
@@ -92,14 +113,16 @@ export function HomeScreen() {
       const addresses = await getAddresses(user.id);
       const selected = addresses.find((address) => address.is_default) ?? addresses[0];
       if (selected?.line1) setUserAddress(selected.line1);
-    } catch { /* ignore */ }
+    } catch {
+      // Address is optional for the home experience.
+    }
   };
 
   const handleSelectStore = useCallback((id: string) => navigate('store-detail', { storeId: id }), [navigate]);
 
-  const filteredStores = stores.filter((s) => {
-    const matchSearch = s.name.toLowerCase().includes(search.toLowerCase());
-    const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(s.id) ?? false);
+  const filteredStores = stores.filter((store) => {
+    const matchSearch = store.name.toLowerCase().includes(search.toLowerCase());
+    const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(store.id) ?? false);
     return matchSearch && matchCategory;
   });
 
@@ -165,7 +188,7 @@ export function HomeScreen() {
             <input
               aria-label="Buscar tiendas"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="Buscar tiendas o productos..."
               className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent"
             />
@@ -194,7 +217,7 @@ export function HomeScreen() {
               </div>
               <div className="flex items-center gap-1">
                 <Clock size={14} className="text-brand" />
-                <span className="text-sm font-bold text-brand">{(activeOrder.store as any)?.name || 'Tienda'}</span>
+                <span className="text-sm font-bold text-brand">{activeOrder.store?.name || 'Tienda'}</span>
               </div>
               <ChevronRight size={16} className="text-text-secondary" />
             </div>
@@ -242,14 +265,14 @@ export function HomeScreen() {
               </motion.div>
             </AnimatePresence>
             <div className="absolute bottom-2.5 right-4 flex gap-1.5">
-              {banners.map((_, i) => (
+              {banners.map((_, index) => (
                 <button
-                  key={i}
-                  onClick={() => setActiveBanner(i)}
+                  key={index}
+                  onClick={() => setActiveBanner(index)}
                   className="rounded-full h-1.5 transition-all"
                   style={{
-                    width: i === activeBanner ? 20 : 6,
-                    backgroundColor: i === activeBanner ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
+                    width: index === activeBanner ? 20 : 6,
+                    backgroundColor: index === activeBanner ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.4)',
                   }}
                 />
               ))}
@@ -266,26 +289,26 @@ export function HomeScreen() {
               </button>
             </div>
             <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-              {categories.map((cat) => {
-                const isActive = activeCategory === cat.id;
+              {categories.map((category) => {
+                const isActive = activeCategory === category.id;
                 return (
                   <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(isActive ? null : cat.id)}
+                    key={category.id}
+                    onClick={() => setActiveCategory(isActive ? null : category.id)}
                     className="flex flex-col items-center gap-1.5"
                   >
                     <motion.div
                       className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-sm"
                       style={{
-                        backgroundColor: isActive ? 'var(--brand)' : (cat.bg_color || '#F3F4F6'),
+                        backgroundColor: isActive ? 'var(--brand)' : (category.bg_color || '#F3F4F6'),
                         border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
                       }}
                       whileTap={{ scale: 0.9 }}
                     >
-                      <span className="text-2xl md:text-3xl">{cat.emoji || '📦'}</span>
+                      <span className="text-2xl md:text-3xl">{category.emoji || '📦'}</span>
                     </motion.div>
                     <span className="text-center text-[10px] md:text-xs" style={{ color: isActive ? 'var(--brand)' : '#6B7280' }}>
-                      {cat.name}
+                      {category.name}
                     </span>
                   </button>
                 );
@@ -318,17 +341,17 @@ export function HomeScreen() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredStores.map((store, i) => (
+              {filteredStores.map((store, index) => (
                 <motion.button
                   key={store.id}
                   onClick={() => handleSelectStore(store.id)}
                   className="w-full bg-card rounded-2xl p-4 flex items-center gap-3 shadow-sm text-left"
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: index * 0.05 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: store.cover_color ? store.cover_color + '20' : '#F3F4F6', fontSize: 30 }}>
+                  <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: store.cover_color ? `${store.cover_color}20` : '#F3F4F6', fontSize: 30 }}>
                     {store.emoji || '🏪'}
                   </div>
                   <div className="flex-1 min-w-0">

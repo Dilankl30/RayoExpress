@@ -49,6 +49,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
       status: order.status,
     };
   }
+
   const supabase = getSupabase();
   const { data, error } = await supabase.rpc('create_order', {
     p_store_id: params.storeId,
@@ -67,9 +68,10 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
 
 export async function getOrderById(orderId: string) {
   if (!isSupabaseReady) {
-    const allOrders = ['mock-customer', 'mock-driver', 'mock-store', 'mock-admin'].flatMap(u => getMockOrders(u));
-    return allOrders.find(o => o.id === orderId) || null;
+    const allOrders = ['mock-customer', 'mock-driver', 'mock-store', 'mock-admin'].flatMap((userId) => getMockOrders(userId));
+    return allOrders.find((order) => order.id === orderId) || null;
   }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -82,6 +84,7 @@ export async function getOrderById(orderId: string) {
 
 export async function getMyOrders(userId: string) {
   if (!isSupabaseReady) return getMockOrders(userId);
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -94,6 +97,7 @@ export async function getMyOrders(userId: string) {
 
 export async function getStoreOrders(storeId: string) {
   if (!isSupabaseReady) return getMockOrdersByStore(storeId);
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -106,6 +110,7 @@ export async function getStoreOrders(storeId: string) {
 
 export async function getDriverOrders(driverId: string) {
   if (!isSupabaseReady) return getMockOrdersByDriver(driverId);
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -124,10 +129,12 @@ export async function updateOrderStatus(orderId: string, status: string, role?: 
       throw new Error(`Rol '${role}' no puede cambiar el pedido de '${current.status}' a '${status}'`);
     }
   }
+
   if (!isSupabaseReady) return { id: orderId, status };
   if (userId) {
     logAuditEvent({ userId, action: 'order_status_changed', entityType: 'order', entityId: orderId, details: { newStatus: status } }).catch(() => {});
   }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
@@ -143,7 +150,12 @@ export async function assignDriver(orderId: string, driverId: string, role?: Rol
   if (role && role !== 'store' && role !== 'admin') {
     throw new Error(`Rol '${role}' no puede asignar repartidores`);
   }
-  if (!isSupabaseReady) { assignDriverToMockOrder(orderId, driverId); return { id: orderId, driver_id: driverId }; }
+
+  if (!isSupabaseReady) {
+    assignDriverToMockOrder(orderId, driverId);
+    return { id: orderId, driver_id: driverId };
+  }
+
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')

@@ -195,7 +195,7 @@ export function LoginScreen() {
       setStep('code');
       setNotice(`Te enviamos un codigo de verificacion a ${normalizedEmail}.`);
     } catch (err) {
-      setError(authErrorMessage(err, 'No pudimos enviar el codigo. Intenta de nuevo.'));
+      setError(authErrorMessage(err, 'No pudimos enviar el código. Intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -203,7 +203,7 @@ export function LoginScreen() {
 
   const resendEmailCode = async () => {
     if (!isValidEmail) {
-      setError('Ingresa un correo valido para reenviar el codigo.');
+      setError('Ingresa un correo válido para reenviar el código.');
       return;
     }
 
@@ -225,7 +225,7 @@ export function LoginScreen() {
       if (resendError) throw resendError;
       setNotice(`Reenviamos un codigo nuevo a ${normalizedEmail}.`);
     } catch (err) {
-      setError(authErrorMessage(err, 'No pudimos reenviar el codigo. Intenta de nuevo.'));
+      setError(authErrorMessage(err, 'No pudimos reenviar el código. Intenta de nuevo.'));
     } finally {
       setLoading(false);
     }
@@ -254,7 +254,7 @@ export function LoginScreen() {
       if (verifyError) throw verifyError;
       await login('customer');
     } catch (err) {
-      setError(authErrorMessage(err, 'No pudimos crear la cuenta con ese codigo.'));
+      setError(authErrorMessage(err, 'No pudimos crear la cuenta con ese código.'));
     } finally {
       setLoading(false);
     }
@@ -313,15 +313,15 @@ export function LoginScreen() {
                 </div>
               </div>
               <p className="mt-8 max-w-md text-lg font-medium leading-8 text-white/82">
-                Accede con Google o entra con correo y clave. Para crear cuenta validamos tu correo con un codigo.
+                Accede con Google o entra con correo y clave. Para crear cuenta validamos tu correo con un código.
               </p>
             </div>
 
             <div className="grid gap-4">
               {[
                 ['Codigo seguro', 'Cada ingreso por correo se confirma con un codigo temporal.'],
-                ['Clave protegida', 'Tu cuenta queda lista solo despues de verificar el codigo.'],
-                ['Perfil limpio', 'Tus datos se completan despues, dentro de la app.'],
+                ['Clave protegida', 'Tu cuenta queda lista solo después de verificar el código.'],
+                ['Perfil limpio', 'Tus datos se completan después, dentro de la app.'],
               ].map(([title, text]) => (
                 <div key={title} className="flex items-start gap-3 rounded-[26px] bg-white/12 p-4 backdrop-blur">
                   <CheckCircle2 className="mt-0.5 text-[#FFE83D]" size={22} />
@@ -364,7 +364,7 @@ export function LoginScreen() {
                     ? 'Escribe el codigo que acabamos de enviarte.'
                     : step === 'email'
                       ? isRegistering
-                        ? 'Crea tu cuenta y valida tu correo con un codigo.'
+                        ? 'Crea tu cuenta y valida tu correo con un código.'
                         : 'Ingresa con tu correo y clave.'
                       : 'Elige como quieres entrar a RayoExpress.'}
                 </p>

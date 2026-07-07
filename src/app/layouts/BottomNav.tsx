@@ -54,14 +54,14 @@ export function BottomNav() {
       {items.map((item) => {
         const Icon = item.icon;
         const isActive = isActiveTab(item);
+        const path = screenPathMap[item.screen] || `/${item.screen}`;
+
         return (
           <button
             key={item.id}
-            onClick={() => {
-              const path = screenPathMap[item.screen] || `/${item.screen}`;
-              routerNavigate(path);
-            }}
+            onClick={() => routerNavigate(path)}
             className="flex flex-col items-center gap-0.5 flex-1 py-1 relative"
+            aria-current={isActive ? 'page' : undefined}
           >
             <div className="relative">
               <Icon

@@ -81,7 +81,7 @@ export function StoreDetailScreen() {
       kind: 'store',
       name: store.name,
       subtitle: store.description || 'Local disponible',
-      emoji: store.emoji || 'ðŸª',
+      emoji: store.emoji || '🏪',
     };
     const next = await toggleFavorite(user.id, item);
     setLiked(next.some((fav) => fav.id === store.id && fav.kind === 'store'));
@@ -94,7 +94,7 @@ export function StoreDetailScreen() {
       kind: 'product',
       name: item.name,
       subtitle: store.name,
-      emoji: item.emoji || 'ðŸ›’',
+      emoji: item.emoji || '🛒',
       price: item.price,
       storeId: store.id,
     });
@@ -120,7 +120,7 @@ export function StoreDetailScreen() {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
-          <p className="text-4xl mb-3">ðŸ˜•</p>
+          <p className="text-4xl mb-3">😕</p>
           <p className="text-text-primary font-bold mb-1">Algo salio mal</p>
           <p className="text-sm text-text-secondary mb-4">{loadError}</p>
           <button onClick={() => { setLoadError(null); setLoading(true); loadStore(); }} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
@@ -138,7 +138,7 @@ export function StoreDetailScreen() {
         style={{ backgroundColor: store?.cover_color || 'var(--brand)' }}
       >
         <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: 80 }}>{store?.emoji || 'ðŸª'}</span>
+          <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
@@ -188,10 +188,10 @@ export function StoreDetailScreen() {
           </span>
           <span className="flex items-center gap-1 text-sm" style={{ color: store?.delivery_fee === 0 ? 'var(--success)' : '#6B7280' }}>
             <Truck size={14} />
-            EnvÃ­o {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
+            Envío {store?.delivery_fee ? `$${store.delivery_fee.toFixed(2)}` : 'Gratis'}
           </span>
           {(store?.min_order ?? 0) > 0 && (
-            <span className="text-sm text-text-secondary">MÃ­nimo ${store?.min_order.toFixed(2)}</span>
+            <span className="text-sm text-text-secondary">Mínimo ${store?.min_order.toFixed(2)}</span>
           )}
         </div>
       </div>
@@ -204,7 +204,7 @@ export function StoreDetailScreen() {
               aria-label="Buscar en el menu"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar en el menÃº..."
+              placeholder="Buscar en el menú..."
               className="flex-1 bg-transparent text-text-primary placeholder:text-text-secondary text-sm outline-none"
             />
           </div>
@@ -238,7 +238,7 @@ export function StoreDetailScreen() {
       <div className="px-4 md:px-6 lg:px-8 py-4 pb-32 max-w-7xl mx-auto">
         {filtered.length === 0 ? (
           <div className="py-10 text-center text-text-secondary">
-            <p className="text-3xl mb-2">ðŸ½ï¸</p>
+            <p className="text-3xl mb-2">🍽️</p>
             <p>No hay productos disponibles</p>
           </div>
         ) : (
@@ -255,7 +255,7 @@ export function StoreDetailScreen() {
                   className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: '#F9FAFB', fontSize: 36 }}
                 >
-                  {item.emoji || 'ðŸ½ï¸'}
+                  {item.emoji || '🍽️'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">

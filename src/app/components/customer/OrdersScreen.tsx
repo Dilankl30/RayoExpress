@@ -7,7 +7,18 @@ import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../shared/types';
 
+type StoreSummary = { name?: string | null; emoji?: string | null };
+type CustomerOrder = {
+  id: string;
+  status: string;
+  created_at: string;
+  total?: number | null;
+  order_items?: unknown[] | null;
+  store?: StoreSummary | null;
+};
+
 const periodOptions = ['Última semana', 'Últimos 15 días', 'Últimos 30 días', 'Últimos 3 meses', 'Últimos 6 meses'];
+const inactiveOrderStatuses = ['delivered', 'cancelled', 'refunded'];
 
 function getPeriodDate(period: string): Date {
   const now = new Date();
@@ -28,7 +39,7 @@ export function OrdersScreen() {
   const [status, setStatus] = useState<'all' | 'delivered' | 'cancelled'>('all');
   const [period, setPeriod] = useState(periodOptions[2]);
   const [showFilters, setShowFilters] = useState(false);
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<CustomerOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -38,10 +49,11 @@ export function OrdersScreen() {
   }, [user]);
 
   const loadOrders = async () => {
+    if (!user) return;
     setLoading(true);
     setLoadError(null);
     try {
-      const data = await getMyOrders(user!.id);
+      const data = await getMyOrders(user.id) as CustomerOrder[];
       setOrders(data || []);
     } catch {
       setLoadError('No pudimos cargar tus pedidos.');
@@ -50,21 +62,21 @@ export function OrdersScreen() {
     }
   };
 
-  const activeOrders = orders.filter((o) => !['delivered', 'cancelled', 'refunded'].includes(o.status));
+  const activeOrders = orders.filter((order) => !inactiveOrderStatuses.includes(order.status));
   const periodDate = getPeriodDate(period);
 
-  const filteredHistory = orders.filter((o) => {
-    if (tab === 'active') return activeOrders.includes(o);
-    const matchStatus = status === 'all' || o.status === status;
-    const matchPeriod = new Date(o.created_at) >= periodDate;
+  const filteredHistory = orders.filter((order) => {
+    if (tab === 'active') return activeOrders.includes(order);
+    const matchStatus = status === 'all' || order.status === status;
+    const matchPeriod = new Date(order.created_at) >= periodDate;
     return matchStatus && matchPeriod;
   });
 
   const visible = tab === 'active' ? activeOrders : filteredHistory;
 
   const formatDate = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   const handleHelp = (_orderId: string) => {
@@ -136,14 +148,14 @@ export function OrdersScreen() {
             <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card text-text-secondary text-sm border border-border-light">
               <Filter size={15} /> Filtros
             </button>
-            {(['all', 'delivered', 'cancelled'] as const).map((opt) => (
+            {(['all', 'delivered', 'cancelled'] as const).map((option) => (
               <button
-                key={opt}
-                onClick={() => setStatus(opt)}
-                className={`px-4 py-2 rounded-xl text-sm whitespace-nowrap ${status === opt ? 'text-white' : 'bg-card text-text-secondary border border-border-light'}`}
-                style={status === opt ? { backgroundColor: 'var(--brand)' } : {}}
+                key={option}
+                onClick={() => setStatus(option)}
+                className={`px-4 py-2 rounded-xl text-sm whitespace-nowrap ${status === option ? 'text-white' : 'bg-card text-text-secondary border border-border-light'}`}
+                style={status === option ? { backgroundColor: 'var(--brand)' } : {}}
               >
-                {opt === 'all' ? 'Todos' : opt === 'delivered' ? 'Entregados' : 'Cancelados'}
+                {option === 'all' ? 'Todos' : option === 'delivered' ? 'Entregados' : 'Cancelados'}
               </button>
             ))}
             <button onClick={() => setShowFilters(true)} className="flex items-center gap-1 px-4 py-2 rounded-xl bg-card text-text-secondary text-sm border border-border-light whitespace-nowrap">
@@ -169,12 +181,12 @@ export function OrdersScreen() {
           </div>
         ) : (
           <div className="space-y-3 mt-2">
-            {visible.map((order: any, i: number) => {
+            {visible.map((order, index) => {
               const store = order.store || {};
               const items = order.order_items || [];
               const statusLabel = STATUS_LABELS[order.status as OrderStatus] || order.status;
               const statusIcon = STATUS_ICONS[order.status as OrderStatus] || '📋';
-              const isActive = !['delivered', 'cancelled', 'refunded'].includes(order.status);
+              const isActive = !inactiveOrderStatuses.includes(order.status);
 
               return (
                 <motion.div
@@ -182,7 +194,7 @@ export function OrdersScreen() {
                   className="bg-card rounded-2xl p-4 shadow-sm"
                   initial={{ opacity: 0, y: 15 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.05 }}
+                  transition={{ delay: index * 0.05 }}
                 >
                   <button
                     onClick={() => navigate('tracking')}
@@ -238,7 +250,7 @@ export function OrdersScreen() {
 
       {showFilters && (
         <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={() => setShowFilters(false)}>
-          <div className="bg-card rounded-t-[28px] w-full p-6 pb-8 max-w-md mx-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-card rounded-t-[28px] w-full p-6 pb-8 max-w-md mx-auto" onClick={(event) => event.stopPropagation()}>
             <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6" />
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-lg font-bold text-text-primary">Filtrar pedidos</h2>
@@ -266,15 +278,15 @@ export function OrdersScreen() {
             </div>
             <h3 className="text-text-primary font-semibold mt-5 mb-3">Estado</h3>
             <div className="space-y-1">
-              {(['all', 'delivered', 'cancelled'] as const).map((opt) => (
+              {(['all', 'delivered', 'cancelled'] as const).map((option) => (
                 <button
-                  key={opt}
-                  onClick={() => setStatus(opt)}
+                  key={option}
+                  onClick={() => setStatus(option)}
                   className="w-full py-3 px-3 rounded-xl flex items-center justify-between text-left text-sm"
-                  style={{ backgroundColor: status === opt ? 'var(--brand-light)' : 'transparent', color: status === opt ? 'var(--brand)' : 'var(--text-primary)' }}
+                  style={{ backgroundColor: status === option ? 'var(--brand-light)' : 'transparent', color: status === option ? 'var(--brand)' : 'var(--text-primary)' }}
                 >
-                  <span>{opt === 'all' ? 'Todos' : opt === 'delivered' ? 'Entregados' : 'Cancelados'}</span>
-                  {status === opt && <span className="w-5 h-5 rounded-full bg-brand flex items-center justify-center"><span className="w-2 h-2 rounded-full bg-white" /></span>}
+                  <span>{option === 'all' ? 'Todos' : option === 'delivered' ? 'Entregados' : 'Cancelados'}</span>
+                  {status === option && <span className="w-5 h-5 rounded-full bg-brand flex items-center justify-center"><span className="w-2 h-2 rounded-full bg-white" /></span>}
                 </button>
               ))}
             </div>

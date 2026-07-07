@@ -4,7 +4,10 @@ import { AuthProvider, useAuth } from '../AuthContext';
 import type { UserProfile, Role } from '../../../../shared/types';
 
 const mockNavigate = vi.fn();
-vi.mock('react-router', () => ({ useNavigate: () => mockNavigate }));
+vi.mock('react-router', () => ({
+  useNavigate: () => mockNavigate,
+  useLocation: () => ({ pathname: window.location.pathname }),
+}));
 
 vi.mock('../../../../integrations/supabase/client', () => ({
   isSupabaseReady: false,
@@ -34,20 +37,41 @@ vi.mock('../../../../shared/lib/mockData', () => ({
 }));
 
 vi.mock('../../../../app/router', () => ({
-  screenPathMap: { landing: '/', login: '/login', home: '/home', driver: '/driver', 'store-admin': '/store-admin', admin: '/admin' },
+  screenPathMap: {
+    landing: '/',
+    login: '/login',
+    home: '/home',
+    super: '/super',
+    orders: '/orders',
+    promotions: '/promotions',
+    profile: '/profile',
+    driver: '/driver',
+    'store-admin': '/store-admin',
+    admin: '/admin',
+  },
 }));
 
 function renderAuth() {
   return renderHook(() => useAuth(), { wrapper: AuthProvider });
 }
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  window.history.pushState({}, '', '/');
+});
 
 describe('initial state', () => {
   it('starts with null user and landing screen', () => {
     const { result } = renderAuth();
     expect(result.current.user).toBeNull();
     expect(result.current.screen).toBe('landing');
+  });
+
+  it('keeps the active screen from the current route', () => {
+    window.history.pushState({}, '', '/super');
+    const { result } = renderAuth();
+    expect(result.current.screen).toBe('super');
+    expect(mockNavigate).not.toHaveBeenCalledWith('/home', expect.anything());
   });
 });
 

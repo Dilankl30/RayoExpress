@@ -1,18 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ShoppingCart, Copy, CheckCircle } from 'lucide-react';
+import { ShoppingCart, Copy, CheckCircle, XCircle } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { getPromotions, applyCoupon } from '../../../modules/client/application/promotions-service';
 import type { Promotion } from '../../../shared/types';
 
-const TABS = [
+type PromotionTab = 'all' | Promotion['type'];
+
+const tabs: Array<{ id: PromotionTab; label: string; emoji: string }> = [
   { id: 'all', label: 'Todas', emoji: '🎉' },
   { id: 'restaurant', label: 'Restaurantes', emoji: '🍽️' },
   { id: 'super', label: 'Súper', emoji: '🛒' },
   { id: 'shipping', label: 'Envío', emoji: '🚚' },
   { id: 'coupon', label: 'Cupones', emoji: '🎫' },
-] as const;
+];
 
 export function PromotionsScreen() {
   const { navigate } = useAuth();
@@ -20,23 +22,12 @@ export function PromotionsScreen() {
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<string>('all');
+  const [activeType, setActiveType] = useState<PromotionTab>('all');
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [couponInput, setCouponInput] = useState('');
   const [couponResult, setCouponResult] = useState<{ valid: boolean; message: string } | null>(null);
 
-  useEffect(() => {
-    loadPromotions();
-  }, []);
-
-  useEffect(() => {
-    if (copiedCode) {
-      const timer = setTimeout(() => setCopiedCode(null), 2000);
-      return () => clearTimeout(timer);
-    }
-  }, [copiedCode]);
-
-  const loadPromotions = async () => {
+  const loadPromotions = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
     try {
@@ -47,11 +38,27 @@ export function PromotionsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void loadPromotions();
+  }, [loadPromotions]);
+
+  useEffect(() => {
+    if (!copiedCode) return;
+    const timer = window.setTimeout(() => setCopiedCode(null), 2000);
+    return () => window.clearTimeout(timer);
+  }, [copiedCode]);
+
+  const filteredPromotions = useMemo(
+    () => (activeType === 'all' ? promotions : promotions.filter((promotion) => promotion.type === activeType)),
+    [activeType, promotions],
+  );
 
   const handleApplyCoupon = async () => {
-    if (!couponInput.trim()) return;
-    const result = await applyCoupon(couponInput.trim());
+    const code = couponInput.trim();
+    if (!code) return;
+    const result = await applyCoupon(code);
     setCouponResult(result);
     if (result.valid) setCouponInput('');
   };
@@ -60,8 +67,6 @@ export function PromotionsScreen() {
     navigator.clipboard.writeText(code).catch(() => {});
     setCopiedCode(code);
   };
-
-  const filtered = activeType === 'all' ? promotions : promotions.filter(p => p.type === activeType);
 
   if (loading) {
     return (
@@ -81,7 +86,11 @@ export function PromotionsScreen() {
           <span className="text-4xl mb-3 block">😕</span>
           <p className="text-text-primary font-bold mb-1">Error</p>
           <p className="text-sm text-text-secondary mb-4">{loadError}</p>
-          <button onClick={loadPromotions} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+          <button
+            onClick={loadPromotions}
+            className="px-6 py-2.5 rounded-xl text-white font-medium"
+            style={{ backgroundColor: 'var(--brand)' }}
+          >
             Reintentar
           </button>
         </div>
@@ -100,7 +109,10 @@ export function PromotionsScreen() {
           <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
             <ShoppingCart size={22} className="text-white" />
             {cartCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}>
+              <span
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+                style={{ backgroundColor: '#FFD400', color: '#111827', fontSize: 9 }}
+              >
                 {cartCount}
               </span>
             )}
@@ -113,10 +125,10 @@ export function PromotionsScreen() {
             <input
               aria-label="Código de cupón"
               value={couponInput}
-              onChange={(e) => setCouponInput(e.target.value)}
+              onChange={(event) => setCouponInput(event.target.value)}
               placeholder="Ingresa el código"
               className="flex-1 bg-white/20 rounded-xl px-3 py-2.5 text-sm text-white outline-none placeholder:text-white/50"
-              onKeyDown={(e) => e.key === 'Enter' && handleApplyCoupon()}
+              onKeyDown={(event) => event.key === 'Enter' && handleApplyCoupon()}
             />
             <button
               onClick={handleApplyCoupon}
@@ -128,7 +140,7 @@ export function PromotionsScreen() {
           </div>
           {couponResult && (
             <div className={`mt-2 text-xs flex items-center gap-1 ${couponResult.valid ? 'text-green-300' : 'text-red-300'}`}>
-              {couponResult.valid ? <CheckCircle size={12} /> : <span>✕</span>}
+              {couponResult.valid ? <CheckCircle size={12} /> : <XCircle size={12} />}
               {couponResult.message}
             </div>
           )}
@@ -137,7 +149,7 @@ export function PromotionsScreen() {
 
       <div className="px-4 mt-4">
         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveType(tab.id)}
@@ -157,46 +169,59 @@ export function PromotionsScreen() {
             <span className="text-4xl mb-3 block">🎉</span>
             <p className="font-medium">No hay promociones activas</p>
             <p className="text-sm mt-1">Vuelve pronto para nuevas ofertas</p>
-            <button onClick={() => navigate('home')} className="mt-4 px-6 py-2 rounded-xl text-white text-sm font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+            <button
+              onClick={() => navigate('home')}
+              className="mt-4 px-6 py-2 rounded-xl text-white text-sm font-medium"
+              style={{ backgroundColor: 'var(--brand)' }}
+            >
               Explorar tiendas
             </button>
           </div>
-        ) : filtered.length === 0 ? (
+        ) : filteredPromotions.length === 0 ? (
           <div className="py-16 text-center text-text-secondary">
             <span className="text-4xl mb-3 block">🔍</span>
             <p className="font-medium">Sin promociones en esta categoría</p>
           </div>
         ) : (
           <div className="space-y-3 mt-3">
-            {filtered.map((promo, i) => (
+            {filteredPromotions.map((promotion, index) => (
               <motion.div
-                key={promo.id}
+                key={promotion.id}
                 className="bg-card rounded-2xl overflow-hidden shadow-sm"
                 initial={{ opacity: 0, y: 15 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.05 }}
+                transition={{ delay: index * 0.05 }}
               >
-                <div className="p-4 flex items-center gap-4" style={{ background: promo.bg_color || 'var(--brand)' }}>
+                <div className="p-4 flex items-center gap-4" style={{ background: promotion.bg_color || 'var(--brand)' }}>
                   <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl flex-shrink-0">
-                    {promo.emoji || '🎉'}
+                    {promotion.emoji || '🎉'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-bold" style={{ color: promo.text_color || '#FFFFFF' }}>{promo.title}</p>
-                    <p className="text-sm mt-0.5" style={{ color: promo.text_color || '#FFFFFF', opacity: 0.8 }}>{promo.description}</p>
+                    <p className="font-bold" style={{ color: promotion.text_color || '#FFFFFF' }}>{promotion.title}</p>
+                    <p className="text-sm mt-0.5" style={{ color: promotion.text_color || '#FFFFFF', opacity: 0.8 }}>{promotion.description}</p>
                     <div className="flex items-center gap-2 mt-2">
-                      <span className="text-xs px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: 'rgba(255,255,255,0.3)', color: promo.text_color || '#FFFFFF' }}>
-                        {promo.discount}
+                      <span
+                        className="text-xs px-2 py-0.5 rounded-full font-bold"
+                        style={{ backgroundColor: 'rgba(255,255,255,0.3)', color: promotion.text_color || '#FFFFFF' }}
+                      >
+                        {promotion.discount}
                       </span>
-                      {promo.code && (
+                      {promotion.code && (
                         <button
-                          onClick={() => handleCopyCode(promo.code!)}
+                          onClick={() => handleCopyCode(promotion.code!)}
                           className="flex items-center gap-1 text-xs font-medium"
-                          style={{ color: promo.text_color || '#FFFFFF' }}
+                          style={{ color: promotion.text_color || '#FFFFFF' }}
                         >
-                          {copiedCode === promo.code ? (
-                            <><CheckCircle size={12} /> Copiado</>
+                          {copiedCode === promotion.code ? (
+                            <>
+                              <CheckCircle size={12} />
+                              Copiado
+                            </>
                           ) : (
-                            <><Copy size={12} /> {promo.code}</>
+                            <>
+                              <Copy size={12} />
+                              {promotion.code}
+                            </>
                           )}
                         </button>
                       )}

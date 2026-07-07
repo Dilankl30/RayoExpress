@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
-import { useNavigate } from 'react-router';
+import { useLocation, useNavigate } from 'react-router';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
 import { getProfile, upsertProfile } from '../application/auth-service';
 import { mockCredentials, mockUser } from '../../../shared/lib/mockData';
@@ -19,28 +19,36 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function screenFromPath(pathname: string): Screen {
+  const match = Object.entries(screenPathMap)
+    .sort((a, b) => b[1].length - a[1].length)
+    .find(([, path]) => path === pathname || (path !== '/' && pathname.startsWith(`${path}/`)));
+  return (match?.[0] as Screen | undefined) ?? 'landing';
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
-  const [screen, setScreen] = useState<Screen>('landing');
+  const [screen, setScreen] = useState<Screen>(() => screenFromPath(typeof window === 'undefined' ? '/' : window.location.pathname));
   const routerNavigate = useNavigate();
+  const location = useLocation();
 
   const navigate = useCallback((s: Screen, params?: Record<string, string>) => {
     setScreen(s);
     const basePath = screenPathMap[s] || '/';
     const path = params && params.storeId ? `${basePath}/${params.storeId}` : basePath;
-    routerNavigate(path, { replace: true });
+    routerNavigate(path);
   }, [routerNavigate]);
 
   const roleToScreen = useCallback((r: Role): Screen =>
     ({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' }[r] as Screen), []);
 
   const mockLogin = useCallback(async (email: string, password: string): Promise<Role | null> => {
-    const cred = mockCredentials[email.toLowerCase()];
-    if (!cred || cred.password !== password) return null;
-    const mu = mockUser(email.toLowerCase());
-    if (mu) setUser(mu);
-    const target = roleToScreen(cred.role);
+      const cred = mockCredentials[email.toLowerCase()];
+      if (!cred || cred.password !== password) return null;
+      const mu = mockUser(email.toLowerCase());
+      if (mu) setUser(mu);
+      const target = roleToScreen(cred.role);
     navigate(target);
     return cred.role;
   }, [navigate, roleToScreen]);
@@ -54,20 +62,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         phone: userData.phone ?? null,
       });
       const profile = await getProfile(userData.id);
-      if (!profile) throw new Error('No pudimos cargar tu perfil despues del inicio.');
+      if (!profile) throw new Error('No pudimos cargar tu perfil después del inicio.');
       if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
       setUser(profile);
-      navigate(roleToScreen(profile.role));
+      routerNavigate(screenPathMap[roleToScreen(profile.role)] || '/home', { replace: true });
     }
-  }, [navigate, roleToScreen]);
+  }, [roleToScreen, routerNavigate]);
 
   const logout = useCallback(async () => {
     if (isSupabaseReady && supabase) {
       await supabase.auth.signOut();
     }
     setUser(null);
-    navigate('landing');
-  }, [navigate]);
+    setScreen('landing');
+    routerNavigate('/', { replace: true });
+  }, [routerNavigate]);
+
+  useEffect(() => {
+    setScreen(screenFromPath(location.pathname));
+  }, [location.pathname]);
 
   useEffect(() => {
     const boot = async () => {
@@ -95,9 +108,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (profile) {
           setUser(profile);
-          if (!profile.is_suspended) {
-            navigate(roleToScreen(profile.role));
-          }
         }
       } catch {
         console.warn('Error loading profile');
@@ -124,9 +134,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         if (profile) {
           setUser(profile);
-          if (!profile.is_suspended) {
-            navigate(roleToScreen(profile.role));
-          }
         }
       } catch {
         console.warn('Error loading profile after auth change');
@@ -134,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => listener.subscription.unsubscribe();
-  }, [navigate, roleToScreen]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading, screen, navigate, login, mockLogin, logout, setUser }}>
