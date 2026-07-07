@@ -110,8 +110,8 @@ export function OrdersScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface pb-16 lg:pb-0">
-      <div className="pt-10 pb-4 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+    <div className="min-h-screen bg-surface pb-16 lg:pb-10">
+      <div className="lg:hidden pt-10 pb-4 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-white font-bold text-lg">Mis Pedidos</h2>
           <button className="relative" onClick={() => navigate('cart')} aria-label="Carrito">
@@ -142,7 +142,44 @@ export function OrdersScreen() {
         </div>
       </div>
 
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 lg:mt-0 lg:px-6 lg:pt-8 max-w-6xl mx-auto">
+        <div className="hidden lg:flex items-end justify-between gap-4 mb-6">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>Actividad</p>
+            <h1 className="text-3xl font-black text-text-primary">Mis pedidos</h1>
+            <p className="text-text-secondary mt-1">Revisa pedidos activos, historial y ayuda desde un solo lugar.</p>
+          </div>
+          <button
+            onClick={() => navigate('cart')}
+            className="relative px-4 py-3 rounded-2xl bg-card shadow-sm flex items-center gap-2 text-text-primary font-semibold"
+          >
+            <ShoppingCart size={18} />
+            Carrito
+            {cartCount > 0 && (
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: '#FFD400', color: '#111827' }}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+
+        <div className="hidden lg:flex gap-2 mb-4">
+          <button
+            onClick={() => setTab('active')}
+            className={`px-5 py-3 rounded-2xl text-sm font-bold ${tab === 'active' ? 'text-white' : 'bg-card text-text-secondary border border-border-light'}`}
+            style={tab === 'active' ? { backgroundColor: 'var(--brand)' } : {}}
+          >
+            En curso {activeOrders.length > 0 && `(${activeOrders.length})`}
+          </button>
+          <button
+            onClick={() => setTab('history')}
+            className={`px-5 py-3 rounded-2xl text-sm font-bold ${tab === 'history' ? 'text-white' : 'bg-card text-text-secondary border border-border-light'}`}
+            style={tab === 'history' ? { backgroundColor: 'var(--brand)' } : {}}
+          >
+            Historial
+          </button>
+        </div>
+
         {tab === 'history' && (
           <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
             <button onClick={() => setShowFilters(true)} className="flex items-center gap-2 px-4 py-2 rounded-xl bg-card text-text-secondary text-sm border border-border-light">
@@ -180,7 +217,7 @@ export function OrdersScreen() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3 mt-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
             {visible.map((order, index) => {
               const store = order.store || {};
               const items = order.order_items || [];
@@ -249,7 +286,7 @@ export function OrdersScreen() {
       </div>
 
       {showFilters && (
-        <div className="fixed inset-0 z-50 bg-black/40 flex items-end" onClick={() => setShowFilters(false)}>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end lg:items-center lg:justify-center" onClick={() => setShowFilters(false)}>
           <div className="bg-card rounded-t-[28px] w-full p-6 pb-8 max-w-md mx-auto" onClick={(event) => event.stopPropagation()}>
             <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-6" />
             <div className="flex items-center justify-between mb-6">

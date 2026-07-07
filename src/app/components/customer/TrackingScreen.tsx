@@ -1,22 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Star, CheckCircle, Clock, MessageCircle } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, LocateFixed, MessageCircle, Star } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
+import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import type { Database } from '../../../shared/types';
 
-type Order = Database['public']['Tables']['orders']['Row'];
+type Order = Database['public']['Tables']['orders']['Row'] & {
+  order_items?: Array<{ product_name?: string; quantity?: number; unit_price?: number }>;
+  store?: { name?: string; emoji?: string };
+};
 
 const ORDER_HISTORY_KEY = 'rayoexpress-orders';
+const TERMINAL_STATUSES = ['delivered', 'cancelled', 'refunded'];
 
 function loadOrderHistory(): string[] {
   try {
     const raw = localStorage.getItem(ORDER_HISTORY_KEY);
     return raw ? JSON.parse(raw) : [];
-  } catch { return []; }
+  } catch {
+    return [];
+  }
 }
 
 function saveOrderHistory(orderId: string) {
@@ -25,76 +32,109 @@ function saveOrderHistory(orderId: string) {
     if (!existing.includes(orderId)) {
       localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify([orderId, ...existing].slice(0, 10)));
     }
-  } catch { /* noop */ }
+  } catch {
+    /* noop */
+  }
+}
+
+function mapPosition(location: DriverLocation | null) {
+  if (!location) return { x: 32, y: 58 };
+  return {
+    x: 18 + (Math.abs(location.lng * 1000) % 58),
+    y: 22 + (Math.abs(location.lat * 1000) % 50),
+  };
+}
+
+function estimateEta(status: OrderStatus) {
+  if (status === 'pending' || status === 'accepted') return 35;
+  if (status === 'preparing') return 25;
+  if (status === 'picked_up') return 18;
+  if (status === 'on_the_way') return 12;
+  if (status === 'arrived') return 3;
+  return 0;
+}
+
+function chooseActiveOrder(orders: Order[]) {
+  return orders.find((order) => !TERMINAL_STATUSES.includes(order.status)) ?? orders[0] ?? null;
 }
 
 export function TrackingScreen() {
   const { navigate, user } = useAuth();
-  const [currentStep, setCurrentStep] = useState(0);
-  const [eta, setEta] = useState(18);
-  const [driverPos, setDriverPos] = useState({ x: 30, y: 60 });
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [activeOrderId, setActiveOrderId] = useState<string | null>(null);
+  const [driverLocation, setDriverLocation] = useState<DriverLocation | null>(null);
+  const [loadingOrders, setLoadingOrders] = useState(true);
   const [showRating, setShowRating] = useState(false);
   const [rating, setRating] = useState(0);
   const [view, setView] = useState<'active' | 'history'>('active');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(true);
   const [showChat, setShowChat] = useState(false);
+
+  const activeOrder = useMemo(() => {
+    if (activeOrderId) return orders.find((order) => order.id === activeOrderId) ?? null;
+    return chooseActiveOrder(orders);
+  }, [activeOrderId, orders]);
+
+  const activeStatus = (activeOrder?.status ?? 'pending') as OrderStatus;
+  const currentStep = getStepIndex(activeStatus);
+  const currentStatusLabel = STATUS_LABELS[activeStatus] || 'Pendiente';
+  const isDelivered = activeStatus === 'delivered';
+  const eta = estimateEta(activeStatus);
+  const driverPos = mapPosition(driverLocation);
+
+  const loadOrders = async (showSpinner = false) => {
+    if (!user) return;
+    if (showSpinner) setLoadingOrders(true);
+    try {
+      const data = await getMyOrders(user.id);
+      const normalized = (data ?? []) as Order[];
+      setOrders(normalized);
+      const selected = activeOrderId
+        ? normalized.find((order) => order.id === activeOrderId) ?? chooseActiveOrder(normalized)
+        : chooseActiveOrder(normalized);
+      setActiveOrderId(selected?.id ?? null);
+      if (selected) saveOrderHistory(selected.id);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadOrders(true);
+  }, [user?.id]);
 
   useEffect(() => {
     if (!user) return;
-    const load = async () => {
-      setLoadingOrders(true);
-      try {
-        const userId = user.id;
-        const data = await getMyOrders(userId);
-        if (data && data.length > 0) {
-          setOrders(data as Order[]);
-          const latest = data[0];
-          const status = latest.status || 'pending';
-          setCurrentStep(getStepIndex(status as OrderStatus));
-          saveOrderHistory(latest.id);
-        }
-      } catch {
-        /* error silencioso — no hay pedidos que mostrar */
-      } finally {
-        setLoadingOrders(false);
-      }
-    };
-    load();
-  }, [user]);
+    const id = window.setInterval(() => {
+      void loadOrders(false);
+    }, 7000);
+    return () => window.clearInterval(id);
+  }, [user?.id, activeOrderId]);
 
   useEffect(() => {
-    if (currentStep >= ORDER_FLOW.length - 1) return;
-    const stepTimer = setTimeout(() => {
-      setCurrentStep((p) => Math.min(p + 1, ORDER_FLOW.length - 1));
-      setEta((p) => Math.max(0, p - 5));
-    }, 4000);
-    return () => clearTimeout(stepTimer);
-  }, [currentStep]);
-
-  useEffect(() => {
-    const moveDriver = setInterval(() => {
-      setDriverPos((prev) => ({
-        x: Math.max(10, Math.min(80, prev.x + (Math.random() - 0.4) * 8)),
-        y: Math.max(20, Math.min(75, prev.y + (Math.random() - 0.5) * 6)),
-      }));
-    }, 1500);
-    return () => clearInterval(moveDriver);
-  }, []);
-
-  useEffect(() => {
-    if (currentStep === ORDER_FLOW.length - 1) {
-      setTimeout(() => setShowRating(true), 1500);
+    if (!activeOrder?.id || TERMINAL_STATUSES.includes(activeOrder.status)) {
+      setDriverLocation(null);
+      return;
     }
-  }, [currentStep]);
 
-  const isDelivered = currentStep === ORDER_FLOW.length - 1;
-  const activeStatus = ORDER_FLOW[currentStep] || 'pending';
-  const latestOrder = orders[0] as Record<string, unknown> | undefined;
-  const currentStatusLabel = STATUS_LABELS[activeStatus as OrderStatus] || 'Pendiente';
+    let cancelled = false;
+    const loadLocation = async () => {
+      const location = await getLatestOrderLocation(activeOrder.id).catch(() => null);
+      if (!cancelled) setDriverLocation(location);
+    };
+    void loadLocation();
+    const id = window.setInterval(loadLocation, 5000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeOrder?.id, activeOrder?.status]);
+
+  useEffect(() => {
+    if (isDelivered) setShowRating(true);
+  }, [isDelivered]);
 
   const orderHistory = (
-    <div className="px-4 pt-4 pb-24">
+    <div className="px-4 pt-4 pb-24 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-4">
         <button
           onClick={() => setView('active')}
@@ -118,8 +158,8 @@ export function TrackingScreen() {
         </div>
       ) : orders.length === 0 ? (
         <div className="text-center py-12">
-          <span style={{ fontSize: 48 }}>📦</span>
-          <p className="text-text-secondary mt-3">No tienes pedidos aún</p>
+          <PackageEmpty />
+          <p className="text-text-secondary mt-3">No tienes pedidos aun</p>
           <button
             onClick={() => navigate('home')}
             className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm"
@@ -130,35 +170,39 @@ export function TrackingScreen() {
         </div>
       ) : (
         <div className="space-y-3">
-          {orders.map((order) => {
-            const o = order as Record<string, unknown>;
-            const items = (o.order_items as Record<string, unknown>[]) || [];
-            const store = o.store as Record<string, unknown> | undefined;
-            return (
-              <div key={o.id as string} className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <span style={{ fontSize: 20 }}>{store?.emoji as string || '🍔'}</span>
-                    <p className="font-medium text-text-primary text-sm">{store?.name as string || 'Tienda'}</p>
-                  </div>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-medium">
-                    {STATUS_LABELS[(o.status as OrderStatus)] || o.status as string}
+          {orders.map((order) => (
+            <button
+              key={order.id}
+              onClick={() => {
+                setActiveOrderId(order.id);
+                setView('active');
+              }}
+              className="w-full bg-card rounded-2xl p-4 shadow-sm border border-border-light text-left"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="w-9 h-9 rounded-xl bg-surface-hover flex items-center justify-center text-sm font-bold">
+                    {order.store?.emoji || 'RE'}
                   </span>
+                  <p className="font-medium text-text-primary text-sm truncate">{order.store?.name || 'Tienda'}</p>
                 </div>
-                <div className="space-y-1">
-                  {(items as Array<{ product_name?: string; quantity?: number; unit_price?: number }>).slice(0, 3).map((item, i) => (
-                    <p key={i} className="text-xs text-text-secondary">
-                      {item.quantity}x {item.product_name}
-                    </p>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
-                  <p className="text-xs text-text-secondary">{new Date(o.created_at as string).toLocaleDateString()}</p>
-                  <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>${(o.total as number)?.toFixed(2)}</p>
-                </div>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-medium">
+                  {STATUS_LABELS[order.status as OrderStatus] || order.status}
+                </span>
               </div>
-            );
-          })}
+              <div className="space-y-1">
+                {(order.order_items ?? []).slice(0, 3).map((item, i) => (
+                  <p key={i} className="text-xs text-text-secondary">
+                    {item.quantity}x {item.product_name}
+                  </p>
+                ))}
+              </div>
+              <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
+                <p className="text-xs text-text-secondary">{new Date(order.created_at).toLocaleDateString('es-EC')}</p>
+                <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>${Number(order.total ?? 0).toFixed(2)}</p>
+              </div>
+            </button>
+          ))}
         </div>
       )}
     </div>
@@ -177,7 +221,9 @@ export function TrackingScreen() {
         </button>
         <div className="text-center">
           <h3 className="text-white">Seguimiento</h3>
-          <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>Pedido en curso</p>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>
+            {activeOrder ? `Pedido ${activeOrder.id.slice(0, 8)}` : 'Pedido en curso'}
+          </p>
         </div>
         <button
           onClick={() => setView('history')}
@@ -200,7 +246,7 @@ export function TrackingScreen() {
 
           <div className="absolute flex flex-col items-center" style={{ left: '75%', top: '72%', transform: 'translate(-50%, -50%)' }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: 'var(--success)' }}>
-              <span style={{ fontSize: 16 }}>🍔</span>
+              <span className="text-white text-xs font-bold">T</span>
             </div>
             <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: 'var(--success)' }}>
               Tienda
@@ -209,10 +255,10 @@ export function TrackingScreen() {
 
           <div className="absolute flex flex-col items-center" style={{ left: '85%', top: '85%', transform: 'translate(-50%, -50%)' }}>
             <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#3B82F6' }}>
-              <span style={{ fontSize: 16 }}>🏠</span>
+              <span className="text-white text-xs font-bold">Tu</span>
             </div>
             <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#3B82F6' }}>
-              Tú
+              Destino
             </div>
           </div>
 
@@ -220,10 +266,10 @@ export function TrackingScreen() {
             className="absolute flex flex-col items-center"
             style={{ left: `${driverPos.x}%`, top: `${driverPos.y}%`, transform: 'translate(-50%, -50%)' }}
             animate={{ left: `${driverPos.x}%`, top: `${driverPos.y}%` }}
-            transition={{ duration: 1.5, ease: 'easeInOut' }}
+            transition={{ duration: 0.7, ease: 'easeInOut' }}
           >
             <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-[3px] border-white" style={{ backgroundColor: 'var(--brand)', border: '3px solid white' }}>
-              <span style={{ fontSize: 18 }}>🛵</span>
+              <LocateFixed size={18} className="text-white" />
             </div>
             <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: 'var(--brand)' }}>
               Rayo
@@ -234,7 +280,7 @@ export function TrackingScreen() {
             <div className="absolute top-3 left-3 bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
               <Clock size={15} style={{ color: 'var(--brand)' }} />
               <div>
-                <p style={{ fontSize: 10, color: '#9CA3AF' }}>Llega en</p>
+                <p style={{ fontSize: 10, color: '#9CA3AF' }}>Estimado</p>
                 <p className="font-bold" style={{ color: 'var(--brand)', fontSize: 16 }}>{eta} min</p>
               </div>
             </div>
@@ -248,14 +294,20 @@ export function TrackingScreen() {
                 <motion.div
                   className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: isDelivered ? '#F0FDF4' : '#EDE9FE', fontSize: 22 }}
-                  animate={{ scale: [1, 1.1, 1] }}
+                  animate={{ scale: [1, 1.06, 1] }}
                   transition={{ repeat: isDelivered ? 0 : Infinity, duration: 1.5 }}
                 >
-                  {STATUS_ICONS[activeStatus as OrderStatus] || '📋'}
+                  {STATUS_ICONS[activeStatus] || '...'}
                 </motion.div>
                 <div className="flex-1">
                   <p className="text-text-primary font-medium">{currentStatusLabel}</p>
-                  <p className="text-sm text-text-secondary">{latestOrder ? (latestOrder.notes as string) || '' : ''}</p>
+                  <p className="text-sm text-text-secondary">
+                    {driverLocation
+                      ? `Ultima ubicacion ${new Date(driverLocation.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`
+                      : activeOrder
+                        ? 'Esperando ubicacion del repartidor'
+                        : 'No hay un pedido activo para seguir'}
+                  </p>
                 </div>
                 {isDelivered && <CheckCircle size={22} style={{ color: 'var(--success)' }} />}
               </div>
@@ -271,27 +323,27 @@ export function TrackingScreen() {
               </div>
             </div>
 
-            {latestOrder && (
+            {activeOrder && (
               <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm lg:w-80">
                 <p className="text-text-primary font-medium text-sm mb-3">Tu pedido</p>
                 <div className="space-y-2">
-                  {(latestOrder.order_items as Array<{ product_name?: string; quantity?: number; unit_price?: number }> | undefined)?.map((item, i) => (
+                  {(activeOrder.order_items ?? []).map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span className="text-text-secondary">{item.quantity}x {item.product_name}</span>
-                      <span className="text-text-primary">${(item.unit_price ?? 0).toFixed(2)}</span>
+                      <span className="text-text-primary">${Number(item.unit_price ?? 0).toFixed(2)}</span>
                     </div>
                   ))}
                   <div className="h-px bg-surface-hover my-1" />
                   <div className="flex justify-between text-sm font-bold">
                     <span>Total</span>
-                    <span style={{ color: 'var(--brand)' }}>${(latestOrder.total as number)?.toFixed(2)}</span>
+                    <span style={{ color: 'var(--brand)' }}>${Number(activeOrder.total ?? 0).toFixed(2)}</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {latestOrder && !isDelivered && (
+          {activeOrder && !isDelivered && (
             <div className="mx-4 mt-3">
               <button
                 onClick={() => setShowChat(true)}
@@ -303,15 +355,15 @@ export function TrackingScreen() {
             </div>
           )}
 
-          {showRating && (
+          {showRating && activeOrder && (
             <motion.div
               className="mx-4 mt-4 rounded-2xl p-5 text-center"
               style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
             >
-              <p className="text-white font-bold mb-1">¡Pedido entregado! 🎉</p>
-              <p className="text-white/70 text-sm mb-4">¿Cómo calificarías tu experiencia?</p>
+              <p className="text-white font-bold mb-1">Pedido entregado</p>
+              <p className="text-white/70 text-sm mb-4">Califica tu experiencia con RayoExpress.</p>
               <div className="flex justify-center gap-2 mb-4">
                 {[1, 2, 3, 4, 5].map((s) => (
                   <button key={s} onClick={() => setRating(s)} aria-label={`${s} estrella${s !== 1 ? 's' : ''}`}>
@@ -323,33 +375,43 @@ export function TrackingScreen() {
                 className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
                 style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
                 onClick={() => {
-                  if (rating > 0 && orders[0]) {
+                  if (rating > 0) {
                     try {
                       const key = 'rayoexpress-ratings';
                       const existing = JSON.parse(localStorage.getItem(key) || '{}');
-                      existing[orders[0].id as string] = { rating, date: new Date().toISOString() };
+                      existing[activeOrder.id] = { rating, date: new Date().toISOString() };
                       localStorage.setItem(key, JSON.stringify(existing));
-                    } catch { /* noop */ }
+                    } catch {
+                      /* noop */
+                    }
                   }
                   navigate('home');
                 }}
               >
-                Enviar calificación
+                Enviar calificacion
               </button>
             </motion.div>
           )}
         </div>
       </div>
 
-      {showChat && latestOrder && (
+      {showChat && activeOrder && (
         <OrderChat
-          orderId={latestOrder.id as string}
-          storeId={latestOrder.store_id as string || 'store-1'}
-          storeName={(latestOrder.store as Record<string, unknown>)?.name as string || 'Tienda'}
-          storeEmoji={(latestOrder.store as Record<string, unknown>)?.emoji as string || '🍔'}
+          orderId={activeOrder.id}
+          storeId={activeOrder.store_id || 'store-1'}
+          storeName={activeOrder.store?.name || 'Tienda'}
+          storeEmoji={activeOrder.store?.emoji || 'RE'}
           onClose={() => setShowChat(false)}
         />
       )}
+    </div>
+  );
+}
+
+function PackageEmpty() {
+  return (
+    <div className="w-16 h-16 mx-auto rounded-2xl bg-surface-hover flex items-center justify-center">
+      <span className="text-2xl font-bold text-text-secondary">0</span>
     </div>
   );
 }

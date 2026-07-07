@@ -99,8 +99,8 @@ export function PromotionsScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
-      <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+    <div className="min-h-screen bg-surface relative pb-16 lg:pb-10">
+      <div className="lg:hidden pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-white font-bold text-lg">Promociones</h2>
@@ -147,7 +147,43 @@ export function PromotionsScreen() {
         </div>
       </div>
 
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 lg:mt-0 lg:px-6 lg:pt-8 max-w-6xl mx-auto">
+        <div className="hidden lg:grid grid-cols-[1fr_420px] gap-6 items-stretch mb-6">
+          <div className="rounded-3xl p-6 text-white overflow-hidden relative" style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}>
+            <p className="text-sm font-semibold text-white/70">Promociones</p>
+            <h1 className="text-3xl font-black mt-1">Ahorra en cada pedido</h1>
+            <p className="text-white/75 mt-2 max-w-xl">Encuentra ofertas activas, cupones y beneficios para restaurantes, supermercados y entregas.</p>
+            <div className="absolute -right-8 -bottom-10 w-40 h-40 rounded-full bg-white/10" />
+          </div>
+
+          <div className="bg-card rounded-3xl p-5 shadow-sm">
+            <p className="text-text-primary text-sm font-bold mb-2">¿Tienes un cupón?</p>
+            <div className="flex gap-2">
+              <input
+                aria-label="Código de cupón"
+                value={couponInput}
+                onChange={(event) => setCouponInput(event.target.value)}
+                placeholder="Ingresa el código"
+                className="flex-1 bg-surface rounded-2xl px-4 py-3 text-sm text-text-primary outline-none placeholder:text-text-secondary"
+                onKeyDown={(event) => event.key === 'Enter' && handleApplyCoupon()}
+              />
+              <button
+                onClick={handleApplyCoupon}
+                className="px-5 py-3 rounded-2xl text-sm font-semibold text-white"
+                style={{ backgroundColor: 'var(--brand)' }}
+              >
+                Aplicar
+              </button>
+            </div>
+            {couponResult && (
+              <div className={`mt-3 text-xs flex items-center gap-1 ${couponResult.valid ? 'text-green-600' : 'text-red-600'}`}>
+                {couponResult.valid ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                {couponResult.message}
+              </div>
+            )}
+          </div>
+        </div>
+
         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
           {tabs.map((tab) => (
             <button
@@ -183,7 +219,7 @@ export function PromotionsScreen() {
             <p className="font-medium">Sin promociones en esta categoría</p>
           </div>
         ) : (
-          <div className="space-y-3 mt-3">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
             {filteredPromotions.map((promotion, index) => (
               <motion.div
                 key={promotion.id}

@@ -48,12 +48,12 @@ describe('AddressesScreen', () => {
     mockCreateAddress.mockResolvedValue([{ id: 'a1', title: 'Dirección guardada', line1: 'Calle Nueva 456', details: '', is_default: true }]);
     renderScreen();
     await screen.findByText('No tienes direcciones guardadas');
-    const addBtn = screen.getByText('Agregar dirección');
+    const addBtn = screen.getAllByText('Agregar dirección')[0];
     addBtn.click();
-    await screen.findByText('Nueva dirección');
+    await screen.findByText('Ingresa tu dirección');
     const input = screen.getByLabelText('Dirección');
     fireEvent.change(input, { target: { value: 'Calle Nueva 456' } });
-    const saveBtn = screen.getByText('Guardar');
+    const saveBtn = screen.getByText('Guardar dirección');
     saveBtn.click();
     expect(mockCreateAddress).toHaveBeenCalled();
   });

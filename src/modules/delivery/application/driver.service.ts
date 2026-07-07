@@ -1,10 +1,31 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import { uploadFile } from '../../../shared/storage/storage.service';
 import { logAuditEvent } from '../../audit/application/audit.service';
+import { getMockOrdersByDriver } from '../../../shared/lib/mockData';
 
 let mockOnlineStatus = false;
 const mockEarnings = { today: 18.50, week: 236.50, month: 892.30, balance: 127.40 };
 const mockDeliveries: Array<{ id: string; orderId: string; imageUrl: string; notes: string; code: string; createdAt: string }> = [];
+const mockLocations: Record<string, { lat: number; lng: number; created_at: string; user_id: string; order_id: string }> = {};
+
+export interface DriverWorkOrder {
+  id: string;
+  total: number;
+  status: string;
+  delivery_address: string;
+  notes: string | null;
+  created_at: string;
+  store_id: string;
+  store_name: string;
+  store_emoji: string;
+  customer_name: string;
+}
+
+export interface DriverLocation {
+  lat: number;
+  lng: number;
+  created_at: string;
+}
 
 export async function getDriverProfile(driverId: string) {
   if (!isSupabaseReady) {
@@ -23,6 +44,100 @@ export async function setDriverOnline(driverId: string, online: boolean) {
   const supabase = getSupabase();
   const { error } = await supabase.from('drivers').update({ is_online: online }).eq('id', driverId);
   if (error) throw error;
+}
+
+export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkOrder[]> {
+  if (!isSupabaseReady) {
+    const assigned = getMockOrdersByDriver(driverId);
+    const source = assigned.length > 0 ? assigned : [{
+      id: 'order-demo-driver',
+      total: 4.58,
+      status: 'picked_up',
+      delivery_address: 'Av. Amazonas, Quito',
+      notes: 'Entrega de ejemplo local',
+      created_at: new Date().toISOString(),
+      store_id: 'store-1',
+      store: { name: 'Rayo Demo Market', emoji: 'RE' },
+      customer: { full_name: 'Cliente Demo' },
+    }];
+    return source
+      .filter((order) => !['delivered', 'cancelled', 'refunded'].includes(order.status))
+      .map((order) => ({
+        id: order.id,
+        total: order.total,
+        status: order.status,
+        delivery_address: order.delivery_address,
+        notes: order.notes ?? null,
+        created_at: order.created_at,
+        store_id: order.store_id,
+        store_name: order.store?.name ?? 'Tienda',
+        store_emoji: order.store?.emoji ?? 'RE',
+        customer_name: order.customer?.full_name ?? 'Cliente',
+      }));
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('orders')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, store:stores(name, emoji), customer:profiles!customer_id(full_name)')
+    .eq('driver_id', driverId)
+    .in('status', ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'])
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((order: Record<string, unknown>) => {
+    const store = order.store as Record<string, unknown> | null;
+    const customer = order.customer as Record<string, unknown> | null;
+    return {
+      id: order.id as string,
+      total: Number(order.total ?? 0),
+      status: order.status as string,
+      delivery_address: order.delivery_address as string,
+      notes: (order.notes as string | null) ?? null,
+      created_at: order.created_at as string,
+      store_id: order.store_id as string,
+      store_name: (store?.name as string) ?? 'Tienda',
+      store_emoji: (store?.emoji as string) ?? 'RE',
+      customer_name: (customer?.full_name as string) ?? 'Cliente',
+    };
+  });
+}
+
+export async function saveDriverLocation(driverId: string, orderId: string, lat: number, lng: number): Promise<DriverLocation> {
+  const payload = { user_id: driverId, order_id: orderId, lat, lng };
+  const createdAt = new Date().toISOString();
+  mockLocations[orderId] = { ...payload, created_at: createdAt };
+  if (!isSupabaseReady) return { lat, lng, created_at: createdAt };
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('locations')
+    .insert(payload)
+    .select('lat, lng, created_at')
+    .single();
+  if (error) throw error;
+  return {
+    lat: Number(data.lat),
+    lng: Number(data.lng),
+    created_at: data.created_at,
+  };
+}
+
+export async function getLatestOrderLocation(orderId: string): Promise<DriverLocation | null> {
+  if (!isSupabaseReady) {
+    const location = mockLocations[orderId];
+    return location ? { lat: location.lat, lng: location.lng, created_at: location.created_at } : null;
+  }
+
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('locations')
+    .select('lat, lng, created_at')
+    .eq('order_id', orderId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data ? { lat: Number(data.lat), lng: Number(data.lng), created_at: data.created_at } : null;
 }
 
 export async function getDriverEarnings(driverId: string) {

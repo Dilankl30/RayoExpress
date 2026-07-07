@@ -199,6 +199,9 @@ export function getMockAddresses(userId: string) {
 
 export function addMockAddress(userId: string, address: any) {
   if (!mockAddresses[userId]) mockAddresses[userId] = [];
+  if (address.is_default) {
+    mockAddresses[userId] = mockAddresses[userId].map((item) => ({ ...item, is_default: false }));
+  }
   mockAddresses[userId].push({ id: `addr-${Date.now()}`, ...address });
   return mockAddresses[userId];
 }

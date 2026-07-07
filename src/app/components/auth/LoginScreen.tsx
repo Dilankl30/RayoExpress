@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { motion } from 'motion/react';
 import {
   ArrowLeft,
@@ -100,7 +100,7 @@ function authErrorMessage(err: unknown, fallback: string) {
 }
 
 export function LoginScreen() {
-  const { login, mockLogin } = useAuth();
+  const { login, mockLogin, user, navigate } = useAuth();
   const [step, setStep] = useState<AuthStep>('options');
   const [isRegistering, setIsRegistering] = useState(false);
   const [fullName, setFullName] = useState('');
@@ -124,6 +124,11 @@ export function LoginScreen() {
     setNotice('');
     setError('');
   };
+
+  useEffect(() => {
+    if (!user) return;
+    navigate(({ customer: 'home', driver: 'driver', store: 'store-admin', admin: 'admin' } as const)[user.role]);
+  }, [navigate, user]);
 
   const startEmailFlow = (register = false) => {
     setIsRegistering(register);

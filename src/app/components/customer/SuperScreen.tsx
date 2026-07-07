@@ -94,8 +94,8 @@ export function SuperScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
-      <div className="pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, #2563EB, #1D4ED8)' }}>
+    <div className="min-h-screen bg-surface relative pb-16 lg:pb-10">
+      <div className="lg:hidden pt-10 pb-5 px-4" style={{ background: 'linear-gradient(160deg, #2563EB, #1D4ED8)' }}>
         <div className="flex items-center justify-between mb-3">
           <div>
             <h2 className="text-white font-bold text-lg">Súper</h2>
@@ -136,7 +136,29 @@ export function SuperScreen() {
         </div>
       </div>
 
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 lg:mt-0 lg:px-6 lg:pt-8 max-w-6xl mx-auto">
+        <div className="hidden lg:flex items-end justify-between mb-6">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>Supermercados y farmacias</p>
+            <h1 className="text-3xl font-black text-text-primary">Súper</h1>
+            <p className="text-text-secondary mt-1">Compra productos para tu casa con entrega rápida.</p>
+          </div>
+        </div>
+
+        <div className="hidden lg:flex bg-card rounded-3xl p-4 shadow-sm mb-4 items-center gap-3">
+          <Search size={18} className="text-text-secondary" />
+          <input
+            aria-label="Buscar en súper"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar supermercado, farmacia o producto"
+            className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent"
+          />
+          <button className="px-4 py-2 rounded-2xl text-white font-semibold text-sm" style={{ backgroundColor: 'var(--brand)' }}>
+            Buscar
+          </button>
+        </div>
+
         <div className="flex gap-2 overflow-x-auto pb-2" style={{ scrollbarWidth: 'none' }}>
           {(['all', 'open', 'promo'] as const).map((filter) => (
             <button
@@ -169,7 +191,7 @@ export function SuperScreen() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3 mt-2">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-2">
             {filteredStores.map((store, index) => (
               <motion.button
                 key={store.id}

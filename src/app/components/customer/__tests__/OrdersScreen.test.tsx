@@ -40,7 +40,7 @@ describe('OrdersScreen', () => {
     mockGetMyOrders.mockResolvedValue([]);
     renderScreen();
     await screen.findByText('Mis Pedidos');
-    fireEvent.click(screen.getByText('Historial'));
+    fireEvent.click(screen.getAllByText('Historial')[0]);
     expect(screen.getByText('Filtros')).toBeTruthy();
     fireEvent.click(screen.getByText('Filtros'));
     expect(screen.getByText('Filtrar pedidos')).toBeTruthy();

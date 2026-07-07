@@ -65,8 +65,8 @@ export function FavoritesScreen() {
   }
 
   return (
-    <div className="min-h-screen bg-surface pb-16">
-      <div className="pt-10 pb-4 px-4 flex items-center gap-3" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+    <div className="min-h-screen bg-surface pb-16 lg:pb-10">
+      <div className="lg:hidden pt-10 pb-4 px-4 flex items-center gap-3" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <button onClick={() => navigate('profile')} aria-label="Volver" className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
           <ArrowLeft size={18} className="text-white" />
         </button>
@@ -83,7 +83,27 @@ export function FavoritesScreen() {
         </button>
       </div>
 
-      <div className="px-4 mt-4">
+      <div className="px-4 mt-4 lg:mt-0 lg:px-6 lg:pt-8 max-w-5xl mx-auto">
+        <div className="hidden lg:flex items-end justify-between gap-4 mb-6">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>Guardados</p>
+            <h1 className="text-3xl font-black text-text-primary">Favoritos</h1>
+            <p className="text-text-secondary mt-1">Tus tiendas y productos favoritos para pedir más rápido.</p>
+          </div>
+          <button
+            onClick={() => navigate('cart')}
+            className="relative px-4 py-3 rounded-2xl bg-card shadow-sm flex items-center gap-2 text-text-primary font-semibold"
+          >
+            <ShoppingCart size={18} />
+            Carrito
+            {cartCount > 0 && (
+              <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-black" style={{ backgroundColor: '#FFD400', color: '#111827' }}>
+                {cartCount}
+              </span>
+            )}
+          </button>
+        </div>
+
         <div className="flex bg-card rounded-2xl p-1 shadow-sm">
           <button
             onClick={() => setTab('store')}
@@ -117,7 +137,7 @@ export function FavoritesScreen() {
             </button>
           </div>
         ) : (
-          <div className="space-y-3 mt-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-4">
             {filtered.map((item, i) => (
               <motion.div
                 key={`${item.kind}-${item.id}`}

@@ -32,8 +32,8 @@ export function ProfileScreen() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-surface pb-16 lg:pb-0">
-      <div className="pt-10 pb-6 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+    <div className="min-h-screen bg-surface pb-16 lg:pb-10">
+      <div className="lg:hidden pt-10 pb-6 px-4" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <div className="flex items-center justify-between mb-4">
           <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center text-3xl text-white font-bold">
             {(user.full_name || 'U').charAt(0).toUpperCase()}
@@ -45,7 +45,24 @@ export function ProfileScreen() {
         </div>
       </div>
 
-      <main className="px-4 -mt-4">
+      <main className="px-4 -mt-4 lg:mt-0 lg:px-6 lg:pt-8 max-w-5xl mx-auto">
+        <div className="hidden lg:flex items-center justify-between gap-6 mb-6">
+          <div>
+            <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>Cuenta</p>
+            <h1 className="text-3xl font-black text-text-primary">Mi perfil</h1>
+            <p className="text-text-secondary mt-1">Administra tu información, direcciones, favoritos y preferencias.</p>
+          </div>
+          <div className="bg-card rounded-3xl p-4 flex items-center gap-4 shadow-sm min-w-72">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white text-2xl font-bold" style={{ backgroundColor: 'var(--brand)' }}>
+              {(user.full_name || 'U').charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <p className="font-bold text-text-primary truncate">{user.full_name || 'Cliente'}</p>
+              <p className="text-sm text-text-secondary truncate">{user.phone || 'Cuenta RayoExpress'}</p>
+            </div>
+          </div>
+        </div>
+
         <section className="bg-card rounded-2xl p-5 shadow-sm">
           <h2 className="text-lg font-bold text-text-primary mb-1">Rayo Plus</h2>
           <p className="text-sm text-text-secondary">Envíos gratis y beneficios especiales para clientes frecuentes.</p>

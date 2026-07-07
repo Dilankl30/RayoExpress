@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight,
@@ -11,7 +12,8 @@ import { getStores, getCategories, getProductsByStore } from '../../../modules/s
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { getAddresses } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
-import type { Database } from '../../../shared/types';
+import type { Address, Database } from '../../../shared/types';
+import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -36,6 +38,7 @@ const inactiveOrderStatuses = ['delivered', 'cancelled', 'refunded'];
 export function HomeScreen() {
   const { navigate, user } = useAuth();
   const { cartCount } = useCart();
+  const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
@@ -47,6 +50,7 @@ export function HomeScreen() {
   const [activeOrder, setActiveOrder] = useState<CustomerOrder | null>(null);
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [userAddress, setUserAddress] = useState('Av. Amazonas, Quito');
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
@@ -57,6 +61,21 @@ export function HomeScreen() {
     loadData();
     loadActiveOrder();
     loadAddress();
+  }, [user?.id]);
+
+  useEffect(() => {
+    setSearch(searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  useEffect(() => {
+    const refreshAddress = (event: Event) => {
+      const custom = event as CustomEvent<Address[]>;
+      const selected = custom.detail?.find((address) => address.is_default) ?? custom.detail?.[0];
+      if (selected?.line1) setUserAddress(selected.line1);
+      if (!selected) void loadAddress();
+    };
+    window.addEventListener(ADDRESS_UPDATED_EVENT, refreshAddress);
+    return () => window.removeEventListener(ADDRESS_UPDATED_EVENT, refreshAddress);
   }, [user?.id]);
 
   const loadData = async () => {
@@ -154,12 +173,12 @@ export function HomeScreen() {
 
   return (
     <div className="min-h-screen bg-surface relative pb-16 lg:pb-0">
-      <div className="pt-10 pb-5 px-4 md:px-6 lg:px-8" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
+      <div className="pt-10 pb-5 px-4 md:px-6 lg:hidden" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white font-bold">⚡</div>
-              <button className="flex items-center gap-1.5 text-white">
+              <button className="flex items-center gap-1.5 text-white" onClick={() => setShowLocationDialog(true)}>
                 <MapPin size={14} />
                 <div className="text-left">
                   <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Entregar en</p>
@@ -199,7 +218,14 @@ export function HomeScreen() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 lg:px-8 lg:pt-8">
+        <div className="hidden lg:block mb-6">
+          <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>RayoExpress</p>
+          <h1 className="text-3xl font-black text-text-primary">Todo cerca de ti</h1>
+          <p className="text-text-secondary mt-1">
+            Explora tiendas, supermercados y promociones disponibles para {userAddress}.
+          </p>
+        </div>
         {activeOrder && !loadingOrder && (
           <motion.div
             initial={{ opacity: 0, y: -20 }}
@@ -390,6 +416,18 @@ export function HomeScreen() {
           </div>
         </div>
       </div>
+
+      {user && (
+        <LocationDialog
+          open={showLocationDialog}
+          userId={user.id}
+          onClose={() => setShowLocationDialog(false)}
+          onSaved={(addresses) => {
+            const selected = addresses.find((address) => address.is_default) ?? addresses[0];
+            if (selected?.line1) setUserAddress(selected.line1);
+          }}
+        />
+      )}
     </div>
   );
 }

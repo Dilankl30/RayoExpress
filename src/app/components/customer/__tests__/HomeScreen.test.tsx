@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 
 const mockNavigate = vi.fn();
 
@@ -26,7 +27,11 @@ vi.mock('../../../../modules/stores/application/store-service', () => mocks);
 import { HomeScreen } from '../HomeScreen';
 
 function renderScreen() {
-  return render(<HomeScreen />);
+  return render(
+    <MemoryRouter initialEntries={['/home']}>
+      <HomeScreen />
+    </MemoryRouter>,
+  );
 }
 
 describe('HomeScreen', () => {

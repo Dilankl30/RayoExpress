@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Minus, Trash2, Tag,
@@ -8,6 +8,9 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { createOrder } from '../../../modules/orders/application/order-service';
 import { uploadReceipt, savePaymentReceipt } from '../../../modules/payments/application/payment.service';
+import { getAddresses } from '../../../modules/client/application/client-service';
+import type { Address } from '../../../shared/types';
+import { LocationDialog } from './LocationDialog';
 
 const paymentMethods = [
   { id: 'cash', label: 'Efectivo', icon: Banknote, color: '#118C62' },
@@ -15,7 +18,7 @@ const paymentMethods = [
 ];
 
 export function CartScreen() {
-  const { navigate } = useAuth();
+  const { navigate, user } = useAuth();
   const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart();
   const [coupon, setCoupon] = useState('');
   const [couponApplied, setCouponApplied] = useState(false);
@@ -23,6 +26,7 @@ export function CartScreen() {
   const [payMethod, setPayMethod] = useState('cash');
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('Av. Amazonas, Quito');
+  const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [billingName, setBillingName] = useState('');
   const [billingId, setBillingId] = useState('');
   const [cashAmount, setCashAmount] = useState('');
@@ -37,6 +41,21 @@ export function CartScreen() {
   const discount = couponApplied ? cartTotal * 0.15 : 0;
   const tax = (cartTotal - discount) * 0.12;
   const total = cartTotal + delivery + tax - discount + tip;
+
+  useEffect(() => {
+    if (!user) return;
+    getAddresses(user.id)
+      .then((addresses) => {
+        const selected = addresses.find((item) => item.is_default) ?? addresses[0];
+        if (selected?.line1) setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+      })
+      .catch(() => {});
+  }, [user]);
+
+  const handleAddressSaved = (addresses: Address[]) => {
+    const selected = addresses.find((item) => item.is_default) ?? addresses[0];
+    if (selected?.line1) setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+  };
 
   const applyCoupon = () => {
     if (coupon.toUpperCase() === 'RAYO15' || coupon.toUpperCase() === 'RAYO1') {
@@ -85,7 +104,7 @@ export function CartScreen() {
   return (
     <div className="min-h-screen bg-surface flex flex-col pb-16 lg:pb-0">
       <div
-        className="pt-10 pb-4 px-4 flex items-center gap-3"
+        className="lg:hidden pt-10 pb-4 px-4 flex items-center gap-3"
         style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}
       >
         <button
@@ -101,6 +120,12 @@ export function CartScreen() {
             {cart.length === 0 ? 'Vacío' : `${cartCount} productos`}
           </p>
         </div>
+      </div>
+
+      <div className="hidden lg:block px-6 pt-8 max-w-7xl mx-auto w-full">
+        <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>Checkout</p>
+        <h1 className="text-3xl font-black text-text-primary">Tu carrito</h1>
+        <p className="text-text-secondary mt-1">Revisa productos, dirección, facturación y pago antes de confirmar.</p>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-36 lg:pb-8">
@@ -191,7 +216,17 @@ export function CartScreen() {
             </div>
 
             <div className="mx-4 mt-4 bg-card rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-text-primary font-medium mb-2">Dirección de entrega</p>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <p className="text-sm text-text-primary font-medium">Dirección de entrega</p>
+                <button
+                  type="button"
+                  onClick={() => setShowLocationDialog(true)}
+                  className="text-sm font-bold"
+                  style={{ color: 'var(--brand)' }}
+                >
+                  Elegir
+                </button>
+              </div>
               <input
                 aria-label="Direccion de entrega"
                 value={address}
@@ -209,7 +244,7 @@ export function CartScreen() {
                   <p className="font-bold text-text-primary">Delivery</p>
                   <p className="text-gray-500">20-40 min</p>
                 </div>
-                <button className="font-bold text-text-primary">Cambiar</button>
+                <button onClick={() => setShowLocationDialog(true)} className="font-bold text-text-primary">Cambiar</button>
               </div>
               <div className="flex gap-3">
                 <MapPin size={24} className="text-text-primary" />
@@ -217,7 +252,7 @@ export function CartScreen() {
                   <p className="font-bold text-text-primary">Lo recibes en</p>
                   <p className="text-gray-500">{address}</p>
                 </div>
-                <button className="font-bold text-text-primary">Cambiar</button>
+                <button onClick={() => setShowLocationDialog(true)} className="font-bold text-text-primary">Cambiar</button>
               </div>
               <div className="flex gap-3">
                 <FileText size={24} className="text-text-primary" />
@@ -447,6 +482,15 @@ export function CartScreen() {
             {placing ? 'Procesando...' : `Confirmar pedido · $${total.toFixed(2)}`}
           </button>
         </div>
+      )}
+
+      {user && (
+        <LocationDialog
+          open={showLocationDialog}
+          userId={user.id}
+          onClose={() => setShowLocationDialog(false)}
+          onSaved={handleAddressSaved}
+        />
       )}
     </div>
   );

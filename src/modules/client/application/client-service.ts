@@ -31,6 +31,10 @@ export async function getAddresses(userId: string): Promise<Address[]> {
 export async function createAddress(userId: string, address: Omit<Address, 'id'>): Promise<Address[]> {
   if (!isSupabaseReady) return addMockAddress(userId, address) as Address[];
   const supabase = getSupabase();
+  if (address.is_default) {
+    const { error: reset } = await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId);
+    if (reset) throw reset;
+  }
   const { error } = await supabase.from('addresses').insert({ ...address, user_id: userId });
   if (error) throw error;
   return getAddresses(userId);
