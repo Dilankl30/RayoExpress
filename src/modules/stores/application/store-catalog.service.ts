@@ -34,21 +34,34 @@ export async function getStoreProducts(storeId: string): Promise<ProductData[]> 
   return data ?? [];
 }
 
-export async function createProduct(storeId: string, product: Omit<ProductData, 'id' | 'store_id'>) {
+export async function createProduct(storeId: string, productData: Omit<ProductData, 'id' | 'store_id'>) {
   if (!isSupabaseReady) {
-    const p: ProductData = { ...product, id: `mock-prod-${Date.now()}`, store_id: storeId };
+    const p: ProductData = { ...productData, id: `mock-prod-${Date.now()}`, store_id: storeId };
     if (!mockStoreProducts[storeId]) mockStoreProducts[storeId] = [];
     mockStoreProducts[storeId].push(p);
     return p;
   }
   const supabase = getSupabase();
-  const { data, error } = await supabase
+  
+  // 1. Crear el producto
+  const { data: product, error: pError } = await supabase
     .from('products')
-    .insert({ ...product, store_id: storeId })
+    .insert({ ...productData, store_id: storeId })
     .select()
     .single();
-  if (error) throw error;
-  return data;
+  if (pError) throw pError;
+
+  // 2. Inicializar el inventario automáticamente (Cantidad 0 por defecto)
+  const { error: iError } = await supabase
+    .from('inventory')
+    .insert({ product_id: product.id, quantity: 0, low_stock_threshold: 10 });
+  if (iError) {
+    console.error('Error inicializando inventario:', iError);
+    // No lanzamos error aquí para no bloquear la creación del producto, 
+    // pero el admin podrá ajustarlo en StoreSettings.
+  }
+
+  return product;
 }
 
 export async function updateProduct(productId: string, updates: Partial<Omit<ProductData, 'id' | 'store_id'>>) {

@@ -19,6 +19,7 @@ import {
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
+import { getSupabase } from '../../../integrations/supabase/client';
 import {
   claimDriverOrder,
   getAvailableDriverOrders,
@@ -114,6 +115,16 @@ export function DriverDashboard() {
 
   useEffect(() => {
     void loadDashboard();
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel('driver-orders-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, () => void loadDashboard(false))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [user?.id]);
 
   useEffect(() => {

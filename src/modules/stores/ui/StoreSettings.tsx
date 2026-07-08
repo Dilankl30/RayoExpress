@@ -265,35 +265,35 @@ export function StoreSettings({ storeId }: Props) {
               {products.length === 0 ? 'Crea productos primero para gestionar el inventario' : 'Sin inventario registrado'}
             </p>
           )}
-          {inventory.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
-              <span className="text-xl">{item.product_emoji || '📦'}</span>
-              <span className="flex-1 text-sm text-text-primary">{item.product_name || 'Producto'}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={async () => {
-                    if (item.id && item.quantity > 0) {
-                      await updateInventory(item.id, item.quantity - 1);
-                      await load();
-                    }
-                  }}
-                  className="w-7 h-7 rounded-lg bg-surface-hover flex items-center justify-center text-text-secondary font-bold"
-                >−</button>
-                <span className={`text-sm font-bold w-8 text-center ${item.quantity <= item.low_stock_threshold ? 'text-danger' : 'text-text-primary'}`}>
-                  {item.quantity}
-                </span>
-                <button
-                  onClick={async () => {
-                    if (item.id) {
-                      await updateInventory(item.id, item.quantity + 1);
-                      await load();
-                    }
-                  }}
-                  className="w-7 h-7 rounded-lg bg-surface-hover flex items-center justify-center text-text-secondary font-bold"
-                >+</button>
-              </div>
-            </div>
-          ))}
+           {inventory.map((item) => (
+             <div key={item.id} className="flex flex-col gap-2 py-3 border-b border-border-light last:border-0">
+               <div className="flex items-center justify-between">
+                 <div className="flex items-center gap-3">
+                   <span className="text-xl">{item.product_emoji || '📦'}</span>
+                   <span className="text-sm font-medium text-text-primary">{item.product_name || 'Producto'}</span>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${item.quantity <= item.low_stock_threshold ? 'bg-danger-light text-danger' : 'bg-success-light text-success'}`}>
+                     {item.quantity <= item.low_stock_threshold ? 'STOCK BAJO' : 'STOCK OK'}
+                   </span>
+                 </div>
+               </div>
+               <div className="flex items-center gap-4 pl-8">
+                 <div className="flex items-center gap-2 flex-1">
+                   <span className="text-xs text-text-secondary">Stock:</span>
+                   <div className="flex items-center gap-1">
+                     <button onClick={async () => { if (item.id && item.quantity > 0) { await updateInventory(item.id, item.quantity - 1); await load(); } }} className="w-6 h-6 rounded bg-surface hover:bg-surface-hover flex items-center justify-center text-xs font-bold">-</button>
+                     <input type="number" value={item.quantity} onChange={async (e) => { if (item.id) { await updateInventory(item.id, parseInt(e.target.value) || 0); await load(); } }} className="w-12 text-center text-xs font-bold bg-transparent outline-none" />
+                     <button onClick={async () => { if (item.id) { await updateInventory(item.id, item.quantity + 1); await load(); } }} className="w-6 h-6 rounded bg-surface hover:bg-surface-hover flex items-center justify-center text-xs font-bold">+</button>
+                   </div>
+                 </div>
+                 <div className="flex items-center gap-2">
+                   <span className="text-xs text-text-secondary">Umbral:</span>
+                   <input type="number" value={item.low_stock_threshold} onChange={async (e) => { if (item.id) { await updateInventory(item.id, item.quantity, parseInt(e.target.value) || 0); await load(); } }} className="w-12 text-center text-xs font-bold bg-transparent outline-none" />
+                 </div>
+               </div>
+             </div>
+           ))}
         </div>
       )}
     </div>

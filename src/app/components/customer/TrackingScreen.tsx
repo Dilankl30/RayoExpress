@@ -6,6 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
+import { getSupabase } from '../../../integrations/supabase/client';
 import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
@@ -125,7 +126,9 @@ export function TrackingScreen() {
   const storeCoords: [number, number] = activeOrder?.store?.lat && activeOrder.store.lng
     ? [activeOrder.store.lat, activeOrder.store.lng]
     : MOCK_STORE_COORDS;
-  const destCoords: [number, number] = MOCK_DEST_COORDS;
+  const destCoords: [number, number] = (activeOrder as any)?.delivery_lat && (activeOrder as any)?.delivery_lng
+    ? [(activeOrder as any).delivery_lat, (activeOrder as any).delivery_lng]
+    : MOCK_DEST_COORDS;
   const driverCoords: [number, number] | null = driverLocation
     ? [driverLocation.lat, driverLocation.lng]
     : null;
@@ -152,24 +155,29 @@ export function TrackingScreen() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user) return;
-    const id = window.setInterval(() => void loadOrders(false), 7000);
-    return () => window.clearInterval(id);
-  }, [user?.id, activeOrderId]);
+    if (!user?.id) return;
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel('order-updates')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `customer_id=eq.${user.id}` }, () => void loadOrders(false))
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id]);
 
   useEffect(() => {
     if (!activeOrder?.id || TERMINAL_STATUSES.includes(activeOrder.status)) {
       setDriverLocation(null);
       return;
     }
-    let cancelled = false;
-    const loadLocation = async () => {
-      const location = await getLatestOrderLocation(activeOrder.id).catch(() => null);
-      if (!cancelled) setDriverLocation(location);
-    };
-    void loadLocation();
-    const id = window.setInterval(loadLocation, 5000);
-    return () => { cancelled = true; window.clearInterval(id); };
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel(`driver-location-${activeOrder.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'locations', filter: `order_id=eq.${activeOrder.id}` }, (payload) => {
+        setDriverLocation(payload.new as DriverLocation);
+      })
+      .subscribe();
+    void getLatestOrderLocation(activeOrder.id).then(setDriverLocation).catch(() => {});
+    return () => { supabase.removeChannel(channel); };
   }, [activeOrder?.id, activeOrder?.status]);
 
   useEffect(() => {

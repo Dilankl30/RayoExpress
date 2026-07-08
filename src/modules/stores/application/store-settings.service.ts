@@ -102,13 +102,14 @@ export async function getInventory(storeId: string): Promise<InventoryItem[]> {
   }));
 }
 
-export async function updateInventory(inventoryId: string, quantity: number) {
-  if (!isSupabaseReady) {
-    const item = mockInventory.find((i) => i.id === inventoryId);
-    if (item) item.quantity = quantity;
-    return;
-  }
+export async function updateInventory(inventoryId: string, quantity?: number, lowStockThreshold?: number) {
+  if (!isSupabaseReady) return;
   const supabase = getSupabase();
-  const { error } = await supabase.from('inventory').update({ quantity, updated_at: new Date().toISOString() }).eq('id', inventoryId);
+  const updates: any = {};
+  if (quantity !== undefined) updates.quantity = quantity;
+  if (lowStockThreshold !== undefined) updates.low_stock_threshold = lowStockThreshold;
+  updates.updated_at = new Date().toISOString();
+  
+  const { error } = await supabase.from('inventory').update(updates).eq('id', inventoryId);
   if (error) throw error;
 }
