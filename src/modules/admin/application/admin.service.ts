@@ -123,10 +123,13 @@ export async function getDriverDetail(driverId: string): Promise<DriverDetail | 
 }
 
 // ── Activity ──
-export async function getRecentActivity(limit = 20): Promise<ActivityItem[]> {
+export async function getRecentActivity(limit = 50): Promise<ActivityItem[]> {
   if (!isSupabaseReady) return [];
   const supabase = getSupabase();
   const { data, error } = await supabase.rpc('admin_get_recent_activity', { p_limit: limit });
   if (error) throw error;
-  return (data ?? []) as ActivityItem[];
+  if (!data) return [];
+  if (Array.isArray(data)) return data as ActivityItem[];
+  if (typeof data === 'object' && data !== null) return Object.values(data) as ActivityItem[];
+  return [];
 }
