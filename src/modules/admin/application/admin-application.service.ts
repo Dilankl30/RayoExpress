@@ -48,7 +48,7 @@ export async function getPendingStoreApplications(): Promise<PendingStoreApp[]> 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('store_applications')
-    .select('*, applicant:profiles!user_id(full_name, email)')
+    .select('*, applicant:profiles!user_id(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -60,7 +60,7 @@ export async function getAllStoreApplications(): Promise<PendingStoreApp[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('store_applications')
-    .select('*, applicant:profiles!user_id(full_name, email)')
+    .select('*, applicant:profiles!user_id(full_name)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as PendingStoreApp[];
@@ -71,7 +71,7 @@ export async function getPendingDriverApplications(): Promise<PendingDriverApp[]
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('driver_applications')
-    .select('*, applicant:profiles!user_id(full_name, email)')
+    .select('*, applicant:profiles!user_id(full_name)')
     .eq('status', 'pending')
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -83,7 +83,7 @@ export async function getAllDriverApplications(): Promise<PendingDriverApp[]> {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('driver_applications')
-    .select('*, applicant:profiles!user_id(full_name, email)')
+    .select('*, applicant:profiles!user_id(full_name)')
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as PendingDriverApp[];
@@ -186,7 +186,7 @@ export async function getDriverApplicationById(applicationId: string): Promise<P
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('driver_applications')
-    .select('*, applicant:profiles!user_id(full_name, email)')
+    .select('*, applicant:profiles!user_id(full_name)')
     .eq('id', applicationId)
     .single();
   if (error) throw error;

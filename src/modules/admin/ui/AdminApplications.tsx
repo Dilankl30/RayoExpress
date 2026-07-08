@@ -163,7 +163,7 @@ export function AdminApplications() {
                     </div>
                     <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-xs text-text-secondary">
                       <span className="flex items-center gap-1"><User size={12} />{app.applicant?.full_name || '—'}</span>
-                      <span className="flex items-center gap-1"><Mail size={12} />{app.applicant?.email || '—'}</span>
+                      <span className="flex items-center gap-1"><Mail size={12} />—</span>
                       <span className="flex items-center gap-1"><Calendar size={12} />{new Date(app.created_at).toLocaleDateString('es-EC')}</span>
                     </div>
                     {app.address && <p className="text-xs text-text-secondary mt-1">{app.address}</p>}
