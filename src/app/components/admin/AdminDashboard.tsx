@@ -518,8 +518,10 @@ export function AdminDashboard() {
             {activity.map((a, i) => (
               <div key={`${a.type}-${a.id}-${i}`} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0 text-sm">
                 <span className={`w-2 h-2 rounded-full flex-shrink-0 ${a.type === 'order' ? 'bg-green-400' : a.type === 'driver_application' ? 'bg-blue-400' : 'bg-yellow-400'}`} />
-                <span className="text-text-primary">{a.customer_name || a.store_name || '—'}</span>
-                <StatusBadge status={a.status || ''} />
+                 <div className="flex flex-col leading-tight">
+                   <span className="text-text-primary font-medium">{a.user_name || 'Sistema'}</span>
+                   <span className="text-text-secondary text-xs">{a.action}</span>
+                 </div>
                 <span className="text-text-secondary ml-auto text-xs">{new Date(a.created_at).toLocaleDateString('es-EC', TZ_OPTS)}</span>
               </div>
             ))}

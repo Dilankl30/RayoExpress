@@ -32,8 +32,12 @@ export interface StoreDetail {
 }
 
 export interface ActivityItem {
-  type: string; id: string; status: string | null; total: number | null;
-  created_at: string; customer_name: string | null; store_name: string | null; details: string | null;
+  id: string;
+  action: string;
+  type: string;
+  details: any;
+  created_at: string;
+  user_name: string | null;
 }
 
 // ── Mock data ──
@@ -129,7 +133,13 @@ export async function getRecentActivity(limit = 50): Promise<ActivityItem[]> {
   const { data, error } = await supabase.rpc('admin_get_recent_activity', { p_limit: limit });
   if (error) throw error;
   if (!data) return [];
-  if (Array.isArray(data)) return data as ActivityItem[];
-  if (typeof data === 'object' && data !== null) return Object.values(data) as ActivityItem[];
-  return [];
+  const items = Array.isArray(data) ? data : (typeof data === 'object' ? Object.values(data) : []);
+  return (items as any[]).map(item => ({
+    id: item.id,
+    action: item.action,
+    type: item.entity_type,
+    details: item.details,
+    created_at: item.created_at,
+    user_name: item.user_name
+  }));
 }
