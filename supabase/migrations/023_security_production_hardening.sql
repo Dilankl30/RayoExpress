@@ -184,6 +184,7 @@ end;
 $$;
 
 -- Fix admin_set_user_role (from 008)
+drop function if exists public.admin_set_user_role(uuid, public.app_role) cascade;
 create or replace function public.admin_set_user_role(
   p_user_id uuid,
   p_new_role public.app_role
@@ -357,6 +358,11 @@ with check (
 -- ============================================================
 
 -- Fix admin_search_users - add admin check
+drop function if exists public.admin_search_users(text, text, integer, integer) cascade;
+drop function if exists public.admin_search_users(text, text, integer) cascade;
+drop function if exists public.admin_search_users(text, text) cascade;
+drop function if exists public.admin_search_users(text) cascade;
+drop function if exists public.admin_search_users() cascade;
 create or replace function public.admin_search_users(
   p_search text default '',
   p_role public.app_role default null
@@ -381,25 +387,27 @@ begin
     raise exception 'ACCOUNT_SUSPENDED';
   end if;
 
-  select jsonb_agg(
-    jsonb_build_object(
-      'id', p.id,
-      'full_name', p.full_name,
-      'phone', p.phone,
-      'role', p.role,
-      'is_suspended', p.is_suspended,
-      'created_at', p.created_at,
-      'email', u.email
-    )
-    order by p.created_at desc
-    limit 100
-  )
+  select coalesce(jsonb_agg(sub.row order by sub.created_at desc), '[]'::jsonb)
   into v_results
-  from public.profiles p
-  left join auth.users u on u.id = p.id
-  where
-    (p_search = '' or p.full_name ilike '%' || p_search || '%' or u.email ilike '%' || p_search || '%')
-    and (p_role is null or p.role = p_role);
+  from (
+    select
+      jsonb_build_object(
+        'id', p.id,
+        'full_name', p.full_name,
+        'phone', p.phone,
+        'role', p.role,
+        'is_suspended', p.is_suspended,
+        'created_at', p.created_at,
+        'email', u.email
+      ) as row,
+      p.created_at
+    from public.profiles p
+    left join auth.users u on u.id = p.id
+    where
+      (p_search = '' or p.full_name ilike '%' || p_search || '%' or u.email ilike '%' || p_search || '%')
+      and (p_role is null or p.role = p_role)
+    limit 100
+  ) sub;
 
   return coalesce(v_results, '[]'::jsonb);
 end;
@@ -523,21 +531,23 @@ begin
     raise exception 'ACCOUNT_SUSPENDED';
   end if;
 
-  select jsonb_agg(
-    jsonb_build_object(
-      'id', a.id,
-      'action', a.action,
-      'entity_type', a.entity_type,
-      'details', a.details,
-      'created_at', a.created_at,
-      'user_name', p.full_name
-    )
-    order by a.created_at desc
-    limit p_limit
-  )
+  select coalesce(jsonb_agg(sub.row order by sub.created_at desc), '[]'::jsonb)
   into v_activity
-  from public.audit_log a
-  left join public.profiles p on p.id = a.user_id;
+  from (
+    select
+      jsonb_build_object(
+        'id', a.id,
+        'action', a.action,
+        'entity_type', a.entity_type,
+        'details', a.details,
+        'created_at', a.created_at,
+        'user_name', p.full_name
+      ) as row,
+      a.created_at
+    from public.audit_log a
+    left join public.profiles p on p.id = a.user_id
+    limit p_limit
+  ) sub;
 
   return coalesce(v_activity, '[]'::jsonb);
 end;
@@ -1011,11 +1021,12 @@ grant execute on function public.admin_reject_driver_application to authenticate
 -- SECTION 7: Fix send_notification - restrict to system use
 -- ============================================================
 
+drop function if exists public.send_notification(uuid, text, text, text) cascade;
 create or replace function public.send_notification(
   p_user_id uuid,
   p_title text,
-  p_body text,
-  p_type text default 'general'
+  p_body text default null,
+  p_type text default 'info'
 )
 returns uuid
 language plpgsql
@@ -1026,7 +1037,6 @@ declare
   v_id uuid;
   v_is_admin boolean;
 begin
-  -- Only allow the target user or admins to send notifications
   if auth.uid() != p_user_id then
     select exists (select 1 from public.profiles where id = auth.uid() and role = 'admin')
     into v_is_admin;
@@ -1254,6 +1264,7 @@ revoke all on function public.store_cancel_order from public, anon;
 grant execute on function public.store_cancel_order to authenticated;
 
 -- Fix driver_claim_order: add FOR UPDATE + suspension check
+drop function if exists public.driver_claim_order(uuid) cascade;
 create or replace function public.driver_claim_order(p_order_id uuid)
 returns jsonb
 language plpgsql
@@ -1575,6 +1586,8 @@ grant execute on function public.get_admin_store_stats to authenticated;
 -- SECTION 12: Create secure create_order function (replaces mock)
 -- ============================================================
 
+drop function if exists public.create_order(uuid, uuid[], integer[], text, public.payment_method, text, text, numeric) cascade;
+drop function if exists public.create_order(uuid, uuid[], integer[], text, text, text, numeric) cascade;
 create or replace function public.create_order(
   p_store_id uuid,
   p_product_ids uuid[],
