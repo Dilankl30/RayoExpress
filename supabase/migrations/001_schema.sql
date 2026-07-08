@@ -101,6 +101,12 @@ create table if not exists public.categories (
   created_at timestamptz not null default now()
 );
 
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'categories_name_key') then
+    alter table public.categories add constraint categories_name_key unique (name);
+  end if;
+end $$;
+
 -- 8. Products
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -129,7 +135,7 @@ create table if not exists public.inventory (
 create table if not exists public.promotions (
   id uuid primary key default gen_random_uuid(),
   store_id uuid references public.stores(id),
-  code text,
+  code text unique,
   title text not null,
   discount_type text not null check (discount_type in ('percentage','fixed')) default 'percentage',
   discount_value numeric(10,2) not null check (discount_value > 0),
@@ -141,6 +147,12 @@ create table if not exists public.promotions (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'promotions_code_key') then
+    alter table public.promotions add constraint promotions_code_key unique (code);
+  end if;
+end $$;
 
 -- 11. Orders
 create table if not exists public.orders (

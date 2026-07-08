@@ -61,7 +61,7 @@ values
   ('avatars', 'avatars', true, 2097152, '{image/jpeg,image/png,image/webp}'),
   ('delivery-evidence', 'delivery-evidence', false, 10485760, '{image/jpeg,image/png,image/webp}'),
   ('receipts', 'receipts', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
-  ('driver-documents', 'driver-documents', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
+  ('driver-documents', 'driver-documents', true, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
   ('application-documents', 'application-documents', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}')
 on conflict (id) do nothing;
 
@@ -95,13 +95,13 @@ create policy "product_images_insert" on storage.objects
 create policy "product_images_update" on storage.objects
   for update using (
     bucket_id = 'product-images'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "product_images_delete" on storage.objects
   for delete using (
     bucket_id = 'product-images'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 -- 6b. avatars (PUBLIC bucket — anyone can SELECT)
@@ -117,20 +117,20 @@ create policy "avatars_insert" on storage.objects
 create policy "avatars_update" on storage.objects
   for update using (
     bucket_id = 'avatars'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "avatars_delete" on storage.objects
   for delete using (
     bucket_id = 'avatars'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 -- 6c. delivery-evidence (PRIVATE — owner or admin)
 create policy "delivery_evidence_select" on storage.objects
   for select using (
     bucket_id = 'delivery-evidence'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "delivery_evidence_insert" on storage.objects
@@ -149,7 +149,7 @@ create policy "delivery_evidence_delete" on storage.objects
 create policy "receipts_select" on storage.objects
   for select using (
     bucket_id = 'receipts'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "receipts_insert" on storage.objects
@@ -168,7 +168,7 @@ create policy "receipts_delete" on storage.objects
 create policy "driver_documents_select" on storage.objects
   for select using (
     bucket_id = 'driver-documents'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "driver_documents_insert" on storage.objects
@@ -187,7 +187,7 @@ create policy "driver_documents_delete" on storage.objects
 create policy "application_documents_select" on storage.objects
   for select using (
     bucket_id = 'application-documents'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "application_documents_insert" on storage.objects

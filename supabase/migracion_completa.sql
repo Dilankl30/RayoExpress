@@ -101,6 +101,12 @@ create table if not exists public.categories (
   created_at timestamptz not null default now()
 );
 
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'categories_name_key') then
+    alter table public.categories add constraint categories_name_key unique (name);
+  end if;
+end $$;
+
 -- 8. Products
 create table if not exists public.products (
   id uuid primary key default gen_random_uuid(),
@@ -129,7 +135,7 @@ create table if not exists public.inventory (
 create table if not exists public.promotions (
   id uuid primary key default gen_random_uuid(),
   store_id uuid references public.stores(id),
-  code text,
+  code text unique,
   title text not null,
   discount_type text not null check (discount_type in ('percentage','fixed')) default 'percentage',
   discount_value numeric(10,2) not null check (discount_value > 0),
@@ -141,6 +147,12 @@ create table if not exists public.promotions (
   active boolean not null default true,
   created_at timestamptz not null default now()
 );
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'promotions_code_key') then
+    alter table public.promotions add constraint promotions_code_key unique (code);
+  end if;
+end $$;
 
 -- 11. Orders
 create table if not exists public.orders (
@@ -2134,7 +2146,7 @@ values
   ('avatars', 'avatars', true, 2097152, '{image/jpeg,image/png,image/webp}'),
   ('delivery-evidence', 'delivery-evidence', false, 10485760, '{image/jpeg,image/png,image/webp}'),
   ('receipts', 'receipts', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
-  ('driver-documents', 'driver-documents', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
+  ('driver-documents', 'driver-documents', true, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}'),
   ('application-documents', 'application-documents', false, 10485760, '{image/jpeg,image/png,image/webp,application/pdf}')
 on conflict (id) do nothing;
 
@@ -2168,13 +2180,13 @@ create policy "product_images_insert" on storage.objects
 create policy "product_images_update" on storage.objects
   for update using (
     bucket_id = 'product-images'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "product_images_delete" on storage.objects
   for delete using (
     bucket_id = 'product-images'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 -- 6b. avatars (PUBLIC bucket — anyone can SELECT)
@@ -2190,20 +2202,20 @@ create policy "avatars_insert" on storage.objects
 create policy "avatars_update" on storage.objects
   for update using (
     bucket_id = 'avatars'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "avatars_delete" on storage.objects
   for delete using (
     bucket_id = 'avatars'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 -- 6c. delivery-evidence (PRIVATE — owner or admin)
 create policy "delivery_evidence_select" on storage.objects
   for select using (
     bucket_id = 'delivery-evidence'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "delivery_evidence_insert" on storage.objects
@@ -2222,7 +2234,7 @@ create policy "delivery_evidence_delete" on storage.objects
 create policy "receipts_select" on storage.objects
   for select using (
     bucket_id = 'receipts'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "receipts_insert" on storage.objects
@@ -2241,7 +2253,7 @@ create policy "receipts_delete" on storage.objects
 create policy "driver_documents_select" on storage.objects
   for select using (
     bucket_id = 'driver-documents'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "driver_documents_insert" on storage.objects
@@ -2260,7 +2272,7 @@ create policy "driver_documents_delete" on storage.objects
 create policy "application_documents_select" on storage.objects
   for select using (
     bucket_id = 'application-documents'
-    and (owner_id = auth.uid() or public.is_admin())
+    and (owner_id = auth.uid()::text or public.is_admin())
   );
 
 create policy "application_documents_insert" on storage.objects
@@ -2286,142 +2298,6 @@ ALTER TABLE public.driver_applications
   ADD COLUMN IF NOT EXISTS license_url TEXT,
   ADD COLUMN IF NOT EXISTS contract_url TEXT,
   ADD COLUMN IF NOT EXISTS accepted_terms BOOLEAN DEFAULT false;
-
--- RayoExpress | Migration 012: RLS Policies
--- Adds missing RLS policies using raw_user_meta_data->>'role' for role checks
-
--- ============================================================
--- PROFILES
--- ============================================================
-CREATE POLICY IF NOT EXISTS "profiles_select_self" ON public.profiles
-  FOR SELECT USING (auth.uid() = id);
-
-CREATE POLICY IF NOT EXISTS "profiles_select_admin" ON public.profiles
-  FOR SELECT USING (
-    auth.role() = 'authenticated' AND
-    (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-  );
-
--- ============================================================
--- STORES
--- ============================================================
-CREATE POLICY IF NOT EXISTS "stores_select_open" ON public.stores
-  FOR SELECT USING (is_open = true);
-
-CREATE POLICY IF NOT EXISTS "stores_update_owner" ON public.stores
-  FOR UPDATE USING (
-    auth.role() = 'authenticated' AND (
-      auth.uid() = owner_id OR
-      (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-    )
-  );
-
--- ============================================================
--- CATEGORIES
--- ============================================================
-CREATE POLICY IF NOT EXISTS "categories_select_all" ON public.categories
-  FOR SELECT USING (true);
-
--- ============================================================
--- PRODUCTS
--- ============================================================
-CREATE POLICY IF NOT EXISTS "products_select_active" ON public.products
-  FOR SELECT USING (is_active = true OR EXISTS (
-    SELECT 1 FROM public.stores WHERE id = store_id AND owner_id = auth.uid()
-  ));
-
-CREATE POLICY IF NOT EXISTS "products_insert_store" ON public.products
-  FOR INSERT WITH CHECK (
-    EXISTS (SELECT 1 FROM public.stores WHERE id = store_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY IF NOT EXISTS "products_update_store" ON public.products
-  FOR UPDATE USING (
-    EXISTS (SELECT 1 FROM public.stores WHERE id = store_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY IF NOT EXISTS "products_delete_store" ON public.products
-  FOR DELETE USING (
-    EXISTS (SELECT 1 FROM public.stores WHERE id = store_id AND owner_id = auth.uid())
-  );
-
--- ============================================================
--- ORDERS
--- ============================================================
-CREATE POLICY IF NOT EXISTS "orders_select_customer" ON public.orders
-  FOR SELECT USING (auth.uid() = customer_id);
-
-CREATE POLICY IF NOT EXISTS "orders_select_driver" ON public.orders
-  FOR SELECT USING (auth.uid() = driver_id);
-
-CREATE POLICY IF NOT EXISTS "orders_select_store" ON public.orders
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.stores WHERE id = store_id AND owner_id = auth.uid())
-  );
-
-CREATE POLICY IF NOT EXISTS "orders_select_admin" ON public.orders
-  FOR SELECT USING (
-    auth.role() = 'authenticated' AND
-    (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-  );
-
-CREATE POLICY IF NOT EXISTS "orders_insert_customer" ON public.orders
-  FOR INSERT WITH CHECK (auth.uid() = customer_id);
-
--- ============================================================
--- ORDER ITEMS
--- ============================================================
-CREATE POLICY IF NOT EXISTS "order_items_select_customer" ON public.order_items
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.orders WHERE id = order_id AND customer_id = auth.uid())
-  );
-
-CREATE POLICY IF NOT EXISTS "order_items_select_driver" ON public.order_items
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.orders WHERE id = order_id AND driver_id = auth.uid())
-  );
-
-CREATE POLICY IF NOT EXISTS "order_items_select_store" ON public.order_items
-  FOR SELECT USING (
-    EXISTS (
-      SELECT 1 FROM public.orders o
-      JOIN public.stores s ON s.id = o.store_id
-      WHERE o.id = order_id AND s.owner_id = auth.uid()
-    )
-  );
-
-CREATE POLICY IF NOT EXISTS "order_items_select_admin" ON public.order_items
-  FOR SELECT USING (
-    auth.role() = 'authenticated' AND
-    (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-  );
-
--- ============================================================
--- NOTIFICATIONS
--- ============================================================
-CREATE POLICY IF NOT EXISTS "notifications_select_self" ON public.notifications
-  FOR SELECT USING (auth.uid() = user_id);
-
--- ============================================================
--- APPLICATIONS (store_applications & driver_applications)
--- ============================================================
-CREATE POLICY IF NOT EXISTS "store_applications_insert_self" ON public.store_applications
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY IF NOT EXISTS "driver_applications_insert_self" ON public.driver_applications
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY IF NOT EXISTS "store_applications_select_admin" ON public.store_applications
-  FOR SELECT USING (
-    auth.role() = 'authenticated' AND
-    (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-  );
-
-CREATE POLICY IF NOT EXISTS "driver_applications_select_admin" ON public.driver_applications
-  FOR SELECT USING (
-    auth.role() = 'authenticated' AND
-    (SELECT raw_user_meta_data->>'role' FROM auth.users WHERE id = auth.uid()) = 'admin'
-  );
 
 -- Keep production access constrained to a single administrator account.
 create or replace function public.enforce_single_admin()
@@ -2502,12 +2378,20 @@ create policy "driver_applications_select_admin" on public.driver_applications
 -- ============================================================
 -- BUG 3: Add UNIQUE constraint to promotions.code
 -- ============================================================
-alter table public.promotions add constraint promotions_code_key unique (code);
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'promotions_code_key') then
+    alter table public.promotions add constraint promotions_code_key unique (code);
+  end if;
+end $$;
 
 -- ============================================================
 -- BUG 4: Add UNIQUE constraint to categories.name
 -- ============================================================
-alter table public.categories add constraint categories_name_key unique (name);
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'categories_name_key') then
+    alter table public.categories add constraint categories_name_key unique (name);
+  end if;
+end $$;
 
 -- ============================================================
 -- BUG 5: State machine — allow transitions TO refunded from
@@ -2550,6 +2434,166 @@ begin
   return new;
 end;
 $$;
+-- RayoExpress | Migration 012: RLS Policies
+-- Adds missing RLS policies using raw_user_meta_data->>'role' for role checks
+
+-- ============================================================
+-- PROFILES
+-- ============================================================
+drop policy if exists "profiles_select_self" on public.profiles;
+create policy "profiles_select_self" on public.profiles
+  for select using (auth.uid() = id);
+
+drop policy if exists "profiles_select_admin" on public.profiles;
+create policy "profiles_select_admin" on public.profiles
+  for select using (
+    auth.role() = 'authenticated' and
+    (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+  );
+
+-- ============================================================
+-- STORES
+-- ============================================================
+drop policy if exists "stores_select_open" on public.stores;
+create policy "stores_select_open" on public.stores
+  for select using (is_open = true);
+
+drop policy if exists "stores_update_owner" on public.stores;
+create policy "stores_update_owner" on public.stores
+  for update using (
+    auth.role() = 'authenticated' and (
+      auth.uid() = owner_id or
+      (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+    )
+  );
+
+-- ============================================================
+-- CATEGORIES
+-- ============================================================
+drop policy if exists "categories_select_all" on public.categories;
+create policy "categories_select_all" on public.categories
+  for select using (true);
+
+-- ============================================================
+-- PRODUCTS
+-- ============================================================
+drop policy if exists "products_select_active" on public.products;
+create policy "products_select_active" on public.products
+  for select using (is_active = true or exists (
+    select 1 from public.stores where id = store_id and owner_id = auth.uid()
+  ));
+
+drop policy if exists "products_insert_store" on public.products;
+create policy "products_insert_store" on public.products
+  for insert with check (
+    exists (select 1 from public.stores where id = store_id and owner_id = auth.uid())
+  );
+
+drop policy if exists "products_update_store" on public.products;
+create policy "products_update_store" on public.products
+  for update using (
+    exists (select 1 from public.stores where id = store_id and owner_id = auth.uid())
+  );
+
+drop policy if exists "products_delete_store" on public.products;
+create policy "products_delete_store" on public.products
+  for delete using (
+    exists (select 1 from public.stores where id = store_id and owner_id = auth.uid())
+  );
+
+-- ============================================================
+-- ORDERS
+-- ============================================================
+drop policy if exists "orders_select_customer" on public.orders;
+create policy "orders_select_customer" on public.orders
+  for select using (auth.uid() = customer_id);
+
+drop policy if exists "orders_select_driver" on public.orders;
+create policy "orders_select_driver" on public.orders
+  for select using (auth.uid() = driver_id);
+
+drop policy if exists "orders_select_store" on public.orders;
+create policy "orders_select_store" on public.orders
+  for select using (
+    exists (select 1 from public.stores where id = store_id and owner_id = auth.uid())
+  );
+
+drop policy if exists "orders_select_admin" on public.orders;
+create policy "orders_select_admin" on public.orders
+  for select using (
+    auth.role() = 'authenticated' and
+    (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+  );
+
+drop policy if exists "orders_insert_customer" on public.orders;
+create policy "orders_insert_customer" on public.orders
+  for insert with check (auth.uid() = customer_id);
+
+-- ============================================================
+-- ORDER ITEMS
+-- ============================================================
+drop policy if exists "order_items_select_customer" on public.order_items;
+create policy "order_items_select_customer" on public.order_items
+  for select using (
+    exists (select 1 from public.orders where id = order_id and customer_id = auth.uid())
+  );
+
+drop policy if exists "order_items_select_driver" on public.order_items;
+create policy "order_items_select_driver" on public.order_items
+  for select using (
+    exists (select 1 from public.orders where id = order_id and driver_id = auth.uid())
+  );
+
+drop policy if exists "order_items_select_store" on public.order_items;
+create policy "order_items_select_store" on public.order_items
+  for select using (
+    exists (
+      select 1 from public.orders o
+      join public.stores s on s.id = o.store_id
+      where o.id = order_id and s.owner_id = auth.uid()
+    )
+  );
+
+drop policy if exists "order_items_select_admin" on public.order_items;
+create policy "order_items_select_admin" on public.order_items
+  for select using (
+    auth.role() = 'authenticated' and
+    (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+  );
+
+-- ============================================================
+-- NOTIFICATIONS
+-- ============================================================
+drop policy if exists "notifications_select_self" on public.notifications;
+create policy "notifications_select_self" on public.notifications
+  for select using (auth.uid() = user_id);
+
+-- ============================================================
+-- APPLICATIONS (store_applications & driver_applications)
+-- ============================================================
+drop policy if exists "store_applications_insert_self" on public.store_applications;
+create policy "store_applications_insert_self" on public.store_applications
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "driver_applications_insert_self" on public.driver_applications;
+create policy "driver_applications_insert_self" on public.driver_applications
+  for insert with check (auth.uid() = user_id);
+
+drop policy if exists "store_applications_select_admin" on public.store_applications;
+create policy "store_applications_select_admin" on public.store_applications
+  for select using (
+    auth.role() = 'authenticated' and
+    (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+  );
+
+drop policy if exists "driver_applications_select_admin" on public.driver_applications
+  ;
+create policy "driver_applications_select_admin" on public.driver_applications
+  for select using (
+    auth.role() = 'authenticated' and
+    (select raw_user_meta_data->>'role' from auth.users where id = auth.uid()) = 'admin'
+  );
+
 
 -- Migration 015: Fix recursive profiles RLS policies
 --
