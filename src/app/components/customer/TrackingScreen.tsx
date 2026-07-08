@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, CheckCircle, Clock, LocateFixed, MessageCircle, Star } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
@@ -9,21 +12,29 @@ import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import type { Database } from '../../../shared/types';
 
+// Fix Leaflet default marker icon paths for Vite/webpack
+delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
 type Order = Database['public']['Tables']['orders']['Row'] & {
   order_items?: Array<{ product_name?: string; quantity?: number; unit_price?: number }>;
-  store?: { name?: string; emoji?: string };
+  store?: { name?: string; emoji?: string; lat?: number; lng?: number };
 };
 
 const ORDER_HISTORY_KEY = 'rayoexpress-orders';
 const TERMINAL_STATUSES = ['delivered', 'cancelled', 'refunded'];
 
+// Mock coordinates for demo when real coords are missing
+const MOCK_STORE_COORDS: [number, number] = [-2.1706, -79.9223]; // Guayaquil
+const MOCK_DEST_COORDS: [number, number] = [-2.1806, -79.9123];
+
 function loadOrderHistory(): string[] {
-  try {
-    const raw = localStorage.getItem(ORDER_HISTORY_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
+  try { return JSON.parse(localStorage.getItem(ORDER_HISTORY_KEY) || '[]'); }
+  catch { return []; }
 }
 
 function saveOrderHistory(orderId: string) {
@@ -32,17 +43,7 @@ function saveOrderHistory(orderId: string) {
     if (!existing.includes(orderId)) {
       localStorage.setItem(ORDER_HISTORY_KEY, JSON.stringify([orderId, ...existing].slice(0, 10)));
     }
-  } catch {
-    /* noop */
-  }
-}
-
-function mapPosition(location: DriverLocation | null) {
-  if (!location) return { x: 32, y: 58 };
-  return {
-    x: 18 + (Math.abs(location.lng * 1000) % 58),
-    y: 22 + (Math.abs(location.lat * 1000) % 50),
-  };
+  } catch { /* noop */ }
 }
 
 function estimateEta(status: OrderStatus) {
@@ -58,6 +59,45 @@ function chooseActiveOrder(orders: Order[]) {
   return orders.find((order) => !TERMINAL_STATUSES.includes(order.status)) ?? orders[0] ?? null;
 }
 
+// ── Custom marker icons ──
+const storeIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:36px;height:36px;border-radius:50%;background:#22C55E;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:16px;">🏪</div>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -40],
+});
+
+const destIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:36px;height:36px;border-radius:50%;background:#3B82F6;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.3);font-size:16px;">📍</div>',
+  iconSize: [36, 36],
+  iconAnchor: [18, 36],
+  popupAnchor: [0, -40],
+});
+
+const driverIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:40px;height:40px;border-radius:50%;background:#6D28D9;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 12px rgba(109,40,217,0.5);font-size:18px;">🏍️</div>',
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+  popupAnchor: [0, -44],
+});
+
+// ── Fit bounds component ──
+function FitBounds({ storeCoords, destCoords, driverCoords }: { storeCoords: [number, number]; destCoords: [number, number]; driverCoords: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    const points: [number, number][] = [storeCoords, destCoords];
+    if (driverCoords) points.push(driverCoords);
+    if (points.length > 0) {
+      const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    }
+  }, [map, storeCoords, destCoords, driverCoords]);
+  return null;
+}
+
 export function TrackingScreen() {
   const { navigate, user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -68,6 +108,7 @@ export function TrackingScreen() {
   const [rating, setRating] = useState(0);
   const [view, setView] = useState<'active' | 'history'>('active');
   const [showChat, setShowChat] = useState(false);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
 
   const activeOrder = useMemo(() => {
     if (activeOrderId) return orders.find((order) => order.id === activeOrderId) ?? null;
@@ -79,7 +120,15 @@ export function TrackingScreen() {
   const currentStatusLabel = STATUS_LABELS[activeStatus] || 'Pendiente';
   const isDelivered = activeStatus === 'delivered';
   const eta = estimateEta(activeStatus);
-  const driverPos = mapPosition(driverLocation);
+
+  // Derive coordinates from order data or use mock
+  const storeCoords: [number, number] = activeOrder?.store?.lat && activeOrder.store.lng
+    ? [activeOrder.store.lat, activeOrder.store.lng]
+    : MOCK_STORE_COORDS;
+  const destCoords: [number, number] = MOCK_DEST_COORDS;
+  const driverCoords: [number, number] | null = driverLocation
+    ? [driverLocation.lat, driverLocation.lng]
+    : null;
 
   const loadOrders = async (showSpinner = false) => {
     if (!user) return;
@@ -104,9 +153,7 @@ export function TrackingScreen() {
 
   useEffect(() => {
     if (!user) return;
-    const id = window.setInterval(() => {
-      void loadOrders(false);
-    }, 7000);
+    const id = window.setInterval(() => void loadOrders(false), 7000);
     return () => window.clearInterval(id);
   }, [user?.id, activeOrderId]);
 
@@ -115,7 +162,6 @@ export function TrackingScreen() {
       setDriverLocation(null);
       return;
     }
-
     let cancelled = false;
     const loadLocation = async () => {
       const location = await getLatestOrderLocation(activeOrder.id).catch(() => null);
@@ -123,80 +169,52 @@ export function TrackingScreen() {
     };
     void loadLocation();
     const id = window.setInterval(loadLocation, 5000);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
+    return () => { cancelled = true; window.clearInterval(id); };
   }, [activeOrder?.id, activeOrder?.status]);
 
   useEffect(() => {
     if (isDelivered) setShowRating(true);
   }, [isDelivered]);
 
+  // Update driver marker position smoothly
+  useEffect(() => {
+    if (driverMarkerRef.current && driverCoords) {
+      driverMarkerRef.current.setLatLng(driverCoords);
+    }
+  }, [driverCoords]);
+
+  // ── Order history view ──
   const orderHistory = (
     <div className="px-4 pt-4 pb-24 max-w-5xl mx-auto">
       <div className="flex items-center gap-2 mb-4">
-        <button
-          onClick={() => setView('active')}
+        <button onClick={() => setView('active')}
           className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'active' ? 'text-white' : 'bg-surface-hover text-text-secondary'}`}
-          style={view === 'active' ? { backgroundColor: 'var(--brand)' } : {}}
-        >
-          Activo
-        </button>
-        <button
-          onClick={() => setView('history')}
+          style={view === 'active' ? { backgroundColor: 'var(--brand)' } : {}}>Activo</button>
+        <button onClick={() => setView('history')}
           className={`px-4 py-2 rounded-xl text-sm font-medium ${view === 'history' ? 'text-white' : 'bg-surface-hover text-text-secondary'}`}
-          style={view === 'history' ? { backgroundColor: 'var(--brand)' } : {}}
-        >
-          Historial
-        </button>
+          style={view === 'history' ? { backgroundColor: 'var(--brand)' } : {}}>Historial</button>
       </div>
-
       {loadingOrders ? (
-        <div className="flex justify-center py-8">
-          <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <div className="flex justify-center py-8"><div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" /></div>
       ) : orders.length === 0 ? (
         <div className="text-center py-12">
           <PackageEmpty />
           <p className="text-text-secondary mt-3">No tienes pedidos aun</p>
-          <button
-            onClick={() => navigate('home')}
-            className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm"
-            style={{ backgroundColor: 'var(--brand)' }}
-          >
-            Explorar tiendas
-          </button>
+          <button onClick={() => navigate('home')} className="mt-4 px-6 py-2.5 rounded-xl text-white text-sm" style={{ backgroundColor: 'var(--brand)' }}>Explorar tiendas</button>
         </div>
       ) : (
         <div className="space-y-3">
           {orders.map((order) => (
-            <button
-              key={order.id}
-              onClick={() => {
-                setActiveOrderId(order.id);
-                setView('active');
-              }}
-              className="w-full bg-card rounded-2xl p-4 shadow-sm border border-border-light text-left"
-            >
+            <button key={order.id} onClick={() => { setActiveOrderId(order.id); setView('active'); }}
+              className="w-full bg-card rounded-2xl p-4 shadow-sm border border-border-light text-left">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <span className="w-9 h-9 rounded-xl bg-surface-hover flex items-center justify-center text-sm font-bold">
-                    {order.store?.emoji || 'RE'}
-                  </span>
+                  <span className="w-9 h-9 rounded-xl bg-surface-hover flex items-center justify-center text-sm font-bold">{order.store?.emoji || 'RE'}</span>
                   <p className="font-medium text-text-primary text-sm truncate">{order.store?.name || 'Tienda'}</p>
                 </div>
-                <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-medium">
-                  {STATUS_LABELS[order.status as OrderStatus] || order.status}
-                </span>
+                <span className="text-xs px-2 py-0.5 rounded-full bg-brand-light text-brand font-medium">{STATUS_LABELS[order.status as OrderStatus] || order.status}</span>
               </div>
-              <div className="space-y-1">
-                {(order.order_items ?? []).slice(0, 3).map((item, i) => (
-                  <p key={i} className="text-xs text-text-secondary">
-                    {item.quantity}x {item.product_name}
-                  </p>
-                ))}
-              </div>
+              <div className="space-y-1">{(order.order_items ?? []).slice(0, 3).map((item, i) => (<p key={i} className="text-xs text-text-secondary">{item.quantity}x {item.product_name}</p>))}</div>
               <div className="flex items-center justify-between mt-2 pt-2 border-t border-border-light">
                 <p className="text-xs text-text-secondary">{new Date(order.created_at).toLocaleDateString('es-EC')}</p>
                 <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>${Number(order.total ?? 0).toFixed(2)}</p>
@@ -212,72 +230,44 @@ export function TrackingScreen() {
 
   return (
     <div className="min-h-screen bg-surface flex flex-col pb-16 lg:pb-0">
-      <div
-        className="pt-10 pb-4 px-4 flex items-center justify-between"
-        style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}
-      >
+      <div className="pt-10 pb-4 px-4 flex items-center justify-between" style={{ background: 'linear-gradient(160deg, var(--brand), var(--brand-dark))' }}>
         <button onClick={() => navigate('home')} aria-label="Volver" className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center">
           <ArrowLeft size={18} className="text-white" />
         </button>
         <div className="text-center">
           <h3 className="text-white">Seguimiento</h3>
-          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>
-            {activeOrder ? `Pedido ${activeOrder.id.slice(0, 8)}` : 'Pedido en curso'}
-          </p>
+          <p style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>{activeOrder ? `Pedido ${activeOrder.id.slice(0, 8)}` : 'Pedido en curso'}</p>
         </div>
-        <button
-          onClick={() => setView('history')}
-          className="text-xs px-3 py-1.5 rounded-full bg-white/20 text-white"
-        >
-          Historial
-        </button>
+        <button onClick={() => setView('history')} className="text-xs px-3 py-1.5 rounded-full bg-white/20 text-white">Historial</button>
       </div>
 
       <div className="flex-1 overflow-y-auto pb-8">
-        <div className="relative h-52 md:h-72 lg:h-96 overflow-hidden" style={{ backgroundColor: '#E8F0E8' }}>
-          <svg className="absolute inset-0 w-full h-full opacity-30" viewBox="0 0 100 100" preserveAspectRatio="none">
-            {[10, 20, 30, 40, 50, 60, 70, 80, 90].map((v) => (
-              <g key={v}>
-                <line x1={v} y1="0" x2={v} y2="100" stroke="#6D28D9" strokeWidth="0.3" />
-                <line x1="0" y1={v} x2="100" y2={v} stroke="#6D28D9" strokeWidth="0.3" />
-              </g>
-            ))}
-          </svg>
+        {/* ── Real Map ── */}
+        <div className="h-64 md:h-80 lg:h-96 relative z-0">
+          <MapContainer center={storeCoords} zoom={14} className="h-full w-full" zoomControl={false}>
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            <FitBounds storeCoords={storeCoords} destCoords={destCoords} driverCoords={driverCoords} />
 
-          <div className="absolute flex flex-col items-center" style={{ left: '75%', top: '72%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: 'var(--success)' }}>
-              <span className="text-white text-xs font-bold">T</span>
-            </div>
-            <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: 'var(--success)' }}>
-              Tienda
-            </div>
-          </div>
+            <Marker position={storeCoords} icon={storeIcon}>
+              <Popup>{activeOrder?.store?.name || 'Tienda'}</Popup>
+            </Marker>
 
-          <div className="absolute flex flex-col items-center" style={{ left: '85%', top: '85%', transform: 'translate(-50%, -50%)' }}>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center shadow-lg border-2 border-white" style={{ backgroundColor: '#3B82F6' }}>
-              <span className="text-white text-xs font-bold">Tu</span>
-            </div>
-            <div className="bg-card px-1.5 py-0.5 rounded text-xs font-medium shadow mt-0.5" style={{ color: '#3B82F6' }}>
-              Destino
-            </div>
-          </div>
+            <Marker position={destCoords} icon={destIcon}>
+              <Popup>Tu destino</Popup>
+            </Marker>
 
-          <motion.div
-            className="absolute flex flex-col items-center"
-            style={{ left: `${driverPos.x}%`, top: `${driverPos.y}%`, transform: 'translate(-50%, -50%)' }}
-            animate={{ left: `${driverPos.x}%`, top: `${driverPos.y}%` }}
-            transition={{ duration: 0.7, ease: 'easeInOut' }}
-          >
-            <div className="w-10 h-10 rounded-full flex items-center justify-center shadow-xl border-[3px] border-white" style={{ backgroundColor: 'var(--brand)', border: '3px solid white' }}>
-              <LocateFixed size={18} className="text-white" />
-            </div>
-            <div className="px-2 py-0.5 rounded-full text-xs font-bold shadow mt-0.5 text-white" style={{ backgroundColor: 'var(--brand)' }}>
-              Rayo
-            </div>
-          </motion.div>
+            {driverCoords && (
+              <Marker ref={driverMarkerRef} position={driverCoords} icon={driverIcon}>
+                <Popup>Repartidor RayoExpress</Popup>
+              </Marker>
+            )}
+          </MapContainer>
 
           {!isDelivered && (
-            <div className="absolute top-3 left-3 bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
+            <div className="absolute top-3 left-3 z-[1000] bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
               <Clock size={15} style={{ color: 'var(--brand)' }} />
               <div>
                 <p style={{ fontSize: 10, color: '#9CA3AF' }}>Estimado</p>
@@ -291,12 +281,10 @@ export function TrackingScreen() {
           <div className="lg:flex lg:gap-4 lg:mt-4">
             <div className="bg-card px-4 py-4 shadow-sm lg:rounded-2xl lg:flex-1">
               <div className="flex items-center gap-3">
-                <motion.div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
+                <motion.div className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0"
                   style={{ backgroundColor: isDelivered ? '#F0FDF4' : '#EDE9FE', fontSize: 22 }}
                   animate={{ scale: [1, 1.06, 1] }}
-                  transition={{ repeat: isDelivered ? 0 : Infinity, duration: 1.5 }}
-                >
+                  transition={{ repeat: isDelivered ? 0 : Infinity, duration: 1.5 }}>
                   {STATUS_ICONS[activeStatus] || '...'}
                 </motion.div>
                 <div className="flex-1">
@@ -304,21 +292,15 @@ export function TrackingScreen() {
                   <p className="text-sm text-text-secondary">
                     {driverLocation
                       ? `Ultima ubicacion ${new Date(driverLocation.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`
-                      : activeOrder
-                        ? 'Esperando ubicacion del repartidor'
-                        : 'No hay un pedido activo para seguir'}
+                      : activeOrder ? 'Esperando ubicacion del repartidor' : 'No hay un pedido activo para seguir'}
                   </p>
                 </div>
                 {isDelivered && <CheckCircle size={22} style={{ color: 'var(--success)' }} />}
               </div>
-
               <div className="flex items-center gap-1 mt-4">
                 {ORDER_FLOW.map((_, i) => (
-                  <div
-                    key={i}
-                    className="flex-1 h-1.5 rounded-full transition-all duration-500"
-                    style={{ backgroundColor: i <= currentStep ? 'var(--brand)' : '#E5E7EB' }}
-                  />
+                  <div key={i} className="flex-1 h-1.5 rounded-full transition-all duration-500"
+                    style={{ backgroundColor: i <= currentStep ? 'var(--brand)' : '#E5E7EB' }} />
                 ))}
               </div>
             </div>
@@ -345,23 +327,17 @@ export function TrackingScreen() {
 
           {activeOrder && !isDelivered && (
             <div className="mx-4 mt-3">
-              <button
-                onClick={() => setShowChat(true)}
-                className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2"
-                style={{ backgroundColor: 'var(--brand)' }}
-              >
+              <button onClick={() => setShowChat(true)} className="w-full py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-2" style={{ backgroundColor: 'var(--brand)' }}>
                 <MessageCircle size={16} /> Chat del pedido
               </button>
             </div>
           )}
 
           {showRating && activeOrder && (
-            <motion.div
-              className="mx-4 mt-4 rounded-2xl p-5 text-center"
+            <motion.div className="mx-4 mt-4 rounded-2xl p-5 text-center"
               style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
               initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
+              animate={{ opacity: 1, scale: 1 }}>
               <p className="text-white font-bold mb-1">Pedido entregado</p>
               <p className="text-white/70 text-sm mb-4">Califica tu experiencia con RayoExpress.</p>
               <div className="flex justify-center gap-2 mb-4">
@@ -371,9 +347,7 @@ export function TrackingScreen() {
                   </button>
                 ))}
               </div>
-              <button
-                className="px-8 py-2.5 rounded-2xl text-sm font-semibold"
-                style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
+              <button className="px-8 py-2.5 rounded-2xl text-sm font-semibold" style={{ backgroundColor: '#FFD400', color: '#4C1D95' }}
                 onClick={() => {
                   if (rating > 0) {
                     try {
@@ -381,13 +355,10 @@ export function TrackingScreen() {
                       const existing = JSON.parse(localStorage.getItem(key) || '{}');
                       existing[activeOrder.id] = { rating, date: new Date().toISOString() };
                       localStorage.setItem(key, JSON.stringify(existing));
-                    } catch {
-                      /* noop */
-                    }
+                    } catch { /* noop */ }
                   }
                   navigate('home');
-                }}
-              >
+                }}>
                 Enviar calificacion
               </button>
             </motion.div>
@@ -396,13 +367,7 @@ export function TrackingScreen() {
       </div>
 
       {showChat && activeOrder && (
-        <OrderChat
-          orderId={activeOrder.id}
-          storeId={activeOrder.store_id || 'store-1'}
-          storeName={activeOrder.store?.name || 'Tienda'}
-          storeEmoji={activeOrder.store?.emoji || 'RE'}
-          onClose={() => setShowChat(false)}
-        />
+        <OrderChat orderId={activeOrder.id} storeId={activeOrder.store_id || 'store-1'} storeName={activeOrder.store?.name || 'Tienda'} storeEmoji={activeOrder.store?.emoji || 'RE'} onClose={() => setShowChat(false)} />
       )}
     </div>
   );
