@@ -64,10 +64,10 @@ export async function deleteUser(userId: string) {
 }
 
 // ── Users ──
-export async function searchUsers(search = '', role?: string, limit = 50, offset = 0): Promise<AdminUser[]> {
+export async function searchUsers(search = '', role?: string): Promise<AdminUser[]> {
   if (!isSupabaseReady) return mockUsers.filter(u => (role ? u.role === role : true) && (search ? u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()) : true));
   const supabase = getSupabase();
-  const { data, error } = await supabase.rpc('admin_search_users', { p_search: search, p_role: role ?? null, p_limit: limit, p_offset: offset });
+  const { data, error } = await supabase.rpc('admin_search_users', { p_search: search, p_role: role ?? null });
   if (error) throw error;
   return (data ?? []) as AdminUser[];
 }
