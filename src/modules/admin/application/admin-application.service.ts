@@ -72,7 +72,7 @@ export async function getPendingDriverApplications(): Promise<PendingDriverApp[]
   const { data, error } = await supabase
     .from('driver_applications')
     .select('*, applicant:profiles!user_id(full_name)')
-    .eq('status', 'pending')
+    .in('status', ['pending', 'docs_verified'])
     .order('created_at', { ascending: false });
   if (error) throw error;
   return (data ?? []) as PendingDriverApp[];
