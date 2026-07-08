@@ -5,6 +5,7 @@ export interface StoreApplicationData {
   description: string;
   address: string;
   phone: string;
+  city?: string;
 }
 
 const mockApplications: Array<StoreApplicationData & { id: string; status: string; userId: string }> = [];
@@ -24,6 +25,7 @@ export async function submitStoreApplication(userId: string, data: StoreApplicat
       description: data.description,
       address: data.address,
       phone: data.phone,
+      city: data.city ?? null,
     })
     .select()
     .single();

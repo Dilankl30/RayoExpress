@@ -10,6 +10,7 @@ export function StoreApplicationScreen() {
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
+  const [city, setCity] = useState('El Coca');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [existing, setExisting] = useState<{ status: string } | null>(null);
@@ -72,7 +73,7 @@ export function StoreApplicationScreen() {
     setError('');
     setLoading(true);
     try {
-      await submitStoreApplication(user.id, { storeName, description, address, phone });
+      await submitStoreApplication(user.id, { storeName, description, address, phone, city });
       setExisting({ status: 'pending' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al enviar solicitud');
@@ -137,6 +138,23 @@ export function StoreApplicationScreen() {
               placeholder="Dirección del local"
               className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
             />
+          </div>
+
+          <div>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Ciudad</p>
+            <select
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
+            >
+              <option value="El Coca">El Coca</option>
+              <option value="Francisco de Orellana">Francisco de Orellana</option>
+              <option value="Quito">Quito</option>
+              <option value="Guayaquil">Guayaquil</option>
+              <option value="Cuenca">Cuenca</option>
+              <option value="Santo Domingo">Santo Domingo</option>
+              <option value="Quevedo">Quevedo</option>
+            </select>
           </div>
 
           <div>

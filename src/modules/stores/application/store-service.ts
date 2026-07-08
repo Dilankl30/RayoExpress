@@ -9,10 +9,16 @@ type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
-export async function getStores(): Promise<Store[]> {
-  if (!isSupabaseReady) return mockStores as Store[];
+export async function getStores(city?: string): Promise<Store[]> {
+  if (!isSupabaseReady) {
+    let list = mockStores as Store[];
+    if (city) list = list.filter((s) => (s as any).city === city);
+    return list;
+  }
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('stores').select('*').order('name');
+  let query = supabase.from('stores').select('*');
+  if (city) query = query.eq('city', city);
+  const { data, error } = await query.order('name');
   if (error) throw error;
   return data ?? [];
 }
@@ -59,21 +65,21 @@ export async function getProductsByCategory(categoryId: string): Promise<Product
   return data ?? [];
 }
 
-export async function createStore(data: { name: string; description?: string; emoji?: string; user_id: string; owner_id?: string }) {
+export async function createStore(data: { name: string; description?: string; emoji?: string; city?: string; user_id: string; owner_id?: string }) {
   const ownerId = data.owner_id ?? data.user_id;
   if (!isSupabaseReady) {
-    const store = { id: `mock-store-${Date.now()}`, ...data, owner_id: ownerId };
-    logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name } }).catch(() => {});
+    const store = { id: `mock-store-${Date.now()}`, ...data, owner_id: ownerId } as any;
+    logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name, city: data.city } }).catch(() => {});
     return store;
   }
   const supabase = getSupabase();
   const { data: result, error } = await supabase
     .from('stores')
-    .insert({ name: data.name, description: data.description ?? null, emoji: data.emoji ?? 'RE', owner_id: ownerId })
+    .insert({ name: data.name, description: data.description ?? null, emoji: data.emoji ?? 'RE', city: data.city ?? null, owner_id: ownerId })
     .select()
     .single();
   if (error) throw error;
-  logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: result.id, details: { name: data.name } }).catch(() => {});
+  logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: result.id, details: { name: data.name, city: data.city } }).catch(() => {});
   return result;
 }
 

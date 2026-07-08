@@ -9,6 +9,7 @@ import {
   getAddresses,
   markDefaultAddress,
 } from '../../../modules/client/application/client-service';
+import { detectCityCached } from '../../../shared/lib/city';
 import type { Address } from '../../../shared/types';
 
 // Fix Leaflet marker icons for Vite
@@ -185,9 +186,10 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           const lat = Number(position.coords.latitude.toFixed(6));
           const lng = Number(position.coords.longitude.toFixed(6));
           const accuracy = Math.round(position.coords.accuracy);
+          const city = await detectCityCached(lat, lng);
           const next = await createAddress(userId, {
             title: 'Mi ubicación actual',
-            line1: `Ubicación actual (${lat}, ${lng})`,
+            line1: city ? `${city} (${lat}, ${lng})` : `Ubicación actual (${lat}, ${lng})`,
             details: `GPS del dispositivo - precisión aprox. ${accuracy} m`,
             is_default: true,
             lat,

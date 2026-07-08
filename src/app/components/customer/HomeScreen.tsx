@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MapPin, ShoppingCart, Search, ChevronRight,
-  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock,
+  MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
+  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus,
 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
@@ -12,6 +12,7 @@ import { getStores, getCategories, getProductsByStore } from '../../../modules/s
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { getAddresses } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
+import { detectCityCached } from '../../../shared/lib/city';
 import type { Address, Database } from '../../../shared/types';
 import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
 
@@ -51,6 +52,11 @@ export function HomeScreen() {
   const [loadingOrder, setLoadingOrder] = useState(true);
   const [userAddress, setUserAddress] = useState('Av. Amazonas, Quito');
   const [showLocationDialog, setShowLocationDialog] = useState(false);
+  const [userCity, setUserCity] = useState<string | null>(null);
+  const [cityLoading, setCityLoading] = useState(true);
+  const [manualCity, setManualCity] = useState<string | null>(null);
+  const [showCityPicker, setShowCityPicker] = useState(false);
+  const [storesInCity, setStoresInCity] = useState<Store[]>([]);
 
   useEffect(() => {
     const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
@@ -78,12 +84,40 @@ export function HomeScreen() {
     return () => window.removeEventListener(ADDRESS_UPDATED_EVENT, refreshAddress);
   }, [user?.id]);
 
+  const detectUserCity = async () => {
+    try {
+      // Try from user's default address coordinates first
+      const addresses = await getAddresses(user!.id).catch(() => [] as Address[]);
+      const defaultAddr = addresses.find((a) => a.is_default) ?? addresses[0];
+      if (defaultAddr?.lat && defaultAddr?.lng) {
+        const city = await detectCityCached(defaultAddr.lat, defaultAddr.lng);
+        if (city) { setUserCity(city); return; }
+      }
+      // Fallback: use GPS
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+          navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: false }),
+        );
+        const city = await detectCityCached(pos.coords.latitude, pos.coords.longitude);
+        if (city) { setUserCity(city); return; }
+      }
+    } catch {
+      // No GPS, no coords — user can pick manually
+    }
+    setUserCity(null);
+  };
+
   const loadData = async () => {
     setLoading(true);
     setLoadError(null);
+    setCityLoading(true);
     try {
-      const [storesData, catsData] = await Promise.all([getStores(), getCategories()]);
+      if (user && !manualCity) await detectUserCity();
+      const activeCity = manualCity || userCity;
+      const storesData = await getStores(activeCity || undefined);
+      const [catsData] = await Promise.all([getCategories()]);
       setStores(storesData);
+      setStoresInCity(storesData);
       setCategories(catsData);
 
       const map: Record<string, Set<string>> = {};
@@ -105,7 +139,15 @@ export function HomeScreen() {
       setLoadError('No pudimos cargar la información. Revisa tu conexión.');
     } finally {
       setLoading(false);
+      setCityLoading(false);
     }
+  };
+
+  const changeCity = (city: string) => {
+    setManualCity(city);
+    setUserCity(city);
+    setShowCityPicker(false);
+    void loadData();
   };
 
   const loadActiveOrder = async () => {
@@ -183,7 +225,7 @@ export function HomeScreen() {
                 <div className="text-left">
                   <p style={{ fontSize: 10, color: 'rgba(255,255,255,0.6)' }}>Entregar en</p>
                   <p className="text-sm flex items-center gap-1">
-                    {userAddress}
+                    {userCity || userAddress}
                     <ChevronDown size={13} />
                   </p>
                 </div>
@@ -223,7 +265,7 @@ export function HomeScreen() {
           <p className="text-sm font-semibold" style={{ color: 'var(--brand)' }}>RayoExpress</p>
           <h1 className="text-3xl font-black text-text-primary">Todo cerca de ti</h1>
           <p className="text-text-secondary mt-1">
-            Explora tiendas, supermercados y promociones disponibles para {userAddress}.
+            Explora tiendas disponibles en <strong>{userCity || userAddress}</strong>.
           </p>
         </div>
         {activeOrder && !loadingOrder && (
@@ -357,12 +399,30 @@ export function HomeScreen() {
 
           {filteredStores.length === 0 ? (
             <div className="py-10 text-center text-text-secondary">
-              <span className="text-3xl mb-2 block">🔍</span>
-              <p>No encontramos resultados</p>
-              {activeCategory && (
-                <button onClick={() => setActiveCategory(null)} className="mt-3 text-sm font-medium" style={{ color: 'var(--brand)' }}>
-                  Ver todas las tiendas
-                </button>
+              {search || activeCategory ? (
+                <>
+                  <span className="text-3xl mb-2 block">🔍</span>
+                  <p>No encontramos resultados</p>
+                  {activeCategory && (
+                    <button onClick={() => setActiveCategory(null)} className="mt-3 text-sm font-medium" style={{ color: 'var(--brand)' }}>
+                      Ver todas las tiendas
+                    </button>
+                  )}
+                </>
+              ) : (
+                <>
+                  <Store size={40} className="mx-auto mb-2 text-text-secondary" />
+                  <p className="font-medium text-text-primary">Sin tiendas en {userCity || 'tu ciudad'}</p>
+                  <p className="text-sm mt-1">¿Eres dueño de un negocio? ¡Regístra tu tienda!</p>
+                  <div className="flex gap-3 justify-center mt-4">
+                    <button onClick={() => navigate('store-application')} className="px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--brand)' }}>
+                      <Plus size={16} /> Registrar tienda
+                    </button>
+                    <button onClick={() => setShowCityPicker(true)} className="px-5 py-2.5 rounded-xl text-sm font-medium border border-border" style={{ color: 'var(--brand)' }}>
+                      Cambiar ciudad
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           ) : (
@@ -417,6 +477,34 @@ export function HomeScreen() {
         </div>
       </div>
 
+      {showCityPicker && (
+        <div className="fixed inset-0 bg-black/45 flex items-end lg:items-center justify-center z-[80] p-4" onClick={() => setShowCityPicker(false)}>
+          <div className="bg-card rounded-t-[28px] lg:rounded-3xl w-full lg:max-w-sm p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-border rounded-full mx-auto mb-4 lg:hidden" />
+            <h2 className="text-lg font-bold text-text-primary mb-1">Seleccionar ciudad</h2>
+            <p className="text-sm text-text-secondary mb-4">Elige la ciudad donde quieres pedir.</p>
+            <div className="space-y-2">
+              {['El Coca', 'Francisco de Orellana', 'Quito', 'Guayaquil'].map((city) => (
+                <button
+                  key={city}
+                  onClick={() => changeCity(city)}
+                  className={`w-full rounded-2xl p-4 text-left flex items-center gap-3 ${(manualCity || userCity) === city ? 'bg-brand-light border border-brand' : 'bg-surface'}`}
+                >
+                  <MapPin size={18} style={{ color: (manualCity || userCity) === city ? 'var(--brand)' : '#9CA3AF' }} />
+                  <span className="font-medium text-text-primary">{city}</span>
+                  {(manualCity || userCity) === city && <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-brand text-white">Actual</span>}
+                </button>
+              ))}
+              <button onClick={() => { setShowCityPicker(false); setShowLocationDialog(true); }}
+                className="w-full rounded-2xl p-4 bg-surface text-left flex items-center gap-3">
+                <LocateFixed size={18} className="text-brand" />
+                <span className="font-medium text-text-primary">Usar mi ubicación actual</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {user && (
         <LocationDialog
           open={showLocationDialog}
@@ -425,6 +513,7 @@ export function HomeScreen() {
           onSaved={(addresses) => {
             const selected = addresses.find((address) => address.is_default) ?? addresses[0];
             if (selected?.line1) setUserAddress(selected.line1);
+            void loadData();
           }}
         />
       )}
