@@ -114,6 +114,12 @@ export type Database = {
           coverage_area: unknown;
           created_at: string;
           updated_at: string;
+          city: string | null;
+          photo_url: string | null;
+          latitude: number | null;
+          longitude: number | null;
+          address: string | null;
+          phone: string | null;
         };
       };
       products: {

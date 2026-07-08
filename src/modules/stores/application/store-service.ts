@@ -23,6 +23,20 @@ export async function getStores(city?: string): Promise<Store[]> {
   return data ?? [];
 }
 
+export async function getStoresWithLocation(city?: string): Promise<Store[]> {
+  if (!isSupabaseReady) {
+    let list = mockStores as Store[];
+    if (city) list = list.filter((s) => (s as any).city === city);
+    return list.filter((s) => (s as any).latitude && (s as any).longitude);
+  }
+  const supabase = getSupabase();
+  let query = supabase.from('stores').select('*').not('latitude', 'is', null).not('longitude', 'is', null);
+  if (city) query = query.eq('city', city);
+  const { data, error } = await query.order('name');
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getStoreById(id: string): Promise<Store | null> {
   if (!isSupabaseReady) return (mockStores as Store[]).find((s) => s.id === id) ?? null;
   const supabase = getSupabase();

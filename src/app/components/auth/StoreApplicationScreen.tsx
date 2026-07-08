@@ -1,8 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Store, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, Store, CheckCircle, Clock, XCircle, Camera, X } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { submitStoreApplication, getMyStoreApplication } from '../../../modules/stores/application/store-application.service';
+import { uploadFile } from '../../../shared/storage/storage.service';
+
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 export function StoreApplicationScreen() {
   const { user, navigate } = useAuth();
@@ -11,10 +22,17 @@ export function StoreApplicationScreen() {
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState('');
   const [city, setCity] = useState('El Coca');
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [latitude, setLatitude] = useState<number | null>(null);
+  const [longitude, setLongitude] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [existing, setExisting] = useState<{ status: string } | null>(null);
   const [checking, setChecking] = useState(true);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mapCenter: [number, number] = [-2.1706, -79.9223];
 
   useEffect(() => {
     if (!user) return;
@@ -73,7 +91,12 @@ export function StoreApplicationScreen() {
     setError('');
     setLoading(true);
     try {
-      await submitStoreApplication(user.id, { storeName, description, address, phone, city });
+      let photoUrl: string | undefined;
+      if (photoFile) {
+        const { path } = await uploadFile('product-images', user.id, photoFile);
+        photoUrl = path;
+      }
+      await submitStoreApplication(user.id, { storeName, description, address, phone, city, photoUrl, latitude, longitude });
       setExisting({ status: 'pending' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al enviar solicitud');
@@ -168,6 +191,50 @@ export function StoreApplicationScreen() {
             />
           </div>
 
+          {/*** Foto del negocio ***/}
+          <div>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Foto del negocio</p>
+            {photoPreview ? (
+              <div className="relative bg-surface rounded-xl overflow-hidden mb-2">
+                <img src={photoPreview} alt="Negocio" className="w-full h-40 object-cover" />
+                <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute top-2 right-2 w-7 h-7 bg-card rounded-full shadow flex items-center justify-center">
+                  <X size={14} className="text-text-secondary" />
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => imageInputRef.current?.click()}
+                className="w-full py-6 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
+              >
+                <Camera size={22} className="text-text-secondary" />
+                <span className="text-xs text-text-secondary">Agregar foto del local</span>
+              </button>
+            )}
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); } }} />
+          </div>
+
+          {/*** Ubicación en el mapa ***/}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-text-secondary font-medium">Ubicación del negocio</p>
+              <button onClick={() => setShowMap(!showMap)} className={`text-xs font-medium px-2 py-0.5 rounded-full ${showMap ? 'text-brand bg-purple-100' : 'text-text-secondary bg-surface-hover'}`}>
+                {showMap ? 'Cerrar mapa' : latitude ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
+              </button>
+            </div>
+            {latitude && longitude && !showMap && (
+              <p className="text-xs text-text-secondary">{latitude.toFixed(4)}, {longitude.toFixed(4)}</p>
+            )}
+            {showMap && (
+              <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
+                <MapContainer center={latitude && longitude ? [latitude, longitude] : mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
+                  <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <LocationPicker onPick={(lat: number, lng: number) => { setLatitude(lat); setLongitude(lng); }} />
+                  {latitude && longitude && <Marker position={[latitude, longitude]} />}
+                </MapContainer>
+              </div>
+            )}
+          </div>
+
           <motion.button
             onClick={handleSubmit}
             disabled={loading}
@@ -182,4 +249,13 @@ export function StoreApplicationScreen() {
       </div>
     </div>
   );
+}
+
+function LocationPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
 }

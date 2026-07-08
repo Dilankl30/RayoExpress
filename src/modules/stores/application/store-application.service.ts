@@ -6,13 +6,16 @@ export interface StoreApplicationData {
   address: string;
   phone: string;
   city?: string;
+  photoUrl?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 const mockApplications: Array<StoreApplicationData & { id: string; status: string; userId: string }> = [];
 
 export async function submitStoreApplication(userId: string, data: StoreApplicationData) {
   if (!isSupabaseReady) {
-    const app = { id: `mock-app-${Date.now()}`, ...data, status: 'pending', userId };
+    const app = { id: `mock-app-${Date.now()}`, ...data, status: 'pending', userId, photo_url: data.photoUrl, latitude: data.latitude, longitude: data.longitude };
     mockApplications.push(app);
     return app;
   }
@@ -26,6 +29,9 @@ export async function submitStoreApplication(userId: string, data: StoreApplicat
       address: data.address,
       phone: data.phone,
       city: data.city ?? null,
+      photo_url: data.photoUrl ?? null,
+      latitude: data.latitude ?? null,
+      longitude: data.longitude ?? null,
     })
     .select()
     .single();

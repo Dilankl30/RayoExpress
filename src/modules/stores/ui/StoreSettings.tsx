@@ -1,14 +1,34 @@
-import { useState, useEffect } from 'react';
-import { Save, Clock } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Save, Clock, Camera, X } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { getStoreInfo, updateStoreInfo, getStoreSchedule, saveStoreSchedule, getInventory, updateInventory } from '../application/store-settings.service';
 import type { StoreInfo, StoreSchedule, InventoryItem } from '../application/store-settings.service';
 import { getStoreProducts } from '../application/store-catalog.service';
 import type { ProductData } from '../application/store-catalog.service';
+import { uploadFile, getFileUrl } from '../../../shared/storage/storage.service';
+
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const dayNames = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 interface Props {
   storeId: string;
+}
+
+const CITY_OPTIONS = ['El Coca', 'Francisco de Orellana', 'Quito', 'Guayaquil', 'Cuenca', 'Santo Domingo', 'Quevedo'];
+
+function LocationPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) { onPick(e.latlng.lat, e.latlng.lng); },
+  });
+  return null;
 }
 
 export function StoreSettings({ storeId }: Props) {
@@ -20,6 +40,11 @@ export function StoreSettings({ storeId }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
     setLoading(true);
@@ -30,7 +55,15 @@ export function StoreSettings({ storeId }: Props) {
         getInventory(storeId),
         getStoreProducts(storeId),
       ]);
-      if (i) setInfo(i);
+      if (i) {
+        setInfo(i);
+        if (i.photo_url) {
+          try {
+            const url = await getFileUrl('product-images', i.photo_url);
+            setPhotoUrl(url);
+          } catch { /* noop */ }
+        }
+      }
       setSchedules(s.length ? s : []);
       setInventory(inv);
       setProducts(p);
@@ -45,7 +78,12 @@ export function StoreSettings({ storeId }: Props) {
     if (!info) return;
     setSaving(true);
     try {
-      await updateStoreInfo(storeId, info);
+      let newPhotoUrl = info.photo_url;
+      if (photoFile) {
+        const { path } = await uploadFile('product-images', storeId, photoFile);
+        newPhotoUrl = path;
+      }
+      await updateStoreInfo(storeId, { ...info, photo_url: newPhotoUrl });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally {
@@ -112,6 +150,21 @@ export function StoreSettings({ storeId }: Props) {
             <p className="text-xs text-text-secondary mb-1">Descripción</p>
             <textarea value={info.description || ''} onChange={(e) => setInfo({ ...info, description: e.target.value })} rows={3} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none resize-none" />
           </div>
+          <div>
+            <p className="text-xs text-text-secondary mb-1">Dirección</p>
+            <input type="text" value={info.address || ''} onChange={(e) => setInfo({ ...info, address: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" placeholder="Dirección del local" />
+          </div>
+          <div>
+            <p className="text-xs text-text-secondary mb-1">Teléfono</p>
+            <input type="tel" value={info.phone || ''} onChange={(e) => setInfo({ ...info, phone: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" placeholder="+593 99 999 9999" />
+          </div>
+          <div>
+            <p className="text-xs text-text-secondary mb-1">Ciudad</p>
+            <select value={info.city || ''} onChange={(e) => setInfo({ ...info, city: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none">
+              <option value="">Seleccionar ciudad</option>
+              {CITY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
               <p className="text-xs text-text-secondary mb-1">Pedido mínimo</p>
@@ -126,6 +179,48 @@ export function StoreSettings({ storeId }: Props) {
             <p className="text-xs text-text-secondary mb-1">Emoji</p>
             <input type="text" value={info.emoji} onChange={(e) => setInfo({ ...info, emoji: e.target.value })} className="w-full bg-surface rounded-xl px-4 py-3 text-sm outline-none" maxLength={2} />
           </div>
+
+          {/*** Foto del negocio ***/}
+          <div>
+            <p className="text-xs text-text-secondary mb-1">Foto del negocio</p>
+            {(photoPreview || photoUrl) && !showMap ? (
+              <div className="relative bg-surface rounded-xl overflow-hidden mb-2">
+                <img src={photoPreview || photoUrl || ''} alt="Negocio" className="w-full h-40 object-cover" />
+                <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); setPhotoUrl(null); setInfo(prev => prev ? { ...prev, photo_url: null } : prev); }} className="absolute top-2 right-2 w-7 h-7 bg-card rounded-full shadow flex items-center justify-center">
+                  <X size={14} className="text-text-secondary" />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => imageInputRef.current?.click()} className="w-full py-6 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-1 hover:border-purple-300 transition-colors">
+                <Camera size={22} className="text-text-secondary" />
+                <span className="text-xs text-text-secondary">{info.photo_url ? 'Cambiar foto' : 'Agregar foto del local'}</span>
+              </button>
+            )}
+            <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) { setPhotoFile(f); setPhotoPreview(URL.createObjectURL(f)); } }} />
+          </div>
+
+          {/*** Ubicación en el mapa ***/}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-text-secondary font-medium">Ubicación del negocio</p>
+              <button onClick={() => setShowMap(!showMap)} className={`text-xs font-medium px-2 py-0.5 rounded-full ${showMap ? 'text-brand bg-purple-100' : 'text-text-secondary bg-surface-hover'}`}>
+                {showMap ? 'Cerrar mapa' : (info.latitude && info.longitude) ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
+              </button>
+            </div>
+            {info.latitude && info.longitude && !showMap && (
+              <p className="text-xs text-text-secondary">{info.latitude.toFixed(4)}, {info.longitude.toFixed(4)}</p>
+            )}
+            {showMap && (
+              <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
+                <MapContainer center={info.latitude ? [info.latitude, info.longitude!] : [-2.1706, -79.9223]} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
+                  <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <LocationPicker onPick={(lat: number, lng: number) => { setInfo(prev => prev ? { ...prev, latitude: lat, longitude: lng } : prev); }} />
+                  {info.latitude && info.longitude && <Marker position={[info.latitude, info.longitude]} />}
+                </MapContainer>
+              </div>
+            )}
+          </div>
+
           <button onClick={handleSaveInfo} disabled={saving} className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50" style={{ backgroundColor: 'var(--brand)' }}>
             <Save size={16} /> {saving ? 'Guardando...' : 'Guardar cambios'}
           </button>

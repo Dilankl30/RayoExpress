@@ -3,8 +3,11 @@ import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
-  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus,
+  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus, Map,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
@@ -15,6 +18,13 @@ import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/orde
 import { detectCityCached } from '../../../shared/lib/city';
 import type { Address, Database } from '../../../shared/types';
 import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
+
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -57,6 +67,7 @@ export function HomeScreen() {
   const [manualCity, setManualCity] = useState<string | null>(null);
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [storesInCity, setStoresInCity] = useState<Store[]>([]);
+  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
@@ -385,7 +396,7 @@ export function HomeScreen() {
           </div>
         )}
 
-        <div className="mt-5">
+          <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-text-primary font-semibold flex items-center gap-2">
               {search ? (
@@ -394,10 +405,38 @@ export function HomeScreen() {
                 <><Flame size={16} style={{ color: '#FF4500' }} />Populares ahora</>
               )}
             </h3>
-            <span className="text-xs text-text-secondary">{filteredStores.length} tiendas</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-secondary">{filteredStores.length} tiendas</span>
+              <button onClick={() => setShowMap(!showMap)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showMap ? 'text-white' : 'text-text-secondary bg-surface-hover'}`}
+                style={showMap ? { backgroundColor: 'var(--brand)' } : {}}>
+                <Map size={13} /> {showMap ? 'Lista' : 'Mapa'}
+              </button>
+            </div>
           </div>
 
-          {filteredStores.length === 0 ? (
+          {showMap ? (
+            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4" style={{ height: 380 }}>
+              <MapContainer center={[-2.1706, -79.9223]} zoom={12} className="h-full w-full" scrollWheelZoom={true}>
+                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                {filteredStores.filter((s) => s.latitude && s.longitude).map((store) => (
+                  <Marker key={store.id} position={[store.latitude!, store.longitude!]}>
+                    <Popup>
+                      <div className="text-center min-w-[120px]">
+                        <p className="font-bold text-sm">{store.emoji} {store.name}</p>
+                        <p className="text-xs text-gray-500 mt-1">{store.description || ''}</p>
+                        <button onClick={() => handleSelectStore(store.id)}
+                          className="mt-2 px-3 py-1 rounded-lg text-white text-xs font-medium"
+                          style={{ backgroundColor: 'var(--brand)' }}>
+                          Ver tienda
+                        </button>
+                      </div>
+                    </Popup>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
+          ) : filteredStores.length === 0 ? (
             <div className="py-10 text-center text-text-secondary">
               {search || activeCategory ? (
                 <>

@@ -15,14 +15,14 @@ export interface OrderSummary {
   created_at: string;
 }
 
-export async function getStoreByOwner(ownerId: string): Promise<{ id: string; name: string; is_open: boolean } | null> {
+export async function getStoreByOwner(ownerId: string): Promise<{ id: string; name: string; is_open: boolean; photo_url?: string | null; latitude?: number | null; longitude?: number | null; city?: string | null; address?: string | null; phone?: string | null; description?: string | null; emoji?: string; min_order?: number; delivery_fee?: number } | null> {
   if (!isSupabaseReady) {
-    return { id: 'store-1', name: 'Burger King', is_open: true };
+    return { id: 'store-1', name: 'Burger King', is_open: true, city: 'El Coca', latitude: -2.1706, longitude: -79.9223 };
   }
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('stores')
-    .select('id, name, is_open')
+    .select('*')
     .eq('owner_id', ownerId)
     .maybeSingle();
   if (error) throw error;

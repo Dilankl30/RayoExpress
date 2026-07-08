@@ -8,6 +8,12 @@ export interface StoreInfo {
   is_open: boolean;
   min_order: number;
   delivery_fee: number;
+  photo_url?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string | null;
+  phone?: string | null;
+  city?: string | null;
 }
 
 export interface StoreSchedule {
