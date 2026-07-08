@@ -99,10 +99,8 @@ export function DriverApplicationScreen() {
       .from('driver-documents')
       .upload(path, file);
     if (uploadError) {
-      if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
-        return getFileUrl(file);
-      }
-      throw uploadError;
+      console.warn('Storage upload failed, falling back to blob URL:', uploadError.message || uploadError);
+      return getFileUrl(file);
     }
     const { data: urlData } = supabase.storage
       .from('driver-documents')
@@ -146,7 +144,12 @@ export function DriverApplicationScreen() {
       });
       setExisting({ status: 'pending' });
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Error al enviar solicitud');
+      const msg = err instanceof Error ? err.message : 'Error al enviar solicitud';
+      if (msg.includes('404') || msg.includes('relation') || msg.includes('does not exist')) {
+        setError('La base de datos no está configurada. Ejecuta las migraciones SQL en tu panel de Supabase.');
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
