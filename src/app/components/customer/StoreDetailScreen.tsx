@@ -1,12 +1,23 @@
 ﻿import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { motion } from 'motion/react';
-import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart, MapPin, Phone } from 'lucide-react';
+import { MapContainer, TileLayer, Marker } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { getStoreById, getProductsByStore } from '../../../modules/stores/application/store-service';
 import { checkIsFavorite, toggleFavorite } from '../../../modules/client/application/client-service';
+import { getFileUrl } from '../../../shared/storage/storage.service';
 import type { CartItem, Database, FavoriteItem } from '../../../shared/types';
+
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'] & { category?: string };
@@ -23,6 +34,8 @@ export function StoreDetailScreen() {
   const [liked, setLiked] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [storePhotoUrl, setStorePhotoUrl] = useState<string | null>(null);
+  const [productImageUrls, setProductImageUrls] = useState<Record<string, string | null>>({});
 
   useEffect(() => {
     if (storeId) {
@@ -38,6 +51,16 @@ export function StoreDetailScreen() {
         getStoreById(storeId),
         getProductsByStore(storeId),
       ]);
+      if (storeData?.photo_url) {
+        getFileUrl('product-images', storeData.photo_url).then(setStorePhotoUrl).catch(() => {});
+      }
+      const imgMap: Record<string, string | null> = {};
+      for (const p of productsData) {
+        if (p.image_url) {
+          try { imgMap[p.id] = await getFileUrl('product-images', p.image_url); } catch { imgMap[p.id] = null; }
+        }
+      }
+      setProductImageUrls(imgMap);
       setStore(storeData);
       setProducts(productsData);
       setLiked(user ? await checkIsFavorite(user.id, storeId, 'store') : false);
@@ -137,9 +160,13 @@ export function StoreDetailScreen() {
         className="relative h-48 md:h-56 lg:h-64 flex items-end"
         style={{ backgroundColor: store?.cover_color || 'var(--brand)' }}
       >
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
-        </div>
+        {storePhotoUrl ? (
+          <img src={storePhotoUrl} alt={store?.name} className="absolute inset-0 w-full h-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span style={{ fontSize: 80 }}>{store?.emoji || '🏪'}</span>
+          </div>
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
 
         <div className="absolute top-10 left-0 right-0 flex items-center justify-between px-4">
@@ -194,6 +221,28 @@ export function StoreDetailScreen() {
             <span className="text-sm text-text-secondary">Mínimo ${store?.min_order.toFixed(2)}</span>
           )}
         </div>
+        {(store?.address || store?.phone || store?.city) && (
+          <div className="mt-3 pt-3 border-t border-border-light space-y-1">
+            {store?.address && (
+              <p className="text-xs text-text-secondary flex items-center gap-1">
+                <MapPin size={12} /> {store.address}{store.city ? `, ${store.city}` : ''}
+              </p>
+            )}
+            {store?.phone && (
+              <p className="text-xs text-text-secondary flex items-center gap-1">
+                <Phone size={12} /> {store.phone}
+              </p>
+            )}
+          </div>
+        )}
+        {store?.latitude && store?.longitude && (
+          <div className="mt-3 rounded-xl overflow-hidden border border-border-light" style={{ height: 140 }}>
+            <MapContainer center={[store.latitude, store.longitude]} zoom={16} className="h-full w-full" scrollWheelZoom={false} dragging={false} zoomControl={false}>
+              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <Marker position={[store.latitude, store.longitude]} />
+            </MapContainer>
+          </div>
+        )}
       </div>
 
       <div className="px-4 md:px-0 pt-4 md:pt-0 pb-2 bg-card md:bg-transparent border-b md:border-0 border-border-light">
@@ -252,10 +301,14 @@ export function StoreDetailScreen() {
                 transition={{ delay: i * 0.04 }}
               >
                 <div
-                  className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0"
+                  className="w-20 h-20 rounded-xl flex items-center justify-center flex-shrink-0 overflow-hidden"
                   style={{ backgroundColor: '#F9FAFB', fontSize: 36 }}
                 >
-                  {item.emoji || '🍽️'}
+                  {productImageUrls[item.id] ? (
+                    <img src={productImageUrls[item.id]!} alt={item.name} className="w-full h-full object-cover" />
+                  ) : (
+                    item.emoji || '🍽️'
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-start gap-2">
