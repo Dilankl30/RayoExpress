@@ -143,141 +143,137 @@ export function LandingScreen() {
             </div>
           </div>
 
-          <AnimatePresence>
-            {showMobileMenu && (
-              <motion.div
-                className="md:hidden pb-4 border-t border-border-light pt-3 space-y-3"
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: 'auto', opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-              >
-                <button className="block w-full text-left py-2 text-text-secondary font-medium">Ofertas</button>
-                <button className="block w-full text-left py-2 text-text-secondary font-medium">Tiendas</button>
-                <button className="block w-full text-left py-2 text-text-secondary font-medium">Cómo funciona</button>
-                <button className="block w-full text-left py-2 text-text-secondary font-medium">Contacto</button>
-                <button onClick={() => navigate('login')} className="block w-full text-left py-2 text-brand font-semibold">
-                  Iniciar sesión
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+           <AnimatePresence>
+             {showMobileMenu && (
+               <motion.div
+                 className="md:hidden pb-6 border-t border-border-light pt-3"
+                 initial={{ height: 0, opacity: 0 }}
+                 animate={{ height: 'auto', opacity: 1 }}
+                 exit={{ height: 0, opacity: 0 }}
+               >
+                 <div className="grid grid-cols-2 gap-3 mb-6">
+                   <button
+                     onClick={() => navigate('login')}
+                     className="px-4 py-2.5 rounded-xl text-sm font-semibold text-text-primary bg-surface border border-border-light"
+                   >
+                     Iniciar sesión
+                   </button>
+                   <button
+                     onClick={() => navigate('login')}
+                     className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white shadow-md"
+                     style={{ background: 'var(--brand)' }}
+                   >
+                     Registrarse
+                   </button>
+                 </div>
+                 <div className="space-y-3">
+                   <button className="block w-full text-left py-2 text-text-secondary font-medium">Ofertas</button>
+                   <button className="block w-full text-left py-2 text-text-secondary font-medium">Tiendas</button>
+                   <button className="block w-full text-left py-2 text-text-secondary font-medium">Cómo funciona</button>
+                   <button className="block w-full text-left py-2 text-text-secondary font-medium">Contacto</button>
+                 </div>
+               </motion.div>
+             )}
+           </AnimatePresence>
         </div>
       </nav>
 
-      {/* ===== HERO ===== */}
-      <section className="relative pt-16 overflow-hidden">
-        <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, var(--brand) 0%, var(--brand-dark) 50%, #1E0A3C 100%)' }} />
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" viewBox="0 0 1440 800" preserveAspectRatio="none">
-            <circle cx="1200" cy="100" r="300" fill="white" />
-            <circle cx="200" cy="600" r="200" fill="white" />
-            <circle cx="700" cy="400" r="250" fill="white" />
-          </svg>
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8 pt-10 pb-16 md:pt-16 md:pb-24">
-          <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
-            <div>
-              <motion.div
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-              >
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium mb-6" style={{ backgroundColor: 'rgba(255,255,255,0.12)', color: '#FFD400' }}>
-                  <Sparkles size={14} />
-                  Delivery en minutos
-                </div>
-                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-4">
-                  Tu comida favorita,{' '}
-                  <span style={{ color: '#FFD400' }}>más rápido</span>
-                  {' '}que un rayo
-                </h1>
-                <p className="text-lg md:text-xl mb-8" style={{ color: 'rgba(255,255,255,0.8)' }}>
-                  Pide de tus restaurantes, supermercados y farmacias favoritos. Entrega en minutos.
-                </p>
-
-                <form onSubmit={handleSearch} className="bg-card rounded-2xl p-2 flex items-center gap-2 shadow-2xl mb-4 max-w-lg">
-                  <div className="flex items-center gap-2 flex-1 pl-3">
-                    <Search size={18} className="text-text-secondary flex-shrink-0" />
-                    <input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="¿Qué se te antoja hoy?"
-                      className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent py-2"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="px-6 py-3 rounded-xl text-sm font-semibold text-white transition-all hover:scale-105"
-                    style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
-                  >
-                    Buscar
-                  </button>
-                </form>
-
-                <div className="flex flex-wrap gap-4 items-center">
-                  <button
-                    onClick={() => navigate('login')}
-                    className="px-8 py-3.5 rounded-full text-sm font-bold shadow-lg hover:shadow-xl transition-all flex items-center gap-2"
-                    style={{ background: '#FFD400', color: '#4C1D95' }}
-                  >
-                    Pedir ahora
-                    <ArrowRight size={16} />
-                  </button>
-                  <div className="flex items-center gap-2" style={{ color: 'rgba(255,255,255,0.6)' }}>
-                    <Shield size={14} />
-                    <span className="text-xs">Pago seguro</span>
-                    <Truck size={14} className="ml-2" />
-                    <span className="text-xs">Delivery gratis*</span>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-
-            <motion.div
-              className="hidden md:flex justify-center relative"
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.6, delay: 0.2 }}
-            >
-              <div className="relative w-80 h-96">
-                <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-purple-400/20 to-transparent" />
-                <div className="relative grid grid-cols-2 gap-3 p-2">
-                  {featuredStores.slice(0, 4).map((s, i) => (
-                    <motion.div
-                      key={s.name}
-                      className="bg-white/90 backdrop-blur rounded-2xl p-4 text-center shadow-lg"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 + i * 0.1 }}
-                    >
-                      <span className="text-4xl block mb-1">{s.emoji}</span>
-                      <p className="text-xs font-semibold text-text-primary">{s.name}</p>
-                      <div className="flex items-center justify-center gap-1 mt-1">
-                        <Star size={10} fill="#FFD400" stroke="#FFD400" />
-                        <span className="text-[10px] text-text-secondary">{s.rating}</span>
+       {/* ===== HERO ===== */}
+       <section className="relative pt-16 pb-16 md:pt-24 md:pb-32 overflow-hidden">
+         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-brand/5 to-transparent pointer-events-none" />
+         <div className="absolute -top-24 -right-24 w-96 h-96 bg-brand/10 rounded-full blur-3xl pointer-events-none" />
+         
+         <div className="relative max-w-7xl mx-auto px-4 md:px-6 lg:px-8">
+           <div className="grid md:grid-cols-2 gap-12 items-center">
+             <div>
+               <motion.div
+                 initial={{ opacity: 0, x: -30 }}
+                 animate={{ opacity: 1, x: 0 }}
+                 transition={{ duration: 0.6 }}
+               >
+                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-bold mb-6" style={{ backgroundColor: 'var(--brand-light)', color: 'var(--brand-dark)' }}>
+                   <Sparkles size={12} />
+                   SISTEMA DE ENTREGAS ULTRA RÁPIDO
+                 </div>
+                 <h1 className="text-4xl md:text-6xl font-extrabold text-text-primary leading-tight mb-6">
+                   Todo lo que necesitas, <br />
+                   <span className="text-brand">entregado en un rayo</span>
+                 </h1>
+                 <p className="text-lg text-text-secondary mb-10 max-w-lg leading-relaxed">
+                   Conecta con las mejores tiendas de tu ciudad. Pedidos rápidos, seguros y eficientes para tu día a día.
+                 </p>
+ 
+                 <form onSubmit={handleSearch} className="bg-white rounded-2xl p-2 flex items-center gap-2 shadow-xl border border-border-light mb-8 max-w-lg">
+                   <div className="flex items-center gap-2 flex-1 pl-3">
+                     <Search size={20} className="text-text-secondary flex-shrink-0" />
+                     <input
+                       value={search}
+                       onChange={(e) => setSearch(e.target.value)}
+                       placeholder="Busca tu tienda o producto favorito..."
+                       className="flex-1 outline-none text-text-primary placeholder:text-text-secondary text-sm bg-transparent py-3"
+                     />
+                   </div>
+                   <button
+                     type="submit"
+                     className="px-6 py-3 rounded-xl text-sm font-bold text-white transition-all hover:brightness-110 active:scale-95"
+                     style={{ background: 'linear-gradient(135deg, var(--brand), var(--brand-dark))' }}
+                   >
+                     Buscar
+                   </button>
+                 </form>
+ 
+                 <div className="flex flex-wrap gap-6 items-center">
+                   <button
+                     onClick={() => navigate('login')}
+                     className="px-8 py-3 rounded-full text-sm font-bold shadow-lg transition-all flex items-center gap-2 hover:scale-105"
+                     style={{ background: 'var(--brand)', color: 'white' }}
+                   >
+                     Comenzar ahora
+                     <ArrowRight size={16} />
+                   </button>
+                   <div className="flex items-center gap-4">
+                     <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                       <Shield size={14} className="text-brand" />
+                       Pago Seguro
+                     </div>
+                     <div className="flex items-center gap-1.5 text-xs font-medium text-text-secondary">
+                       <Truck size={14} className="text-brand" />
+                       Envío Rápido
+                     </div>
+                   </div>
+                 </div>
+               </motion.div>
+             </div>
+ 
+             <motion.div
+               className="hidden md:flex justify-center relative"
+               initial={{ opacity: 0, scale: 0.9 }}
+               animate={{ opacity: 1, scale: 1 }}
+               transition={{ duration: 0.7, delay: 0.2 }}
+             >
+               <div className="relative w-full max-w-lg">
+                 <div className="relative z-10 flex justify-center">
+                   <div className="relative w-64 h-64 md:w-80 md:h-80 bg-gradient-to-br from-brand/20 to-brand-dark/5 rounded-full flex items-center justify-center animate-pulse">
+                      <div className="relative w-48 h-48 md:w-64 md:h-64 bg-white rounded-full shadow-2xl flex items-center justify-center overflow-hidden border-4 border-white">
+                         <img src={logo} alt="RayoExpress" className="w-32 h-32 object-contain" />
                       </div>
-                    </motion.div>
-                  ))}
-                </div>
-                <motion.div
-                  className="absolute -bottom-4 -right-4 bg-card rounded-2xl px-5 py-3 shadow-xl"
-                  animate={{ y: [0, -5, 0] }}
-                  transition={{ repeat: Infinity, duration: 3 }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Bike size={20} style={{ color: 'var(--brand)' }} />
-                    <div>
-                      <p className="text-xs text-text-secondary">Entrega en</p>
-                      <p className="font-bold text-sm" style={{ color: 'var(--brand)' }}>12 min</p>
-                    </div>
-                  </div>
-                </motion.div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </section>
+                      <div className="absolute -top-4 -right-4 bg-white p-3 rounded-2xl shadow-lg animate-bounce">
+                         <Bike size={32} style={{ color: 'var(--brand)' }} />
+                      </div>
+                      <div className="absolute -bottom-4 -left-4 bg-white p-3 rounded-2xl shadow-lg animate-bounce" style={{ animationDelay: '1s' }}>
+                         <Package size={32} style={{ color: 'var(--brand)' }} />
+                      </div>
+                      <div className="absolute top-1/2 -right-12 bg-white p-3 rounded-2xl shadow-lg animate-bounce" style={{ animationDelay: '0.5s' }}>
+                         <ShoppingBag size={32} style={{ color: 'var(--brand)' }} />
+                      </div>
+                   </div>
+                 </div>
+                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-brand/10 rounded-full blur-3xl -z-10" />
+               </div>
+             </motion.div>
+           </div>
+         </div>
+       </section>
 
       {/* ===== MARQUEE STRIP ===== */}
       <div className="py-3 bg-surface border-y border-border-light overflow-hidden">
