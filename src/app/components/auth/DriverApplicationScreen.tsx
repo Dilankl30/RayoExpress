@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Bike, CheckCircle, Clock, XCircle, Upload } from 'lucide-react';
+import { ArrowLeft, Bike, CheckCircle, Clock, ShieldCheck, XCircle, Upload } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { submitDriverApplication, getMyDriverApplication } from '../../../modules/delivery/application/driver-application.service';
 
@@ -61,6 +61,13 @@ export function DriverApplicationScreen() {
               <p className="text-sm text-text-secondary">Estamos revisando tus datos. Te notificaremos cuando estés aprobado.</p>
             </div>
           )}
+          {existing.status === 'docs_verified' && (
+            <div className="bg-blue-50 rounded-2xl p-8 border border-blue-200">
+              <ShieldCheck size={48} className="text-blue-500 mx-auto mb-4" />
+              <h2 className="text-lg font-bold text-text-primary mb-2">Documentos verificados</h2>
+              <p className="text-sm text-text-secondary">Tus documentos están correctos. Por favor, acércate a nuestra agencia a firmar el contrato para activar tu cuenta.</p>
+            </div>
+          )}
           {existing.status === 'approved' && (
             <div className="bg-success-light rounded-2xl p-8 border border-green-200">
               <CheckCircle size={48} className="text-green-500 mx-auto mb-4" />
@@ -91,7 +98,12 @@ export function DriverApplicationScreen() {
     const { data, error: uploadError } = await supabase.storage
       .from('driver-documents')
       .upload(path, file);
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      if (uploadError.message?.includes('Bucket not found') || uploadError.message?.includes('bucket')) {
+        return getFileUrl(file);
+      }
+      throw uploadError;
+    }
     const { data: urlData } = supabase.storage
       .from('driver-documents')
       .getPublicUrl(data.path);
