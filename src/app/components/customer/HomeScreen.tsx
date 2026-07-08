@@ -5,13 +5,13 @@ import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
   Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus, Map,
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
-import { getStores, getCategories, getProductsByStore } from '../../../modules/stores/application/store-service';
+import { getStores, getStoresInBounds, getCategories, getProductsByStore } from '../../../modules/stores/application/store-service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { getAddresses } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
@@ -46,6 +46,20 @@ const banners = [
 
 const inactiveOrderStatuses = ['delivered', 'cancelled', 'refunded'];
 
+function MapBoundsHandler({ onBoundsChange }: { onBoundsChange: (bounds: { northEast: [number, number], southWest: [number, number] }) => void }) {
+  const map = useMap();
+  useMapEvents({
+    moveend() {
+      const bounds = map.getBounds();
+      onBoundsChange({
+        northEast: [bounds.getNorthEast().lat, bounds.getNorthEast().lng],
+        southWest: [bounds.getSouthWest().lat, bounds.getSouthWest().lng],
+      });
+    },
+  });
+  return null;
+}
+
 export function HomeScreen() {
   const { navigate, user } = useAuth();
   const { cartCount } = useCart();
@@ -66,6 +80,14 @@ export function HomeScreen() {
   const [manualCity, setManualCity] = useState<string | null>(null);
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showMap, setShowMap] = useState(false);
+  const [mapStores, setMapStores] = useState<Store[]>([]);
+
+  const handleBoundsChange = async (bounds: { northEast: [number, number], southWest: [number, number] }) => {
+    try {
+      const storesInBounds = await getStoresInBounds(bounds.northEast, bounds.southWest);
+      setMapStores(storesInBounds);
+    } catch { /* noop */ }
+  };
 
   useEffect(() => {
     const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
@@ -414,7 +436,8 @@ export function HomeScreen() {
             <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4" style={{ height: 380 }}>
               <MapContainer center={[-2.1706, -79.9223]} zoom={12} className="h-full w-full" scrollWheelZoom={true}>
                 <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                {filteredStores.filter((s) => s.latitude && s.longitude).map((store) => (
+                <MapBoundsHandler onBoundsChange={handleBoundsChange} />
+                {(mapStores.length > 0 ? mapStores : filteredStores).filter((s) => s.latitude && s.longitude).map((store) => (
                   <Marker key={store.id} position={[store.latitude!, store.longitude!]}>
                     <Popup>
                       <div className="text-center min-w-[120px]">

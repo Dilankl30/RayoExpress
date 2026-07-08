@@ -43,25 +43,18 @@ export async function createProduct(storeId: string, productData: Omit<ProductDa
   }
   const supabase = getSupabase();
   
-  // 1. Crear el producto
-  const { data: product, error: pError } = await supabase
-    .from('products')
-    .insert({ ...productData, store_id: storeId })
-    .select()
-    .single();
-  if (pError) throw pError;
+  const { data: product, error } = await supabase.rpc('create_product_secure', {
+    p_store_id: storeId,
+    p_name: productData.name,
+    p_price: productData.price,
+    p_emoji: productData.emoji,
+    p_description: productData.description,
+    p_category_id: productData.category_id,
+    p_image_url: productData.image_url,
+  });
 
-  // 2. Inicializar el inventario automáticamente (Cantidad 0 por defecto)
-  const { error: iError } = await supabase
-    .from('inventory')
-    .insert({ product_id: product.id, quantity: 0, low_stock_threshold: 10 });
-  if (iError) {
-    console.error('Error inicializando inventario:', iError);
-    // No lanzamos error aquí para no bloquear la creación del producto, 
-    // pero el admin podrá ajustarlo en StoreSettings.
-  }
-
-  return product;
+  if (error) throw error;
+  return product as ProductData;
 }
 
 export async function updateProduct(productId: string, updates: Partial<Omit<ProductData, 'id' | 'store_id'>>) {
@@ -115,13 +108,13 @@ export async function createCategory(category: Omit<CategoryData, 'id'>) {
     return cat;
   }
   const supabase = getSupabase();
-  const { data, error } = await supabase
-    .from('categories')
-    .insert(category)
-    .select()
-    .single();
+  const { data, error } = await supabase.rpc('create_category_secure', {
+    p_name: category.name,
+    p_emoji: category.emoji,
+    p_bg_color: category.bg_color,
+  });
   if (error) throw error;
-  return data;
+  return data as CategoryData;
 }
 
 export async function deleteCategory(categoryId: string) {

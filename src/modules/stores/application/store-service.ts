@@ -9,6 +9,27 @@ type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
+export async function getStoresInBounds(northEast: [number, number], southWest: [number, number]): Promise<Store[]> {
+  if (!isSupabaseReady) {
+    return (mockStores as Store[]).filter(s => 
+      s.latitude && s.longitude && 
+      s.latitude <= northEast[0] && s.latitude >= southWest[0] && 
+      s.longitude <= northEast[1] && s.longitude >= southWest[1]
+    );
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('stores')
+    .select('*')
+    .lte('latitude', northEast[0])
+    .gte('latitude', southWest[0])
+    .lte('longitude', northEast[1])
+    .gte('longitude', southWest[1])
+    .order('name');
+  if (error) throw error;
+  return data ?? [];
+}
+
 export async function getStores(city?: string): Promise<Store[]> {
   if (!isSupabaseReady) {
     let list = mockStores as Store[];
