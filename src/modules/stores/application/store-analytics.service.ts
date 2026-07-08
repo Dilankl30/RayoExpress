@@ -55,7 +55,7 @@ export async function getStoreDashboardStats(storeId: string): Promise<StoreDash
       .eq('store_id', storeId)
       .eq('is_active', true),
     supabase
-      .from('drivers')
+      .from('stores')
       .select('rating')
       .eq('id', storeId),
   ]);

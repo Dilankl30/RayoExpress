@@ -70,48 +70,70 @@ export function CatalogManager({ storeId }: Props) {
   const handleSave = async () => {
     if (!form.name || !form.price) return;
 
-    let imageUrl: string | null = existingImage;
+    try {
+      let imageUrl: string | null = existingImage;
 
-    if (imageFile) {
-      const { path } = await uploadFile('product-images', storeId, imageFile);
-      imageUrl = path;
+      if (imageFile) {
+        const { path } = await uploadFile('product-images', storeId, imageFile);
+        imageUrl = path;
+      }
+
+      const productData = {
+        name: form.name,
+        price: Number(form.price),
+        emoji: form.emoji,
+        description: form.description || null,
+        category_id: form.category_id || null,
+        is_active: true,
+        image_url: imageUrl,
+      };
+
+      if (editingId) {
+        await updateProduct(editingId, productData);
+      } else {
+        await createProduct(storeId, productData);
+      }
+      resetForm();
+      await load();
+    } catch (e) {
+      console.error('Error saving product:', e);
+      alert(`Error al guardar producto: ${e instanceof Error ? e.message : 'Error desconocido'}`);
     }
-
-    const productData = {
-      name: form.name,
-      price: Number(form.price),
-      emoji: form.emoji,
-      description: form.description || null,
-      category_id: form.category_id || null,
-      is_active: true,
-      image_url: imageUrl,
-    };
-
-    if (editingId) {
-      await updateProduct(editingId, productData);
-    } else {
-      await createProduct(storeId, productData);
-    }
-    resetForm();
-    await load();
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProduct(id);
-    await load();
+    if (!confirm('¿Estás seguro de eliminar este producto?')) return;
+    try {
+      await deleteProduct(id);
+      await load();
+    } catch (e) {
+      console.error('Error deleting product:', e);
+      alert(`Error al eliminar producto: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+    }
   };
 
   const handleAddCategory = async () => {
     if (!newCatName.trim()) return;
-    const colors = ['#FEF3C7', '#FEE2E2', '#FFEDD5', '#F3E8FF', '#ECFDF5', '#FCE7F3', '#E0F2FE', '#D1FAE5'];
-    await createCategory({ name: newCatName, emoji: '📦', bg_color: colors[categories.length % colors.length] });
-    setNewCatName('');
-    await load();
+    try {
+      const colors = ['#FEF3C7', '#FEE2E2', '#FFEDD5', '#F3E8FF', '#ECFDF5', '#FCE7F3', '#E0F2FE', '#D1FAE5'];
+      await createCategory({ name: newCatName, emoji: '📦', bg_color: colors[categories.length % colors.length] });
+      setNewCatName('');
+      await load();
+    } catch (e) {
+      console.error('Error adding category:', e);
+      alert(`Error al crear categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+    }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    await deleteCategory(id);
-    await load();
+    if (!confirm('¿Estás seguro de eliminar esta categoría?')) return;
+    try {
+      await deleteCategory(id);
+      await load();
+    } catch (e) {
+      console.error('Error deleting category:', e);
+      alert(`Error al eliminar categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+    }
   };
 
   const handleImageSelect = (f: File) => {
