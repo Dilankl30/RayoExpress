@@ -36,7 +36,7 @@ vi.mock('../../../../shared/lib/mockData', () => ({
   },
 }));
 
-vi.mock('../../../../app/router', () => ({
+vi.mock('../../../../app/router/screenPathMap', () => ({
   screenPathMap: {
     landing: '/',
     login: '/login',

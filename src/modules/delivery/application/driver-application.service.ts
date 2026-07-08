@@ -3,8 +3,15 @@ import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/cli
 export interface DriverApplicationData {
   fullName: string;
   phone: string;
+  email: string;
   vehicleType: string;
   vehiclePlate: string;
+  idCardFrontUrl: string;
+  idCardBackUrl: string;
+  motorcycleDocsUrl: string;
+  licenseUrl: string;
+  contractUrl: string;
+  acceptedTerms: boolean;
 }
 
 const mockApplications: Array<DriverApplicationData & { id: string; status: string; userId: string }> = [];
@@ -22,8 +29,15 @@ export async function submitDriverApplication(userId: string, data: DriverApplic
       user_id: userId,
       full_name: data.fullName,
       phone: data.phone,
+      email: data.email,
       vehicle_type: data.vehicleType,
       vehicle_plate: data.vehiclePlate,
+      id_card_front_url: data.idCardFrontUrl,
+      id_card_back_url: data.idCardBackUrl,
+      motorcycle_docs_url: data.motorcycleDocsUrl,
+      license_url: data.licenseUrl,
+      contract_url: data.contractUrl,
+      accepted_terms: data.acceptedTerms,
     })
     .select()
     .single();

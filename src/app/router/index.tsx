@@ -4,6 +4,7 @@ import { AuthGuard } from './AuthGuard';
 import { RoleGuard } from './RoleGuard';
 import { ErrorBoundary } from '../../shared/components/ErrorBoundary';
 import type { Role } from '../../shared/types';
+export { screenPathMap } from './screenPathMap';
 
 const LandingScreen = lazy(() => import('../components/public/LandingScreen').then(m => ({ default: m.LandingScreen })));
 const LoginScreen = lazy(() => import('../components/auth/LoginScreen').then(m => ({ default: m.LoginScreen })));
@@ -67,7 +68,10 @@ export const screenRoutes: RouteObject[] = [
   { path: '/', element: <Lazy><LandingScreen /></Lazy> },
   { path: '/login', element: <Lazy><LoginScreen /></Lazy> },
   { path: '/register-store', element: <Lazy><StoreApplicationScreen /></Lazy> },
-  { path: '/register-driver', element: <Lazy><DriverApplicationScreen /></Lazy> },
+  {
+    path: '/register-driver',
+    element: <Lazy><ProtectedRoute element={<DriverApplicationScreen />} /></Lazy>,
+  },
   {
     path: '/home',
     element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<HomeScreen />} /></Lazy>,
@@ -134,27 +138,6 @@ export const screenRoutes: RouteObject[] = [
   },
 ];
 
-export const screenPathMap: Record<string, string> = {
-  landing: '/',
-  login: '/login',
-  'register-store': '/register-store',
-  'register-driver': '/register-driver',
-  home: '/home',
-  super: '/super',
-  'store-detail': '/store-detail',
-  cart: '/cart',
-  tracking: '/tracking',
-  orders: '/orders',
-  promotions: '/promotions',
-  favorites: '/favorites',
-  addresses: '/addresses',
-  'personal-info': '/personal-info',
-  'notification-settings': '/notification-settings',
-  wallet: '/wallet',
-  driver: '/driver',
-  'store-admin': '/store-admin',
-  admin: '/admin',
-  profile: '/profile',
-};
+
 
 export { roleRoutes };

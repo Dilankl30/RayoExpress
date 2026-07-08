@@ -40,6 +40,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => { setCart(loadCart(storageKey)); }, [storageKey]);
   useEffect(() => { saveCart(storageKey, cart); }, [storageKey, cart]);
 
+  useEffect(() => {
+    const handleClear = () => setCart([]);
+    window.addEventListener('cart:clear', handleClear);
+    return () => window.removeEventListener('cart:clear', handleClear);
+  }, []);
+
   const cartCount = cart.reduce((a, b) => a + b.quantity, 0);
   const cartTotal = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
   const cartStore = cart.length > 0 ? (cart[0].storeId || null) : null;

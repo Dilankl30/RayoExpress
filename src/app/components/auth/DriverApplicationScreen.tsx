@@ -1,25 +1,38 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Bike, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { ArrowLeft, Bike, CheckCircle, Clock, XCircle, Upload } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { submitDriverApplication, getMyDriverApplication } from '../../../modules/delivery/application/driver-application.service';
 
 export function DriverApplicationScreen() {
   const { user, navigate } = useAuth();
   const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('moto');
   const [vehiclePlate, setVehiclePlate] = useState('');
+  const [idCardFront, setIdCardFront] = useState<File | null>(null);
+  const [idCardBack, setIdCardBack] = useState<File | null>(null);
+  const [motorcycleDocs, setMotorcycleDocs] = useState<File | null>(null);
+  const [license, setLicense] = useState<File | null>(null);
+  const [contract, setContract] = useState<File | null>(null);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [existing, setExisting] = useState<{ status: string } | null>(null);
   const [checking, setChecking] = useState(true);
 
+  const idCardFrontRef = useRef<HTMLInputElement>(null);
+  const idCardBackRef = useRef<HTMLInputElement>(null);
+  const motorcycleDocsRef = useRef<HTMLInputElement>(null);
+  const licenseRef = useRef<HTMLInputElement>(null);
+  const contractRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!user) return;
     getMyDriverApplication(user.id)
       .then((app) => { setExisting(app as { status: string } | null); })
-      .catch(() => { /* no hay solicitud previa */ })
+      .catch(() => {})
       .finally(() => setChecking(false));
   }, [user]);
 
@@ -67,12 +80,58 @@ export function DriverApplicationScreen() {
     );
   }
 
+  function getFileUrl(file: File): string {
+    return URL.createObjectURL(file);
+  }
+
+  async function uploadFile(file: File, path: string): Promise<string> {
+    const { getSupabase, isSupabaseReady: ready } = await import('../../../integrations/supabase/client');
+    if (!ready) return getFileUrl(file);
+    const supabase = getSupabase();
+    const { data, error: uploadError } = await supabase.storage
+      .from('driver-documents')
+      .upload(path, file);
+    if (uploadError) throw uploadError;
+    const { data: urlData } = supabase.storage
+      .from('driver-documents')
+      .getPublicUrl(data.path);
+    return urlData.publicUrl;
+  }
+
   const handleSubmit = async () => {
     if (!fullName.trim()) return setError('Ingresa tu nombre completo');
+    if (!email.trim()) return setError('Ingresa tu correo electrónico');
+    if (!phone.trim()) return setError('Ingresa tu teléfono');
+    if (!idCardFront) return setError('Sube la foto de la cédula frente');
+    if (!idCardBack) return setError('Sube la foto de la cédula dorso');
+    if (!motorcycleDocs) return setError('Sube los papeles de la motocicleta');
+    if (!license) return setError('Sube la licencia de conducir');
+    if (!contract) return setError('Sube el contrato firmado');
+    if (!acceptedTerms) return setError('Debes aceptar los términos y condiciones');
     setError('');
     setLoading(true);
     try {
-      await submitDriverApplication(user.id, { fullName, phone, vehicleType, vehiclePlate });
+      const ts = Date.now();
+      const [idCardFrontUrl, idCardBackUrl, motorcycleDocsUrl, licenseUrl, contractUrl] = await Promise.all([
+        uploadFile(idCardFront, `${user.id}/${ts}/id_front`),
+        uploadFile(idCardBack, `${user.id}/${ts}/id_back`),
+        uploadFile(motorcycleDocs, `${user.id}/${ts}/motorcycle_docs`),
+        uploadFile(license, `${user.id}/${ts}/license`),
+        uploadFile(contract, `${user.id}/${ts}/contract`),
+      ]);
+      await submitDriverApplication(user.id, {
+        fullName,
+        phone,
+        email,
+        vehicleType,
+        vehiclePlate,
+        idCardFrontUrl,
+        idCardBackUrl,
+        motorcycleDocsUrl,
+        licenseUrl,
+        contractUrl,
+        acceptedTerms,
+      });
       setExisting({ status: 'pending' });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Error al enviar solicitud');
@@ -80,6 +139,25 @@ export function DriverApplicationScreen() {
       setLoading(false);
     }
   };
+
+  function FileInput({ label, accept, file, setFile, refEl }: { label: string; accept: string; file: File | null; setFile: (f: File | null) => void; refEl: React.RefObject<HTMLInputElement | null> }) {
+    return (
+      <div>
+        <p className="text-xs text-text-secondary mb-1 font-medium">{label}</p>
+        <button
+          type="button"
+          onClick={() => refEl.current?.click()}
+          className="w-full bg-surface rounded-xl px-4 py-3 text-sm flex items-center gap-2 border border-border"
+        >
+          <Upload size={16} className="text-text-secondary" />
+          <span className={file ? 'text-text-primary' : 'text-text-secondary'}>
+            {file ? file.name : 'Seleccionar archivo'}
+          </span>
+        </button>
+        <input ref={refEl} type="file" accept={accept} className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-surface">
@@ -107,12 +185,23 @@ export function DriverApplicationScreen() {
 
         <div className="bg-card rounded-2xl p-5 space-y-4 shadow-sm border border-border">
           <div>
-            <p className="text-xs text-text-secondary mb-1 font-medium">Nombre completo</p>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Nombres completos</p>
             <input
               type="text"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Tu nombre"
+              className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
+            />
+          </div>
+
+          <div>
+            <p className="text-xs text-text-secondary mb-1 font-medium">Correo electrónico</p>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="correo@ejemplo.com"
               className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
             />
           </div>
@@ -152,6 +241,22 @@ export function DriverApplicationScreen() {
               className="w-full bg-surface rounded-xl px-4 py-3 text-text-primary outline-none text-sm"
             />
           </div>
+
+          <FileInput label="Foto de la cédula frente" accept="image/*" file={idCardFront} setFile={setIdCardFront} refEl={idCardFrontRef} />
+          <FileInput label="Foto de la cédula dorso" accept="image/*" file={idCardBack} setFile={setIdCardBack} refEl={idCardBackRef} />
+          <FileInput label="Papeles de la motocicleta" accept="image/*,.pdf" file={motorcycleDocs} setFile={setMotorcycleDocs} refEl={motorcycleDocsRef} />
+          <FileInput label="Licencia de conducir" accept="image/*,.pdf" file={license} setFile={setLicense} refEl={licenseRef} />
+          <FileInput label="Contrato firmado" accept=".pdf" file={contract} setFile={setContract} refEl={contractRef} />
+
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptedTerms}
+              onChange={(e) => setAcceptedTerms(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span className="text-sm text-text-secondary">Acepto los términos y condiciones</span>
+          </label>
 
           <motion.button
             onClick={handleSubmit}

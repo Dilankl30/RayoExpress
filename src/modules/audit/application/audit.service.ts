@@ -1,6 +1,6 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 
-interface AuditEntry {
+export interface AuditEntry {
   userId: string;
   action: string;
   entityType: string;
@@ -31,4 +31,16 @@ export async function logAuditEvent(entry: AuditEntry) {
 
 export function getMockAuditLog() {
   return [...mockAuditLog];
+}
+
+export async function getAuditLogs(): Promise<AuditEntry[]> {
+  if (!isSupabaseReady) return getMockAuditLog();
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('audit_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw error;
+  return data as AuditEntry[];
 }

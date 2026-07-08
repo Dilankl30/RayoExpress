@@ -1,5 +1,5 @@
 import {
-  Bell, ChevronRight, CircleHelp, Heart, Info, LogOut, MapPin, Store, Ticket, User, Wallet, ShoppingBag,
+  Bell, Bike, ChevronRight, CircleHelp, Heart, Info, LogOut, MapPin, Store, Ticket, User, Wallet, ShoppingBag,
 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import type { Screen } from '../../../shared/types';
@@ -105,6 +105,7 @@ export function ProfileScreen() {
           <h2 className="text-sm font-bold text-text-primary mb-1">Configuración</h2>
           <MenuRow icon={Bell} label="Notificaciones" sub="Personaliza tus alertas" onClick={() => navigate('notification-settings')} />
           <MenuRow icon={Info} label="Información legal" sub="Términos y condiciones" />
+          <MenuRow icon={Bike} label="Trabajar con nosotros" onClick={() => navigate('register-driver')} />
           <MenuRow icon={Store} label="Registrar mi negocio" sub="Únete como tienda" onClick={() => navigate('register-store')} />
           <button onClick={logout} className="w-full flex items-center gap-4 py-4 text-left border-b border-border-light last:border-0">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-red-50">

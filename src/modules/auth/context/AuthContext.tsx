@@ -4,7 +4,7 @@ import { isSupabaseReady, supabase } from '../../../integrations/supabase/client
 import { getProfile, upsertProfile } from '../application/auth-service';
 import { mockCredentials, mockUser } from '../../../shared/lib/mockData';
 import type { Screen, Role, UserProfile } from '../../../shared/types';
-import { screenPathMap } from '../../../app/router';
+import { screenPathMap } from '../../../app/router/screenPathMap';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -74,6 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     }
     setUser(null);
+    try { localStorage.removeItem('rayoexpress-cart'); } catch {}
+    window.dispatchEvent(new CustomEvent('cart:clear'));
     setScreen('landing');
     routerNavigate('/', { replace: true });
   }, [routerNavigate]);
