@@ -1,12 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Plus, Search, X } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import {
   createAddress,
   getAddresses,
   markDefaultAddress,
 } from '../../../modules/client/application/client-service';
 import type { Address } from '../../../shared/types';
+
+// Fix Leaflet marker icons for Vite
+delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Default coords: Guayaquil
+const DEFAULT_CENTER: [number, number] = [-2.1706, -79.9223];
+
+function LocationPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
 
 export const ADDRESS_UPDATED_EVENT = 'rayoexpress:address-updated';
 
@@ -53,6 +76,10 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [manualLat, setManualLat] = useState('');
   const [manualLng, setManualLng] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [showMap, setShowMap] = useState(false);
+  const [mapPickLat, setMapPickLat] = useState<number | null>(null);
+  const [mapPickLng, setMapPickLng] = useState<number | null>(null);
+  const mapCenter = useRef<[number, number]>(DEFAULT_CENTER);
 
   const defaultAddress = useMemo(() => addresses.find((address) => address.is_default), [addresses]);
 
@@ -132,6 +159,16 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
       setSaving(false);
     }
   };
+
+  const handleMapPick = useCallback((lat: number, lng: number) => {
+    setMapPickLat(lat);
+    setMapPickLng(lng);
+    setManualLat(lat.toFixed(6));
+    setManualLng(lng.toFixed(6));
+    mapCenter.current = [lat, lng];
+    setTitle((prev) => prev || 'Dirección seleccionada');
+    setLine1((prev) => prev || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+  }, []);
 
   const handleCurrentLocation = async () => {
     setError(null);
@@ -224,6 +261,34 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
             </div>
           </button>
 
+          <button
+            onClick={() => { setShowMap(!showMap); if (!showMap) { setError(null); } }}
+            className="w-full bg-surface rounded-2xl p-4 flex items-center gap-3 text-left hover:bg-brand-light transition-colors"
+          >
+            <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mapPickLat ? '#F0FDF4' : 'var(--brand-light)' }}>
+              <MapPin size={20} style={{ color: mapPickLat ? '#22C55E' : 'var(--brand)' }} />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-text-primary">Seleccionar en el mapa</p>
+              <p className="text-sm text-text-secondary">{mapPickLat ? `${mapPickLat.toFixed(4)}, ${mapPickLng?.toFixed(4)}` : 'Elige un punto en el mapa como dirección.'}</p>
+            </div>
+            <span className="text-xs px-2 py-0.5 rounded-full" style={{ backgroundColor: showMap ? 'var(--brand-light)' : '#F3F4F6', color: showMap ? 'var(--brand)' : '#9CA3AF' }}>
+              {showMap ? 'Cerrar' : 'Abrir'}
+            </span>
+          </button>
+
+          {showMap && (
+            <div className="rounded-2xl overflow-hidden border border-border-light z-0" style={{ height: 280 }}>
+              <MapContainer center={mapCenter.current} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
+                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <LocationPicker onPick={handleMapPick} />
+                {mapPickLat && mapPickLng && (
+                  <Marker position={[mapPickLat, mapPickLng]} />
+                )}
+              </MapContainer>
+            </div>
+          )}
+
           <section>
             <p className="text-sm font-bold text-text-primary mb-3">Guardar una dirección manual</p>
             <div className="space-y-3">
@@ -270,7 +335,7 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
                 />
               </div>
               <p className="text-xs text-text-secondary">
-                Las coordenadas son opcionales. Se completan automáticamente cuando usas el GPS.
+                Las coordenadas son opcionales. Se completan al usar el GPS o seleccionar en el mapa.
               </p>
               <button
                 onClick={handleSaveManual}
