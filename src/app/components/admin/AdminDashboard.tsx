@@ -3,7 +3,7 @@ import {
   TrendingUp, DollarSign, ShoppingCart, Users, Store, Bike,
   BarChart3, LogOut, RefreshCw, Download, Search, ShieldAlert, ShieldCheck,
   CheckCircle, XCircle, ChevronRight, Phone, Star, MapPin, Clock,
-  UserCheck, UserX, ToggleLeft, ToggleRight,
+  UserCheck, UserX, ToggleLeft, ToggleRight, Trash2,
 } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -15,7 +15,7 @@ import {
   getCategoryDistribution, getRecentOrders, getUserCountsByRole, getRecentUsers,
 } from '../../../modules/admin/application/admin-analytics.service';
 import {
-  searchUsers, toggleSuspend, getAllStores, getStoreDetail, toggleStoreStatus,
+  searchUsers, toggleSuspend, deleteUser, getAllStores, getStoreDetail, toggleStoreStatus,
   getAllDrivers, getDriverDetail, getRecentActivity,
   type AdminUser, type AdminStore, type AdminDriver, type ActivityItem,
 } from '../../../modules/admin/application/admin.service';
@@ -91,6 +91,7 @@ export function AdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState<string>('');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
   // activity
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -149,6 +150,15 @@ export function AdminDashboard() {
     if (activeTab !== 'reports') return;
     getRecentActivity(50).then(setActivity).catch(() => {});
   }, [activeTab]);
+
+  const handleDeleteUser = async () => {
+    if (!deleteTarget) return;
+    try {
+      await deleteUser(deleteTarget.id);
+      setUsers(prev => prev.filter(u => u.id !== deleteTarget.id));
+      setDeleteTarget(null);
+    } catch { /* noop */ }
+  };
 
   const handleToggleSuspend = async (userId: string, suspended: boolean) => {
     try {
@@ -453,13 +463,22 @@ export function AdminDashboard() {
                   {u.is_suspended && <span className="text-xs px-1.5 py-0.5 rounded-full bg-danger-light text-danger">Suspendido</span>}
                 </div>
               </div>
-              <button
-                onClick={() => handleToggleSuspend(u.id, !u.is_suspended)}
-                className={`p-2 rounded-lg ${u.is_suspended ? 'bg-success-light text-success hover:bg-green-100' : 'bg-danger-light text-danger hover:bg-red-100'}`}
-                title={u.is_suspended ? 'Reactivar' : 'Suspender'}
-              >
-                {u.is_suspended ? <UserCheck size={16} /> : <UserX size={16} />}
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => handleToggleSuspend(u.id, !u.is_suspended)}
+                  className={`p-2 rounded-lg ${u.is_suspended ? 'bg-success-light text-success hover:bg-green-100' : 'bg-danger-light text-danger hover:bg-red-100'}`}
+                  title={u.is_suspended ? 'Reactivar' : 'Suspender'}
+                >
+                  {u.is_suspended ? <UserCheck size={16} /> : <UserX size={16} />}
+                </button>
+                <button
+                  onClick={() => setDeleteTarget(u)}
+                  className="p-2 rounded-lg bg-surface-hover text-text-secondary hover:bg-red-100 hover:text-danger"
+                  title="Eliminar cuenta"
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -588,6 +607,38 @@ export function AdminDashboard() {
         {activeTab === 'users' && renderUsers()}
         {activeTab === 'reports' && renderReports()}
       </div>
+
+      {deleteTarget && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setDeleteTarget(null)}>
+          <div className="bg-card rounded-2xl p-5 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center mb-3" style={{ backgroundColor: '#FEF2F2' }}>
+              <Trash2 size={28} style={{ color: 'var(--danger)' }} />
+            </div>
+            <p className="text-text-primary font-bold text-center text-lg">Eliminar cuenta</p>
+            <p className="text-sm text-text-secondary text-center mt-1">
+              ¿Eliminar la cuenta de <strong>{deleteTarget.full_name}</strong>?
+            </p>
+            <p className="text-xs text-text-secondary text-center mt-2">
+              Se eliminará permanentemente el perfil y todos sus datos asociados. Esta acción no se puede deshacer.
+            </p>
+            <div className="flex gap-3 mt-5">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-3 rounded-xl text-text-secondary border border-border text-sm font-medium"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteUser}
+                className="flex-1 py-3 rounded-xl text-white text-sm font-medium flex items-center justify-center gap-1"
+                style={{ backgroundColor: 'var(--danger)' }}
+              >
+                <Trash2 size={16} /> Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

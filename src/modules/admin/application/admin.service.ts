@@ -55,6 +55,14 @@ const mockDrivers: AdminDriver[] = [
   { driver_id: 'd2', full_name: 'Ana Rodríguez', phone: '0999999994', is_suspended: false, is_online: false, approved: true, rating: 4.5, vehicle_type: 'bicicleta', vehicle_plate: '', driver_since: new Date().toISOString(), total_deliveries: 89, total_earned: 1157, avg_rating: 4.5 },
 ];
 
+export async function deleteUser(userId: string) {
+  if (!isSupabaseReady) { mockUsers.splice(mockUsers.findIndex(u => u.id === userId), 1); return { ok: true }; }
+  const supabase = getSupabase();
+  const { data, error } = await supabase.rpc('admin_delete_user', { p_user_id: userId });
+  if (error) throw error;
+  return data as { ok: boolean };
+}
+
 // ── Users ──
 export async function searchUsers(search = '', role?: string, limit = 50, offset = 0): Promise<AdminUser[]> {
   if (!isSupabaseReady) return mockUsers.filter(u => (role ? u.role === role : true) && (search ? u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()) : true));
