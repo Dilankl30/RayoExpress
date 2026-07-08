@@ -7,7 +7,7 @@ import { submitDriverApplication, getMyDriverApplication } from '../../../module
 export function DriverApplicationScreen() {
   const { user, navigate } = useAuth();
   const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState(user?.email || '');
+  const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [vehicleType, setVehicleType] = useState('moto');
   const [vehiclePlate, setVehiclePlate] = useState('');

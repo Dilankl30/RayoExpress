@@ -63,10 +63,8 @@ export function HomeScreen() {
   const [userAddress, setUserAddress] = useState('Av. Amazonas, Quito');
   const [showLocationDialog, setShowLocationDialog] = useState(false);
   const [userCity, setUserCity] = useState<string | null>(null);
-  const [cityLoading, setCityLoading] = useState(true);
   const [manualCity, setManualCity] = useState<string | null>(null);
   const [showCityPicker, setShowCityPicker] = useState(false);
-  const [storesInCity, setStoresInCity] = useState<Store[]>([]);
   const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
@@ -121,14 +119,12 @@ export function HomeScreen() {
   const loadData = async () => {
     setLoading(true);
     setLoadError(null);
-    setCityLoading(true);
     try {
       if (user && !manualCity) await detectUserCity();
       const activeCity = manualCity || userCity;
       const storesData = await getStores(activeCity || undefined);
       const [catsData] = await Promise.all([getCategories()]);
       setStores(storesData);
-      setStoresInCity(storesData);
       setCategories(catsData);
 
       const map: Record<string, Set<string>> = {};
@@ -150,7 +146,6 @@ export function HomeScreen() {
       setLoadError('No pudimos cargar la información. Revisa tu conexión.');
     } finally {
       setLoading(false);
-      setCityLoading(false);
     }
   };
 
@@ -454,7 +449,7 @@ export function HomeScreen() {
                   <p className="font-medium text-text-primary">Sin tiendas en {userCity || 'tu ciudad'}</p>
                   <p className="text-sm mt-1">¿Eres dueño de un negocio? ¡Regístra tu tienda!</p>
                   <div className="flex gap-3 justify-center mt-4">
-                    <button onClick={() => navigate('store-application')} className="px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--brand)' }}>
+                    <button onClick={() => navigate('register-store')} className="px-5 py-2.5 rounded-xl text-white text-sm font-medium flex items-center gap-2" style={{ backgroundColor: 'var(--brand)' }}>
                       <Plus size={16} /> Registrar tienda
                     </button>
                     <button onClick={() => setShowCityPicker(true)} className="px-5 py-2.5 rounded-xl text-sm font-medium border border-border" style={{ color: 'var(--brand)' }}>

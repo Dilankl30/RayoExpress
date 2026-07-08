@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import {
   TrendingUp, DollarSign, ShoppingCart, Users, Store, Bike,
-  BarChart3, LogOut, RefreshCw, Download, Search, ShieldAlert, ShieldCheck,
-  CheckCircle, XCircle, ChevronRight, Phone, Star, MapPin, Clock,
+  BarChart3, LogOut, RefreshCw, Download, Search,
+  ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, ToggleLeft, ToggleRight, Trash2,
 } from 'lucide-react';
 import {
@@ -15,8 +15,8 @@ import {
   getCategoryDistribution, getRecentOrders, getUserCountsByRole, getRecentUsers,
 } from '../../../modules/admin/application/admin-analytics.service';
 import {
-  searchUsers, toggleSuspend, deleteUser, getAllStores, getStoreDetail, toggleStoreStatus,
-  getAllDrivers, getDriverDetail, getRecentActivity,
+  searchUsers, toggleSuspend, deleteUser, getAllStores, toggleStoreStatus,
+  getAllDrivers, getRecentActivity,
   type AdminUser, type AdminStore, type AdminDriver, type ActivityItem,
 } from '../../../modules/admin/application/admin.service';
 import { AdminApplications } from '../../../modules/admin/ui/AdminApplications';
@@ -84,7 +84,6 @@ export function AdminDashboard() {
   // drivers tab
   const [drivers, setDrivers] = useState<AdminDriver[]>([]);
   const [driversLoading, setDriversLoading] = useState(false);
-  const [driverDetail, setDriverDetail] = useState<Record<string, unknown> | null>(null);
 
   // users tab
   const [userSearch, setUserSearch] = useState('');

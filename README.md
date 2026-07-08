@@ -4,15 +4,15 @@ Plataforma de delivery a demanda. Conecta clientes, tiendas y repartidores.
 
 ## Tecnologías
 
-- **Frontend:** React 18 + TypeScript + Vite 6
+- **Frontend:** React 19 + TypeScript + Vite 6
 - **UI:** Tailwind CSS v4, shadcn/ui, lucide-react, motion
 - **Backend:** Supabase (Auth, Database, Realtime, Storage)
-- **Paquetería:** pnpm
+- **Paquetería:** npm
 
 ## Instalación
 
 ```bash
-pnpm install
+npm install
 ```
 
 ## Configuración
@@ -37,16 +37,19 @@ Ejecutar migrations en orden:
 \i supabase/migrations/003_seed.sql
 ```
 
+> **Nota:** Hay migrations adicionales (004–023) que se deben aplicar en orden numérico.
+> La migración `023_security_production_hardening.sql` contiene mejoras críticas de seguridad que deben aplicarse en producción antes de abrir el registro público.
+
 ## Desarrollo
 
 ```bash
-pnpm dev
+npm run dev
 ```
 
 ## Build
 
 ```bash
-pnpm build
+npm run build
 ```
 
 ## Estructura del proyecto
