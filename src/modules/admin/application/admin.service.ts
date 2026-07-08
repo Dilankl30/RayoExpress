@@ -84,7 +84,7 @@ export async function toggleSuspend(userId: string, suspended: boolean) {
 export async function getAllStores(): Promise<AdminStore[]> {
   if (!isSupabaseReady) return mockStores;
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('admin_store_stats').select('*').order('store_name');
+  const { data, error } = await supabase.rpc('get_admin_store_stats');
   if (error) throw error;
   return (data ?? []) as AdminStore[];
 }
@@ -109,7 +109,7 @@ export async function toggleStoreStatus(storeId: string, isOpen: boolean) {
 export async function getAllDrivers(): Promise<AdminDriver[]> {
   if (!isSupabaseReady) return mockDrivers;
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('admin_driver_stats').select('*').order('full_name');
+  const { data, error } = await supabase.rpc('get_admin_driver_stats');
   if (error) throw error;
   return (data ?? []) as AdminDriver[];
 }

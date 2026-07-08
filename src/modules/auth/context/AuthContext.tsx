@@ -74,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     }
     setUser(null);
-    try { localStorage.removeItem('rayoexpress-cart'); } catch {}
+    try { localStorage.removeItem('rayoexpress-cart'); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('cart:clear'));
     setScreen('landing');
     routerNavigate('/', { replace: true });

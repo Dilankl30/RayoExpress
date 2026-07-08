@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, CheckCircle, Clock, LocateFixed, MessageCircle, Star } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Clock, MessageCircle, Star } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -13,7 +13,7 @@ import type { OrderStatus } from '../../../modules/orders/domain/order-status.ma
 import type { Database } from '../../../shared/types';
 
 // Fix Leaflet default marker icon paths for Vite/webpack
-delete (L.Icon.Default.prototype as Record<string, unknown>)._getIconUrl;
+delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
