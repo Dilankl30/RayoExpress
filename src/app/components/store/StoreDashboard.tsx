@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
+import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
 import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
 import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
@@ -13,7 +14,7 @@ import { STATUS_LABELS, STATUS_ICONS, getAvailableTransitions } from '../../../m
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import { PaymentVerification } from '../../../modules/payments/ui/PaymentVerification';
 import { FinancialReport } from '../../../modules/payments/ui/FinancialReport';
-import { Package, X, ChevronRight, RefreshCw } from 'lucide-react';
+import { Package, X, ChevronRight, RefreshCw, MessageCircle } from 'lucide-react';
 
 type Tab = 'dashboard' | 'orders' | 'catalog' | 'payments' | 'reports' | 'settings';
 type OrderFilter = 'all' | 'active' | 'delivered' | 'cancelled';
@@ -32,6 +33,7 @@ export function StoreDashboard() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [showChat, setShowChat] = useState(false);
 
   useEffect(() => {
     if (location.state?.tab) {
@@ -405,10 +407,32 @@ export function StoreDashboard() {
                     <p className="text-sm text-text-primary">{detailOrder.delivery_address as string}</p>
                   </div>
                 )}
+
+                {/* Chat button for active orders */}
+                {(detailOrder.status as string) !== 'pending' && !['delivered', 'cancelled', 'refunded'].includes(detailOrder.status as string) && (
+                  <button
+                    onClick={() => setShowChat(true)}
+                    className="w-full mt-4 bg-purple-100 text-purple-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-200 transition-colors"
+                  >
+                    <MessageCircle size={20} />
+                    Chatear con el cliente
+                  </button>
+                )}
               </div>
             )}
           </div>
         </div>
+      )}
+
+      {/* Order Chat Modal */}
+      {showChat && detailOrder && storeId && (
+        <OrderChat
+          orderId={detailOrder.id as string}
+          storeId={storeId}
+          storeName={storeName}
+          storeEmoji="🏪"
+          onClose={() => setShowChat(false)}
+        />
       )}
     </div>
   );
