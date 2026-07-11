@@ -14,6 +14,8 @@ export interface CreateOrderParams {
   couponCode?: string;
   notes?: string;
   tip?: number;
+  deliveryLat?: number;
+  deliveryLng?: number;
 }
 
 export interface CreateOrderResult {
@@ -60,6 +62,8 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     p_coupon_code: params.couponCode ?? null,
     p_notes: params.notes ?? null,
     p_tip: params.tip ?? 0,
+    p_delivery_lat: params.deliveryLat ?? null,
+    p_delivery_lng: params.deliveryLng ?? null,
   });
 
   if (error) throw error;

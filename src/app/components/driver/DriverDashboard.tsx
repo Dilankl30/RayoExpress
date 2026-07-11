@@ -16,10 +16,56 @@ import {
   ToggleRight,
   TrendingUp,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { getSupabase } from '../../../integrations/supabase/client';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+const storeIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:32px;height:32px;border-radius:50%;background:#22C55E;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-size:14px;">🏪</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const destIcon = L.divIcon({
+  className: '',
+  html: '<div style="width:32px;height:32px;border-radius:50%;background:#3B82F6;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.25);font-size:14px;">📍</div>',
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+const driverIcon = L.divIcon({
+  className: '',
+  html: `<div class="relative flex items-center justify-center" style="width:36px;height:36px;">
+    <div class="radar-pulse-ring" style="background-color: rgba(109, 40, 217, 0.45);"></div>
+    <div class="radar-pulse-ring-2" style="background-color: rgba(109, 40, 217, 0.25);"></div>
+    <div style="position:relative;width:36px;height:36px;border-radius:50%;background:#6D28D9;display:flex;align-items:center;justify-content:center;border:3.5px solid white;box-shadow:0 2px 10px rgba(109,40,217,0.45);font-size:16px;z-index:10;">🏍️</div>
+  </div>`,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+});
+
+function DriverMapController({ storeCoords, destCoords, currentCoords }: { storeCoords: [number, number], destCoords: [number, number], currentCoords: [number, number] | null }) {
+  const map = useMap();
+  useEffect(() => {
+    const points: [number, number][] = [storeCoords, destCoords];
+    if (currentCoords) points.push(currentCoords);
+    const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+    map.fitBounds(bounds, { padding: [30, 30], maxZoom: 15 });
+  }, [map, storeCoords, destCoords, currentCoords]);
+  return null;
+}
 import {
   claimDriverOrder,
   getAvailableDriverOrders,
@@ -610,6 +656,18 @@ function DriverOrderCard({ order, primary = false, busy, location, locationError
   const action = nextDriverStatus(order.status);
   const waitingForStore = !action && !ACTIVE_DELIVERY_STATUSES.includes(order.status);
 
+  const storeCoords = useMemo<[number, number] | null>(() => {
+    return order.store_lat && order.store_lng ? [order.store_lat, order.store_lng] : null;
+  }, [order.store_lat, order.store_lng]);
+
+  const destCoords = useMemo<[number, number] | null>(() => {
+    return order.delivery_lat && order.delivery_lng ? [order.delivery_lat, order.delivery_lng] : null;
+  }, [order.delivery_lat, order.delivery_lng]);
+
+  const currentCoords = useMemo<[number, number] | null>(() => {
+    return location ? [location.lat, location.lng] : null;
+  }, [location]);
+
   return (
     <div className={`rounded-2xl p-4 shadow-sm border border-border-light ${primary ? 'bg-surface' : 'bg-card'}`}>
       <div className="flex items-start justify-between gap-3">
@@ -633,11 +691,63 @@ function DriverOrderCard({ order, primary = false, busy, location, locationError
       <div className="mt-4 space-y-3 text-sm">
         <div className="flex gap-2">
           <MapPin size={16} className="text-text-secondary mt-0.5 flex-shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="font-medium text-text-primary">Entregar a {order.customer_name}</p>
             <p className="text-text-secondary">{order.delivery_address}</p>
+            {storeCoords && destCoords && (
+              <button
+                onClick={() => {
+                  window.open(`https://www.google.com/maps/dir/?api=1&origin=${storeCoords[0]},${storeCoords[1]}&destination=${destCoords[0]},${destCoords[1]}&travelmode=driving`, '_blank');
+                }}
+                className="mt-2 py-1.5 px-3 bg-slate-50 hover:bg-slate-100 border border-slate-200/60 rounded-lg text-xs font-bold text-slate-700 flex items-center gap-1 active:scale-95 transition-all shadow-sm w-fit"
+              >
+                <Navigation size={11} className="text-purple-600" />
+                Cómo llegar (GPS)
+              </button>
+            )}
           </div>
         </div>
+
+        {storeCoords && destCoords && (
+          <div className="h-44 rounded-xl overflow-hidden relative border border-slate-100 z-0 my-3">
+            <MapContainer
+              center={storeCoords}
+              zoom={13}
+              className="h-full w-full"
+              zoomControl={false}
+            >
+              <TileLayer
+                attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              />
+              <DriverMapController
+                storeCoords={storeCoords}
+                destCoords={destCoords}
+                currentCoords={currentCoords}
+              />
+              <Marker position={storeCoords} icon={storeIcon}>
+                <Popup>{order.store_name}</Popup>
+              </Marker>
+              <Marker position={destCoords} icon={destIcon}>
+                <Popup>{order.customer_name}</Popup>
+              </Marker>
+              {currentCoords && (
+                <Marker position={currentCoords} icon={driverIcon}>
+                  <Popup>Mi ubicación</Popup>
+                </Marker>
+              )}
+              {currentCoords ? (
+                <>
+                  <Polyline positions={[storeCoords, currentCoords]} color="#7C3AED" weight={4} opacity={0.7} />
+                  <Polyline positions={[currentCoords, destCoords]} color="#7C3AED" weight={3} opacity={0.5} dashArray="5, 10" />
+                </>
+              ) : (
+                <Polyline positions={[storeCoords, destCoords]} color="#9CA3AF" weight={3} opacity={0.5} dashArray="5, 8" />
+              )}
+            </MapContainer>
+          </div>
+        )}
+
         {order.notes && (
           <p className="text-xs text-text-secondary bg-card rounded-xl px-3 py-2 border border-border-light">{order.notes}</p>
         )}

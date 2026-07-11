@@ -19,6 +19,10 @@ export interface DriverWorkOrder {
   store_name: string;
   store_emoji: string;
   customer_name: string;
+  store_lat?: number;
+  store_lng?: number;
+  delivery_lat?: number;
+  delivery_lng?: number;
 }
 
 export interface AvailableDriverOrder extends DriverWorkOrder {
@@ -83,7 +87,7 @@ export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkO
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, status, delivery_address, notes, created_at, store_id, store:stores(name, emoji), customer:profiles!customer_id(full_name)')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, delivery_lat, delivery_lng, store:stores(name, emoji, lat, lng), customer:profiles!customer_id(full_name)')
     .eq('driver_id', driverId)
     .in('status', ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'])
     .order('created_at', { ascending: false });
@@ -102,6 +106,10 @@ export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkO
       store_name: (store?.name as string) ?? 'Tienda',
       store_emoji: (store?.emoji as string) ?? 'RE',
       customer_name: (customer?.full_name as string) ?? 'Cliente',
+      store_lat: store?.lat ? Number(store.lat) : undefined,
+      store_lng: store?.lng ? Number(store.lng) : undefined,
+      delivery_lat: order.delivery_lat ? Number(order.delivery_lat) : undefined,
+      delivery_lng: order.delivery_lng ? Number(order.delivery_lng) : undefined,
     };
   });
 }
@@ -126,7 +134,7 @@ export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, status, delivery_address, notes, created_at, store_id, store:stores(name, emoji), customer:profiles!customer_id(full_name)')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, delivery_lat, delivery_lng, store:stores(name, emoji, lat, lng), customer:profiles!customer_id(full_name)')
     .is('driver_id', null)
     .in('status', ['accepted', 'preparing'])
     .order('created_at', { ascending: true })
@@ -148,6 +156,10 @@ export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]
       store_emoji: (store?.emoji as string) ?? 'RE',
       customer_name: (customer?.full_name as string) ?? 'Cliente',
       distance_label: 'Cerca de ti',
+      store_lat: store?.lat ? Number(store.lat) : undefined,
+      store_lng: store?.lng ? Number(store.lng) : undefined,
+      delivery_lat: order.delivery_lat ? Number(order.delivery_lat) : undefined,
+      delivery_lng: order.delivery_lng ? Number(order.delivery_lng) : undefined,
     };
   });
 }
@@ -189,6 +201,10 @@ export async function claimDriverOrder(orderId: string, driverId: string): Promi
     store_name: (store?.name as string) ?? 'Tienda',
     store_emoji: (store?.emoji as string) ?? 'RE',
     customer_name: (customer?.full_name as string) ?? 'Cliente',
+    store_lat: store?.lat ? Number(store.lat) : undefined,
+    store_lng: store?.lng ? Number(store.lng) : undefined,
+    delivery_lat: claimed.delivery_lat ? Number(claimed.delivery_lat) : undefined,
+    delivery_lng: claimed.delivery_lng ? Number(claimed.delivery_lng) : undefined,
   };
 }
 

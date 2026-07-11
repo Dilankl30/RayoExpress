@@ -37,6 +37,8 @@ export function CartScreen() {
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
   const receiptRef = useRef<HTMLInputElement>(null);
 
+  const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null);
+
   const delivery = cartTotal > 0 ? 1.50 : 0;
   const discount = couponApplied ? cartTotal * 0.15 : 0;
   const tax = (cartTotal - discount) * 0.12;
@@ -47,14 +49,24 @@ export function CartScreen() {
     getAddresses(user.id)
       .then((addresses) => {
         const selected = addresses.find((item) => item.is_default) ?? addresses[0];
-        if (selected?.line1) setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+        if (selected?.line1) {
+          setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+          if (selected.lat && selected.lng) {
+            setAddressCoords({ lat: selected.lat, lng: selected.lng });
+          }
+        }
       })
       .catch(() => {});
   }, [user]);
 
   const handleAddressSaved = (addresses: Address[]) => {
     const selected = addresses.find((item) => item.is_default) ?? addresses[0];
-    if (selected?.line1) setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+    if (selected?.line1) {
+      setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
+      if (selected.lat && selected.lng) {
+        setAddressCoords({ lat: selected.lat, lng: selected.lng });
+      }
+    }
   };
 
   const applyCoupon = () => {
@@ -85,6 +97,8 @@ export function CartScreen() {
         couponCode: couponApplied ? coupon : undefined,
         notes: [note, replacement ? `Agotados: ${replacement}` : '', billingName ? `Factura: ${billingName} ${billingId}` : '', cashAmount ? `Cambio para ${cashAmount}` : ''].filter(Boolean).join(' | ') || undefined,
         tip,
+        deliveryLat: addressCoords?.lat ?? undefined,
+        deliveryLng: addressCoords?.lng ?? undefined,
       });
       if (payMethod === 'transfer' && receiptFile) {
         const receiptUrl = await uploadReceipt(result.order_id, receiptFile);

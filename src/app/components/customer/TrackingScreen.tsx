@@ -30,8 +30,8 @@ const ORDER_HISTORY_KEY = 'rayoexpress-orders';
 const TERMINAL_STATUSES = ['delivered', 'cancelled', 'refunded'];
 
 // Mock coordinates for demo when real coords are missing
-const MOCK_STORE_COORDS: [number, number] = [-2.1706, -79.9223]; // Guayaquil
-const MOCK_DEST_COORDS: [number, number] = [-2.1806, -79.9123];
+const MOCK_STORE_COORDS: [number, number] = [-0.4632, -76.9892]; // El Coca
+const MOCK_DEST_COORDS: [number, number] = [-0.4660, -76.9870];
 
 function loadOrderHistory(): string[] {
   try { return JSON.parse(localStorage.getItem(ORDER_HISTORY_KEY) || '[]'); }
@@ -79,10 +79,14 @@ const destIcon = L.divIcon({
 
 const driverIcon = L.divIcon({
   className: '',
-  html: '<div style="width:40px;height:40px;border-radius:50%;background:#6D28D9;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 12px rgba(109,40,217,0.5);font-size:18px;">🏍️</div>',
+  html: `<div class="relative flex items-center justify-center" style="width:40px;height:40px;">
+    <div class="radar-pulse-ring" style="background-color: rgba(109, 40, 217, 0.45);"></div>
+    <div class="radar-pulse-ring-2" style="background-color: rgba(109, 40, 217, 0.25);"></div>
+    <div style="position:relative;width:40px;height:40px;border-radius:50%;background:#6D28D9;display:flex;align-items:center;justify-content:center;border:3px solid white;box-shadow:0 2px 12px rgba(109,40,217,0.5);font-size:18px;z-index:10;">🏍️</div>
+  </div>`,
   iconSize: [40, 40],
-  iconAnchor: [20, 40],
-  popupAnchor: [0, -44],
+  iconAnchor: [20, 20],
+  popupAnchor: [0, -24],
 });
 
 // ── Map controller component ──
@@ -288,7 +292,7 @@ export function TrackingScreen() {
           <MapContainer center={storeCoords} zoom={14} className="h-full w-full" zoomControl={false}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             />
             <MapController
               setMap={setMap}
