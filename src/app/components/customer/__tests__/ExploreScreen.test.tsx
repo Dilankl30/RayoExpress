@@ -11,6 +11,17 @@ vi.mock('../../../../modules/auth/context/AuthContext', () => ({
   }),
 }));
 
+vi.mock('../../../../modules/cart/context/CartContext', () => ({
+  useCart: () => ({
+    cartCount: 2,
+    cart: [],
+    cartTotal: 0,
+    updateQuantity: vi.fn(),
+    removeFromCart: vi.fn(),
+    clearCart: vi.fn(),
+  }),
+}));
+
 const mocks = vi.hoisted(() => ({
   getStores: vi.fn(),
   getCategories: vi.fn(),

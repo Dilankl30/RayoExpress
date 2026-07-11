@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MapPin, Search, Star, X, Clock, Compass, Home, Locate, ChevronRight, Plus, Minus
+  MapPin, Search, Star, X, Clock, Compass, Home, Locate, ChevronRight, Plus, Minus, ShoppingCart
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { useCart } from '../../../modules/cart/context/CartContext';
 import { getSupabase } from '../../../integrations/supabase/client';
 import { getStores, getCategories, getStoresInBounds } from '../../../modules/stores/application/store-service';
 import { getAddresses } from '../../../modules/client/application/client-service';
@@ -40,6 +41,7 @@ function MapInstanceSaver({ setMap }: { setMap: (map: L.Map) => void }) {
 
 export function ExploreScreen() {
   const { navigate, user } = useAuth();
+  const { cartCount } = useCart();
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
@@ -164,9 +166,26 @@ export function ExploreScreen() {
             </h1>
             <p className="text-xs text-slate-400 font-bold mt-0.5">Selecciona una tienda registrada para pedir</p>
           </div>
-          <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 shadow-sm max-w-[180px] truncate">
-            <MapPin size={13} className="text-purple-600 flex-shrink-0" />
-            <span className="truncate">{userAddress}</span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => navigate('cart')}
+              className="relative w-9 h-9 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-700 hover:bg-slate-100 active:scale-90 transition-all shadow-sm"
+              aria-label="Carrito"
+            >
+              <ShoppingCart size={16} />
+              {cartCount > 0 && (
+                <span
+                  className="absolute -top-1 -right-1 w-4.5 h-4.5 rounded-full flex items-center justify-center text-white font-extrabold"
+                  style={{ backgroundColor: '#6D28D9', fontSize: 8 }}
+                >
+                  {cartCount}
+                </span>
+              )}
+            </button>
+            <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-100 px-3 py-1.5 rounded-full text-xs font-bold text-slate-500 shadow-sm max-w-[150px] truncate">
+              <MapPin size={13} className="text-purple-600 flex-shrink-0" />
+              <span className="truncate">{userAddress}</span>
+            </div>
           </div>
         </div>
 
@@ -248,7 +267,7 @@ export function ExploreScreen() {
         >
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
           />
           <MapInstanceSaver setMap={setMap} />
           <MapBoundsHandler onBoundsChange={handleBoundsChange} />
@@ -260,7 +279,7 @@ export function ExploreScreen() {
               position={[store.latitude!, store.longitude!]}
               icon={L.divIcon({
                 className: '',
-                html: `<div class="relative flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-xl shadow-[0_4px_12px_rgba(15,23,42,0.15)] border border-slate-100/50 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap">
+                html: `<div class="custom-map-card relative flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-xl shadow-[0_4px_12px_rgba(15,23,42,0.15)] border border-slate-100/50 cursor-pointer whitespace-nowrap">
                   <div class="w-6 h-6 rounded-lg flex items-center justify-center text-sm bg-purple-50 text-purple-700">
                     ${store.emoji || '🏪'}
                   </div>
@@ -288,8 +307,9 @@ export function ExploreScreen() {
               icon={L.divIcon({
                 className: '',
                 html: `<div class="relative flex items-center justify-center w-6 h-6">
-                  <div class="absolute inset-0 w-6 h-6 rounded-full bg-blue-500/30 animate-ping"></div>
-                  <div class="absolute w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
+                  <div class="radar-pulse-ring"></div>
+                  <div class="radar-pulse-ring-2"></div>
+                  <div class="absolute w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md z-10"></div>
                 </div>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12],
