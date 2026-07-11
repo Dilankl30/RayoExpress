@@ -52,8 +52,8 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="group flex items-center gap-3 rounded-full border border-slate-200 bg-white px-5 py-2.5 shadow-sm transition-all duration-200 focus-within:border-purple-600 focus-within:ring-2 focus-within:ring-purple-100 focus-within:shadow-md w-full text-left">
-      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-700 transition-colors duration-200 group-focus-within:bg-purple-600 group-focus-within:text-white">
+    <label className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 shadow-sm transition-all duration-200 focus-within:border-purple-600 focus-within:ring-2 focus-within:ring-purple-100 focus-within:shadow-md w-full text-left">
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-700 transition-colors duration-200 group-focus-within:bg-purple-600 group-focus-within:text-white">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
@@ -80,7 +80,7 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
-      className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-purple-700 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-purple-800 active:scale-98 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:active:scale-100"
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-700 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-purple-800 active:scale-98 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:active:scale-100"
     >
       {loading ? <Loader2 size={16} className="animate-spin" /> : null}
       {children}
@@ -338,7 +338,7 @@ export function LoginScreen() {
               type="button"
               onClick={loginWithGoogle}
               disabled={googleLoading}
-              className="flex h-12 w-full items-center justify-between rounded-full border border-slate-200/80 bg-white px-5 font-bold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 active:scale-98 disabled:opacity-50"
+              className="flex h-12 w-full items-center justify-between rounded-2xl border border-slate-200/80 bg-white px-4 font-bold text-slate-700 shadow-sm transition-all duration-200 hover:bg-slate-50 active:scale-98 disabled:opacity-50"
             >
               <span className="flex items-center gap-3">
                 {googleLoading ? <Loader2 size={16} className="animate-spin text-purple-600" /> : <GoogleMark />}
@@ -351,10 +351,10 @@ export function LoginScreen() {
             <button
               type="button"
               onClick={() => startEmailFlow(false)}
-              className="flex h-12 w-full items-center justify-between rounded-full bg-purple-700 px-5 font-bold text-white shadow-sm transition-all duration-200 hover:bg-purple-800 active:scale-98"
+              className="flex h-12 w-full items-center justify-between rounded-2xl bg-purple-700 px-4 font-bold text-white shadow-sm transition-all duration-200 hover:bg-purple-800 active:scale-98"
             >
               <span className="flex items-center gap-3">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white">
                   <Mail size={15} />
                 </span>
                 <span className="text-sm">Correo electronico</span>
@@ -383,14 +383,14 @@ export function LoginScreen() {
 
         {step === 'email' && (
           <div className="w-full space-y-4">
-            <div className="grid grid-cols-2 rounded-full bg-slate-100 p-1 border border-slate-200/50">
+            <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 border border-slate-200/50">
               <button
                 type="button"
                 onClick={() => {
                   setIsRegistering(false);
                   resetMessages();
                 }}
-                className={`h-9 rounded-full text-xs font-bold transition-all duration-200 ${!isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`h-9 rounded-lg text-xs font-bold transition-all duration-200 ${!isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 Ingresar
               </button>
@@ -400,7 +400,7 @@ export function LoginScreen() {
                   setIsRegistering(true);
                   resetMessages();
                 }}
-                className={`h-9 rounded-full text-xs font-bold transition-all duration-200 ${isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                className={`h-9 rounded-lg text-xs font-bold transition-all duration-200 ${isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
               >
                 Registrarme
               </button>
