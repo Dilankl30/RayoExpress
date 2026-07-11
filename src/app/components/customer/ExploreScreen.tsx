@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
-  MapPin, Search, Star, X, Clock, Compass, Home, Locate, Star as StarIcon, ChevronRight
+  MapPin, Search, Star, X, Clock, Compass, Home, Locate, ChevronRight, Plus, Minus
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -393,7 +393,7 @@ export function ExploreScreen() {
                     {selectedStoreOnMap.is_open ? 'Abierto' : 'Cerrado'}
                   </span>
                   <span className="text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-100/50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
-                    <StarIcon size={9} className="fill-amber-400 text-amber-400 animate-spin-slow" /> 4.8
+                    <Star size={9} className="fill-amber-400 text-amber-400" /> 4.8
                   </span>
                   <span className="text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-100/50 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <Clock size={10} /> 25-35 min
