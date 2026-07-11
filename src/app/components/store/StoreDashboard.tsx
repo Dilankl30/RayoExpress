@@ -76,11 +76,25 @@ export function StoreDashboard() {
 
   useEffect(() => { if (storeId && activeTab === 'orders') loadOrders(); }, [storeId, activeTab, loadOrders]);
 
-  // Poll for new orders every 15s
+  // Real-time subscription to orders table
   useEffect(() => {
     if (!storeId || activeTab !== 'orders') return;
-    const id = setInterval(loadOrders, 15000);
-    return () => clearInterval(id);
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel(`store-orders-rt-${storeId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `store_id=eq.${storeId}` }, (payload) => {
+        loadOrders();
+        // Play notification sound when a new order is received
+        if (payload.eventType === 'INSERT') {
+          try {
+            const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav');
+            audio.volume = 0.6;
+            audio.play().catch(() => {});
+          } catch { /* noop */ }
+        }
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
   }, [storeId, activeTab, loadOrders]);
 
   const handleToggleOpen = async () => {

@@ -29,6 +29,10 @@ export function BottomNav() {
 
   if (!user) return null;
 
+  const path = location.pathname;
+  const isTabPath = ['/home', '/orders', '/explore', '/favorites', '/profile'].includes(path);
+  if (!isTabPath) return null;
+
   const items = itemsByRole[user.role] || itemsByRole.customer;
 
   const isActiveTab = (item: NavItem): boolean => {
