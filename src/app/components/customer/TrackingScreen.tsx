@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, CheckCircle, Clock, MessageCircle, Star } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { ArrowLeft, CheckCircle, Clock, MessageCircle, Star, Locate, Navigation, Home, ZoomIn, ZoomOut } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
@@ -85,17 +85,41 @@ const driverIcon = L.divIcon({
   popupAnchor: [0, -44],
 });
 
-// ── Fit bounds component ──
-function FitBounds({ storeCoords, destCoords, driverCoords }: { storeCoords: [number, number]; destCoords: [number, number]; driverCoords: [number, number] | null }) {
+// ── Map controller component ──
+interface MapControllerProps {
+  setMap: (map: L.Map) => void;
+  storeCoords: [number, number];
+  destCoords: [number, number];
+  driverCoords: [number, number] | null;
+  onUserDrag: () => void;
+}
+
+function MapController({ setMap, storeCoords, destCoords, driverCoords, onUserDrag }: MapControllerProps) {
   const map = useMap();
+  const hasFitted = useRef(false);
+
   useEffect(() => {
+    setMap(map);
+  }, [map, setMap]);
+
+  useEffect(() => {
+    if (hasFitted.current) return;
     const points: [number, number][] = [storeCoords, destCoords];
     if (driverCoords) points.push(driverCoords);
-    if (points.length > 0) {
-      const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
-      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
-    }
+    const bounds = L.latLngBounds(points.map(p => L.latLng(p[0], p[1])));
+    map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+    hasFitted.current = true;
   }, [map, storeCoords, destCoords, driverCoords]);
+
+  useEffect(() => {
+    map.on('dragstart', onUserDrag);
+    map.on('zoomstart', onUserDrag);
+    return () => {
+      map.off('dragstart', onUserDrag);
+      map.off('zoomstart', onUserDrag);
+    };
+  }, [map, onUserDrag]);
+
   return null;
 }
 
@@ -109,6 +133,8 @@ export function TrackingScreen() {
   const [rating, setRating] = useState(0);
   const [view, setView] = useState<'active' | 'history'>('active');
   const [showChat, setShowChat] = useState(false);
+  const [map, setMap] = useState<L.Map | null>(null);
+  const [followDriver, setFollowDriver] = useState(true);
   const driverMarkerRef = useRef<L.Marker | null>(null);
 
   const activeOrder = useMemo(() => {
@@ -191,6 +217,13 @@ export function TrackingScreen() {
     }
   }, [driverCoords]);
 
+  // Auto-follow driver when coordinates update
+  useEffect(() => {
+    if (followDriver && map && driverCoords) {
+      map.panTo(driverCoords);
+    }
+  }, [driverCoords, followDriver, map]);
+
   // ── Order history view ──
   const orderHistory = (
     <div className="px-4 pt-4 pb-24 max-w-5xl mx-auto">
@@ -254,10 +287,29 @@ export function TrackingScreen() {
         <div className="h-64 md:h-80 lg:h-96 relative z-0">
           <MapContainer center={storeCoords} zoom={14} className="h-full w-full" zoomControl={false}>
             <TileLayer
-              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
-            <FitBounds storeCoords={storeCoords} destCoords={destCoords} driverCoords={driverCoords} />
+            <MapController
+              setMap={setMap}
+              storeCoords={storeCoords}
+              destCoords={destCoords}
+              driverCoords={driverCoords}
+              onUserDrag={() => setFollowDriver(false)}
+            />
+
+            {/* Trazado de ruta dinámico */}
+            {driverCoords ? (
+              <>
+                {/* Ruta Completada (Tienda -> Repartidor) - Morado Sólido */}
+                <Polyline positions={[storeCoords, driverCoords]} color="#7C3AED" weight={5} opacity={0.8} />
+                {/* Ruta Restante (Repartidor -> Cliente) - Morado Segmentado */}
+                <Polyline positions={[driverCoords, destCoords]} color="#7C3AED" weight={4} opacity={0.6} dashArray="5, 10" />
+              </>
+            ) : (
+              /* Ruta Estimada Completa (Tienda -> Cliente) - Gris Segmentado */
+              <Polyline positions={[storeCoords, destCoords]} color="#9CA3AF" weight={4} opacity={0.6} dashArray="5, 8" />
+            )}
 
             <Marker position={storeCoords} icon={storeIcon}>
               <Popup>{activeOrder?.store?.name || 'Tienda'}</Popup>
@@ -274,8 +326,80 @@ export function TrackingScreen() {
             )}
           </MapContainer>
 
+          {/* Botones de navegación y controles flotantes interactivos */}
+          <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-1.5 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-border-light/40">
+            {/* Botón Zoom In */}
+            <button
+              onClick={() => map?.zoomIn()}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+              title="Acercar"
+              aria-label="Acercar mapa"
+            >
+              <ZoomIn size={16} />
+            </button>
+            {/* Botón Zoom Out */}
+            <button
+              onClick={() => map?.zoomOut()}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+              title="Alejar"
+              aria-label="Alejar mapa"
+            >
+              <ZoomOut size={16} />
+            </button>
+            
+            <div className="h-[1px] bg-border-light my-0.5" />
+
+            {/* Ajustar vista completa */}
+            <button
+              onClick={() => {
+                if (!map) return;
+                const points: L.LatLngExpression[] = [storeCoords, destCoords];
+                if (driverCoords) points.push(driverCoords);
+                const bounds = L.latLngBounds(points);
+                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
+              }}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+              title="Ajustar vista"
+              aria-label="Ajustar vista"
+            >
+              <Locate size={16} />
+            </button>
+
+            {/* Centrar en Repartidor */}
+            {driverCoords && (
+              <button
+                onClick={() => {
+                  setFollowDriver(true);
+                  map?.panTo(driverCoords);
+                }}
+                className={`w-9 h-9 rounded-xl shadow-sm flex items-center justify-center active:scale-95 transition-all ${
+                  followDriver
+                    ? 'bg-purple-600 text-white shadow-purple-200'
+                    : 'bg-white text-text-primary hover:bg-surface-hover'
+                }`}
+                title="Seguir repartidor"
+                aria-label="Seguir repartidor"
+              >
+                <Navigation size={16} className={followDriver ? 'animate-pulse' : ''} />
+              </button>
+            )}
+
+            {/* Centrar en mi Destino */}
+            <button
+              onClick={() => {
+                setFollowDriver(false);
+                map?.panTo(destCoords);
+              }}
+              className="w-9 h-9 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+              title="Centrar mi ubicación"
+              aria-label="Centrar mi ubicación"
+            >
+              <Home size={16} />
+            </button>
+          </div>
+
           {!isDelivered && (
-            <div className="absolute top-3 left-3 z-[1000] bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2">
+            <div className="absolute top-3 left-3 z-[1000] bg-card rounded-2xl px-3 py-2 shadow-lg flex items-center gap-2 border border-border-light/50">
               <Clock size={15} style={{ color: 'var(--brand)' }} />
               <div>
                 <p style={{ fontSize: 10, color: '#9CA3AF' }}>Estimado</p>

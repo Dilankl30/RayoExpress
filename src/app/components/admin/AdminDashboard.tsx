@@ -4,7 +4,12 @@ import {
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, ToggleLeft, ToggleRight, Trash2,
+  Locate, CheckCircle, AlertTriangle, Plus, Minus,
 } from 'lucide-react';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+import { getSupabase } from '../../../integrations/supabase/client';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
@@ -40,7 +45,17 @@ const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente', driver: 'Repartidor', store: 'Tienda', admin: 'Admin',
 };
 
-type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports';
+// Fix Leaflet default marker icon paths for Vite
+if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
+  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  });
+}
+
+type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: '📊' },
@@ -50,11 +65,35 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'users', label: 'Usuarios', icon: '👥' },
   { key: 'applications', label: 'Solicitudes', icon: '📝' },
   { key: 'reports', label: 'Reportes', icon: '📈' },
+  { key: 'coverage', label: 'Cobertura', icon: '🗺️' },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
 
 function formatCurrency(n: number) { return n.toLocaleString('es-EC', { style: 'currency', currency: 'USD' }); }
+
+function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function MapControllerHelper({ setMap, center }: { setMap: (map: L.Map) => void; center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    setMap(map);
+  }, [map, setMap]);
+  useEffect(() => {
+    map.panTo(center);
+  }, [map, center]);
+  return null;
+}
 
 function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[status] || 'bg-surface text-text-secondary'}`}>{STATUS_LABELS[status] || status}</span>;
@@ -94,6 +133,48 @@ export function AdminDashboard() {
 
   // activity
   const [activity, setActivity] = useState<ActivityItem[]>([]);
+
+  // coverage tab
+  interface CoverageStore { id: string; name: string; emoji: string; latitude: number | null; longitude: number | null; city: string | null; is_open: boolean; }
+  const [coverageCenter, setCoverageCenter] = useState<[number, number]>([-0.4632, -76.9892]); // El Coca
+  const [coverageRadius, setCoverageRadius] = useState<number>(5); // km
+  const [coverageCity, setCoverageCity] = useState<string>('Puerto Francisco de Orellana (El Coca)');
+  const [coverageLoading, setCoverageLoading] = useState(false);
+  const [savingCoverage, setSavingCoverage] = useState(false);
+  const [adminMap, setAdminMap] = useState<L.Map | null>(null);
+  const [coverageStores, setCoverageStores] = useState<CoverageStore[]>([]);
+
+  // ---- Load Coverage and Stores ----
+  useEffect(() => {
+    if (activeTab !== 'coverage') return;
+    setCoverageLoading(true);
+
+    const loadData = async () => {
+      try {
+        const supabase = getSupabase();
+
+        const [storesRes, configRes] = await Promise.all([
+          supabase.from('stores').select('id, name, emoji, latitude, longitude, city, is_open'),
+          supabase.from('app_config').select('*').eq('key', 'coverage_area').maybeSingle(),
+        ]);
+
+        if (storesRes.data) setCoverageStores(storesRes.data as CoverageStore[]);
+
+        if (configRes.data && configRes.data.value) {
+          const val = configRes.data.value as any;
+          if (val.center) setCoverageCenter(val.center);
+          if (val.radius_km) setCoverageRadius(val.radius_km);
+          if (val.city_name) setCoverageCity(val.city_name);
+        }
+      } catch (e) {
+        console.error('Error loading coverage config:', e);
+      } finally {
+        setCoverageLoading(false);
+      }
+    };
+
+    void loadData();
+  }, [activeTab]);
 
   // ---- Load Dashboard ----
   useEffect(() => {
@@ -531,6 +612,301 @@ export function AdminDashboard() {
     </div>
   );
 
+  const getErrorMessage = (e: any): string => {
+    if (e instanceof Error && e.message) return e.message;
+    if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') return e.message;
+    return 'Error desconocido';
+  };
+
+  const handleSaveCoverage = async () => {
+    setSavingCoverage(true);
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.from('app_config').upsert({
+        key: 'coverage_area',
+        value: {
+          center: coverageCenter,
+          radius_km: coverageRadius,
+          city_name: coverageCity,
+        },
+        updated_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      alert('✅ Área de cobertura guardada correctamente en Supabase.');
+    } catch (e) {
+      console.error('Error saving coverage area:', e);
+      alert(`❌ Error al guardar cobertura: ${getErrorMessage(e)}`);
+    } finally {
+      setSavingCoverage(false);
+    }
+  };
+
+  const renderCoverage = () => {
+    const activeStores = coverageStores.filter(s => s.latitude && s.longitude);
+
+    return (
+      <div className="space-y-4">
+        <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+          <h2 className="text-base font-bold text-text-primary mb-1">Zona de Cobertura y Operación</h2>
+          <p className="text-xs text-text-secondary">
+            Configura el rango geográfico de operación de RayoExpress en tu ciudad. Arrastra el marcador central 🎯 para ubicar el centro de operaciones y ajusta el radio de entrega.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* Configuración Panel */}
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light space-y-4 flex flex-col justify-between">
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold text-text-primary border-b pb-2">Ajustes de Cobertura</h3>
+              
+              <div>
+                <label className="text-xs font-semibold text-text-secondary block mb-1">Ciudad de Operación</label>
+                <input
+                  type="text"
+                  value={coverageCity}
+                  onChange={(e) => setCoverageCity(e.target.value)}
+                  className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none border border-border-light focus:border-purple-500"
+                  placeholder="Ej. El Coca"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-text-secondary block mb-1">Radio de Cobertura ({coverageRadius} km)</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    step="0.5"
+                    value={coverageRadius}
+                    onChange={(e) => setCoverageRadius(Number(e.target.value))}
+                    className="flex-1 accent-purple-600 cursor-pointer"
+                  />
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={coverageRadius}
+                    onChange={(e) => setCoverageRadius(Number(e.target.value))}
+                    className="w-16 bg-surface rounded-xl px-2 py-1 text-center text-sm outline-none border border-border-light"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs bg-surface p-3 rounded-xl border border-border-light">
+                <div>
+                  <span className="text-text-secondary block">Latitud Centro</span>
+                  <span className="font-mono font-medium text-text-primary">{coverageCenter[0].toFixed(6)}</span>
+                </div>
+                <div>
+                  <span className="text-text-secondary block">Longitud Centro</span>
+                  <span className="font-mono font-medium text-text-primary">{coverageCenter[1].toFixed(6)}</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={handleSaveCoverage}
+              disabled={savingCoverage}
+              className="w-full py-3 mt-4 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-transform disabled:opacity-50"
+              style={{ backgroundColor: 'var(--brand)' }}
+            >
+              {savingCoverage ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <>
+                  <CheckCircle size={16} />
+                  Guardar Cobertura
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Mapa de Cobertura */}
+          <div className="lg:col-span-2 bg-card rounded-2xl overflow-hidden border border-border-light shadow-sm h-[400px] relative">
+            {coverageLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-50">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : null}
+
+            <MapContainer center={coverageCenter} zoom={13} className="h-full w-full" zoomControl={false}>
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              />
+              
+              <MapControllerHelper setMap={setAdminMap} center={coverageCenter} />
+
+              <Circle
+                center={coverageCenter}
+                radius={coverageRadius * 1000}
+                pathOptions={{
+                  color: 'var(--brand)',
+                  fillColor: 'var(--brand)',
+                  fillOpacity: 0.12,
+                  weight: 2,
+                }}
+              />
+
+              {/* Pin central de operaciones */}
+              <Marker
+                position={coverageCenter}
+                draggable={true}
+                eventHandlers={{
+                  dragend: (e) => {
+                    const marker = e.target;
+                    const position = marker.getLatLng();
+                    setCoverageCenter([position.lat, position.lng]);
+                  },
+                }}
+                icon={L.divIcon({
+                  className: '',
+                  html: `<div class="flex items-center justify-center w-9 h-9 rounded-full border-2 border-white shadow-xl bg-purple-700 text-white transition-transform hover:scale-105 active:scale-95 cursor-grab">
+                    🎯
+                  </div>`,
+                  iconSize: [36, 36],
+                  iconAnchor: [18, 18],
+                })}
+              >
+                <Popup>
+                  <div className="text-center font-sans p-1">
+                    <p className="font-bold text-xs text-text-primary">Centro de Operaciones</p>
+                    <p className="text-[10px] text-text-secondary mt-0.5">Arrastra este pin para mover la cobertura</p>
+                  </div>
+                </Popup>
+              </Marker>
+
+              {/* Pines numerados de las tiendas */}
+              {activeStores.map((store, index) => {
+                const dist = getDistanceKm(coverageCenter[0], coverageCenter[1], store.latitude!, store.longitude!);
+                const isInside = dist <= coverageRadius;
+
+                return (
+                  <Marker
+                    key={store.id}
+                    position={[store.latitude!, store.longitude!]}
+                    icon={L.divIcon({
+                      className: '',
+                      html: `<div class="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg text-white font-bold text-xs" style="background: ${isInside ? 'var(--brand)' : '#EF4444'}">
+                        ${index + 1}
+                      </div>`,
+                      iconSize: [32, 32],
+                      iconAnchor: [16, 16],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-center p-1.5 min-w-[130px] font-sans">
+                        <p className="font-bold text-xs text-text-primary leading-tight">#{index + 1} {store.name}</p>
+                        <p className="text-[10px] text-text-secondary mt-1">Distancia: {dist.toFixed(2)} km</p>
+                        <span className={`text-[9px] px-2 py-0.5 mt-1 inline-block rounded-full font-semibold ${isInside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {isInside ? 'En rango' : 'Fuera de rango'}
+                        </span>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              })}
+            </MapContainer>
+
+            {/* Controles flotantes */}
+            <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-1.5 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-border-light/40">
+              <button
+                onClick={() => adminMap?.zoomIn()}
+                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                title="Acercar"
+              >
+                <Plus size={14} />
+              </button>
+              <button
+                onClick={() => adminMap?.zoomOut()}
+                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                title="Alejar"
+              >
+                <Minus size={14} />
+              </button>
+              <div className="h-[1px] bg-border-light my-0.5" />
+              <button
+                onClick={() => {
+                  if (adminMap) adminMap.panTo(coverageCenter);
+                }}
+                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                title="Centrar en Cobertura"
+              >
+                <Locate size={14} />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Listado mapeado de tiendas */}
+        <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+          <div className="flex items-center justify-between border-b pb-2 mb-3">
+            <h3 className="text-sm font-semibold text-text-primary">Mapeo de Tiendas Cercanas</h3>
+            <span className="text-xs text-text-secondary">{activeStores.length} tiendas geolocalizadas</span>
+          </div>
+
+          {coverageLoading ? (
+            <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" /></div>
+          ) : activeStores.length === 0 ? (
+            <p className="text-xs text-text-secondary text-center py-6">No hay tiendas con coordenadas registradas</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="text-text-secondary border-b border-border-light">
+                    <th className="py-2 font-medium">#</th>
+                    <th className="py-2 font-medium">Tienda</th>
+                    <th className="py-2 font-medium">Ubicación</th>
+                    <th className="py-2 font-medium">Distancia</th>
+                    <th className="py-2 font-medium">Estado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border-light">
+                  {activeStores.map((store, index) => {
+                    const dist = getDistanceKm(coverageCenter[0], coverageCenter[1], store.latitude!, store.longitude!);
+                    const isInside = dist <= coverageRadius;
+
+                    return (
+                      <tr key={store.id} className="hover:bg-surface/30">
+                        <td className="py-3">
+                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm" style={{ backgroundColor: isInside ? 'var(--brand)' : '#EF4444' }}>
+                            {index + 1}
+                          </span>
+                        </td>
+                        <td className="py-3 font-medium text-text-primary">
+                          <span className="mr-1">{store.emoji || '🏪'}</span>
+                          {store.name}
+                        </td>
+                        <td className="py-3 text-text-secondary">
+                          {store.city || 'Desconocida'}
+                          <span className="block font-mono text-[9px] mt-0.5">({store.latitude?.toFixed(4)}, {store.longitude?.toFixed(4)})</span>
+                        </td>
+                        <td className="py-3 font-mono text-text-primary font-medium">
+                          {dist.toFixed(2)} km
+                        </td>
+                        <td className="py-3">
+                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isInside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {isInside ? (
+                              <CheckCircle size={10} />
+                            ) : (
+                              <AlertTriangle size={10} />
+                            )}
+                            {isInside ? 'En rango' : 'Fuera de rango'}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   // ──────────────────── MAIN RENDER ────────────────────
 
   if (activeTab === 'applications') {
@@ -607,6 +983,7 @@ export function AdminDashboard() {
         {activeTab === 'drivers' && renderDrivers()}
         {activeTab === 'users' && renderUsers()}
         {activeTab === 'reports' && renderReports()}
+        {activeTab === 'coverage' && renderCoverage()}
       </div>
 
       {deleteTarget && (

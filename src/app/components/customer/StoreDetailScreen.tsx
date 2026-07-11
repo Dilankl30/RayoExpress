@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart, MapPin, Phone } from 'lucide-react';
@@ -238,7 +238,10 @@ export function StoreDetailScreen() {
         {store?.latitude && store?.longitude && (
           <div className="mt-3 rounded-xl overflow-hidden border border-border-light" style={{ height: 140 }}>
             <MapContainer center={[store.latitude, store.longitude]} zoom={16} className="h-full w-full" scrollWheelZoom={false} dragging={false} zoomControl={false}>
-              <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <TileLayer
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              />
               <Marker position={[store.latitude, store.longitude]} />
             </MapContainer>
           </div>

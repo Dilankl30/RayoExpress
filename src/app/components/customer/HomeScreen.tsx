@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
   Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus, Map,
+  Minus, Locate, Home,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
@@ -11,7 +12,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
-import { getStores, getStoresInBounds, getCategories, getProductsByStore } from '../../../modules/stores/application/store-service';
+import { getStores, getStoresInBounds, getCategories, getProductsByStores } from '../../../modules/stores/application/store-service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { getAddresses } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
@@ -60,6 +61,14 @@ function MapBoundsHandler({ onBoundsChange }: { onBoundsChange: (bounds: { north
   return null;
 }
 
+function MapInstanceSaver({ setMap }: { setMap: (map: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    setMap(map);
+  }, [map, setMap]);
+  return null;
+}
+
 export function HomeScreen() {
   const { navigate, user } = useAuth();
   const { cartCount } = useCart();
@@ -81,6 +90,8 @@ export function HomeScreen() {
   const [showCityPicker, setShowCityPicker] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [mapStores, setMapStores] = useState<Store[]>([]);
+  const [map, setMap] = useState<L.Map | null>(null);
+  const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
 
   const handleBoundsChange = async (bounds: { northEast: [number, number], southWest: [number, number] }) => {
     try {
@@ -121,6 +132,7 @@ export function HomeScreen() {
       const addresses = await getAddresses(user!.id).catch(() => [] as Address[]);
       const defaultAddr = addresses.find((a) => a.is_default) ?? addresses[0];
       if (defaultAddr?.lat && defaultAddr?.lng) {
+        setUserCoords([defaultAddr.lat, defaultAddr.lng]);
         const city = await detectCityCached(defaultAddr.lat, defaultAddr.lng);
         if (city) { setUserCity(city); return; }
       }
@@ -129,6 +141,7 @@ export function HomeScreen() {
         const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
           navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 8000, enableHighAccuracy: false }),
         );
+        setUserCoords([pos.coords.latitude, pos.coords.longitude]);
         const city = await detectCityCached(pos.coords.latitude, pos.coords.longitude);
         if (city) { setUserCity(city); return; }
       }
@@ -150,17 +163,18 @@ export function HomeScreen() {
       setCategories(catsData);
 
       const map: Record<string, Set<string>> = {};
-      for (const store of storesData) {
+      const storeIds = storesData.map((s) => s.id);
+      if (storeIds.length > 0) {
         try {
-          const products = await getProductsByStore(store.id);
-          for (const product of products) {
-            if (product.category_id) {
+          const allProducts = await getProductsByStores(storeIds);
+          for (const product of allProducts) {
+            if (product.category_id && product.store_id) {
               if (!map[product.category_id]) map[product.category_id] = new Set();
-              map[product.category_id].add(store.id);
+              map[product.category_id].add(product.store_id);
             }
           }
         } catch {
-          // Some real stores may not have products yet.
+          // Fallback o ignorar error
         }
       }
       setCategoryStoreMap(map);
@@ -202,6 +216,9 @@ export function HomeScreen() {
       const addresses = await getAddresses(user.id);
       const selected = addresses.find((address) => address.is_default) ?? addresses[0];
       if (selected?.line1) setUserAddress(selected.line1);
+      if (selected?.lat && selected?.lng) {
+        setUserCoords([selected.lat, selected.lng]);
+      }
     } catch {
       // Address is optional for the home experience.
     }
@@ -433,26 +450,127 @@ export function HomeScreen() {
           </div>
 
           {showMap ? (
-            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4" style={{ height: 380 }}>
-              <MapContainer center={[-2.1706, -79.9223]} zoom={12} className="h-full w-full" scrollWheelZoom={true}>
-                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4 relative shadow-md" style={{ height: 380 }}>
+              <MapContainer center={userCoords || [-2.1706, -79.9223]} zoom={userCoords ? 14 : 12} className="h-full w-full" zoomControl={false}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                />
+                <MapInstanceSaver setMap={setMap} />
                 <MapBoundsHandler onBoundsChange={handleBoundsChange} />
+
+                {/* Marcadores de Tiendas */}
                 {(mapStores.length > 0 ? mapStores : filteredStores).filter((s) => s.latitude && s.longitude).map((store) => (
-                  <Marker key={store.id} position={[store.latitude!, store.longitude!]}>
+                  <Marker
+                    key={store.id}
+                    position={[store.latitude!, store.longitude!]}
+                    icon={L.divIcon({
+                      className: '',
+                      html: `<div class="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg transition-transform hover:scale-110" style="background: ${store.is_open ? 'var(--brand)' : '#9CA3AF'}">
+                        <span style="font-size:18px;">${store.emoji || '🏪'}</span>
+                        ${store.is_open ? '<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white animate-pulse" style="background:#22C55E"></span>' : ''}
+                      </div>`,
+                      iconSize: [40, 40],
+                      iconAnchor: [20, 20],
+                    })}
+                  >
                     <Popup>
-                      <div className="text-center min-w-[120px]">
-                        <p className="font-bold text-sm">{store.emoji} {store.name}</p>
-                        <p className="text-xs text-gray-500 mt-1">{store.description || ''}</p>
-                        <button onClick={() => handleSelectStore(store.id)}
-                          className="mt-2 px-3 py-1 rounded-lg text-white text-xs font-medium"
-                          style={{ backgroundColor: 'var(--brand)' }}>
-                          Ver tienda
+                      <div className="text-center p-1.5 min-w-[140px] font-sans">
+                        <div className="w-9 h-9 mx-auto rounded-full bg-brand-light flex items-center justify-center text-lg mb-1.5">
+                          {store.emoji || '🏪'}
+                        </div>
+                        <p className="font-bold text-xs text-text-primary mb-0.5 leading-tight">{store.name}</p>
+                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${store.is_open ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
+                          {store.is_open ? 'Abierto' : 'Cerrado'}
+                        </span>
+                        {store.description && (
+                          <p className="text-[10px] text-text-secondary mt-1.5 line-clamp-2 leading-tight">
+                            {store.description}
+                          </p>
+                        )}
+                        <button
+                          onClick={() => handleSelectStore(store.id)}
+                          className="mt-2.5 w-full py-1.5 rounded-xl text-white text-[11px] font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-transform"
+                          style={{ backgroundColor: 'var(--brand)' }}
+                        >
+                          Entrar
                         </button>
                       </div>
                     </Popup>
                   </Marker>
                 ))}
+
+                {/* Marcador de mi ubicación */}
+                {userCoords && (
+                  <Marker
+                    position={userCoords}
+                    icon={L.divIcon({
+                      className: '',
+                      html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg bg-blue-600 text-white">
+                        <span style="font-size:12px;">🏠</span>
+                      </div>`,
+                      iconSize: [32, 32],
+                      iconAnchor: [16, 16],
+                    })}
+                  >
+                    <Popup>
+                      <div className="text-center p-1 font-sans">
+                        <p className="font-bold text-xs text-text-primary">Mi ubicación</p>
+                        <p className="text-[10px] text-text-secondary mt-0.5 leading-none">{userAddress}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
               </MapContainer>
+
+              {/* Botones de navegación flotantes sobre el mapa */}
+              <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-1.5 bg-white/85 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-border-light/40">
+                <button
+                  onClick={() => map?.zoomIn()}
+                  className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                  title="Acercar"
+                >
+                  <Plus size={14} />
+                </button>
+                <button
+                  onClick={() => map?.zoomOut()}
+                  className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                  title="Alejar"
+                >
+                  <Minus size={14} />
+                </button>
+
+                <div className="h-[1px] bg-border-light my-0.5" />
+
+                {userCoords && (
+                  <button
+                    onClick={() => {
+                      if (map && userCoords) map.panTo(userCoords);
+                    }}
+                    className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                    title="Centrar en mi ubicación"
+                  >
+                    <Home size={14} />
+                  </button>
+                )}
+
+                <button
+                  onClick={() => {
+                    if (!map) return;
+                    const activeStores = (mapStores.length > 0 ? mapStores : filteredStores).filter((s) => s.latitude && s.longitude);
+                    const points: L.LatLngExpression[] = activeStores.map((s) => [s.latitude!, s.longitude!]);
+                    if (userCoords) points.push(userCoords);
+                    if (points.length > 0) {
+                      const bounds = L.latLngBounds(points);
+                      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
+                    }
+                  }}
+                  className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                  title="Ajustar a todas las tiendas"
+                >
+                  <Locate size={14} />
+                </button>
+              </div>
             </div>
           ) : filteredStores.length === 0 ? (
             <div className="py-10 text-center text-text-secondary">

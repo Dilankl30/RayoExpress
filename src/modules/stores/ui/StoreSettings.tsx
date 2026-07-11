@@ -213,7 +213,10 @@ export function StoreSettings({ storeId }: Props) {
             {showMap && (
               <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
                 <MapContainer center={info.latitude ? [info.latitude, info.longitude!] : [-2.1706, -79.9223]} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
-                  <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  />
                   <LocationPicker onPick={(lat: number, lng: number) => { setInfo(prev => prev ? { ...prev, latitude: lat, longitude: lng } : prev); }} />
                   {info.latitude && info.longitude && <Marker position={[info.latitude, info.longitude]} />}
                 </MapContainer>

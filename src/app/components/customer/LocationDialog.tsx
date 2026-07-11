@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Plus, Search, X } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -11,6 +11,7 @@ import {
 } from '../../../modules/client/application/client-service';
 import { detectCityCached } from '../../../shared/lib/city';
 import type { Address } from '../../../shared/types';
+import { getSupabase } from '../../../integrations/supabase/client';
 
 // Fix Leaflet marker icons for Vite
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -81,6 +82,46 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [mapPickLat, setMapPickLat] = useState<number | null>(null);
   const [mapPickLng, setMapPickLng] = useState<number | null>(null);
   const mapCenter = useRef<[number, number]>(DEFAULT_CENTER);
+  const [coverageArea, setCoverageArea] = useState<{ center: [number, number]; radius_km: number; city_name: string } | null>(null);
+
+  useEffect(() => {
+    const loadCoverage = async () => {
+      try {
+        const supabase = getSupabase();
+        const { data } = await supabase.from('app_config').select('*').eq('key', 'coverage_area').maybeSingle();
+        if (data && data.value) {
+          const val = data.value as any;
+          setCoverageArea(val);
+          if (val.center && !mapPickLat) {
+            mapCenter.current = val.center;
+          }
+        }
+      } catch { /* noop */ }
+    };
+    void loadCoverage();
+  }, [mapPickLat]);
+
+  const checkCoordinatesInCoverage = (lat: number, lng: number): { inside: boolean; msg?: string } => {
+    if (!coverageArea) return { inside: true };
+    
+    const R = 6371; // Earth radius in km
+    const dLat = (lat - coverageArea.center[0]) * Math.PI / 180;
+    const dLng = (lng - coverageArea.center[1]) * Math.PI / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(coverageArea.center[0] * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
+      Math.sin(dLng / 2) * Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const dist = R * c;
+
+    if (dist > coverageArea.radius_km) {
+      return {
+        inside: false,
+        msg: `⚠️ Esta ubicación está a ${dist.toFixed(1)} km, fuera de la zona de cobertura de RayoExpress (${coverageArea.radius_km} km de rango en ${coverageArea.city_name}).`,
+      };
+    }
+    return { inside: true };
+  };
 
   const defaultAddress = useMemo(() => addresses.find((address) => address.is_default), [addresses]);
 
@@ -140,6 +181,14 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
         return;
       }
 
+      if (lat !== undefined && lng !== undefined) {
+        const check = checkCoordinatesInCoverage(lat, lng);
+        if (!check.inside) {
+          setError(check.msg || 'Ubicación fuera de la zona de cobertura.');
+          return;
+        }
+      }
+
       const next = await createAddress(userId, {
         title: title.trim() || 'Dirección guardada',
         line1: line1.trim(),
@@ -187,6 +236,13 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           const lng = Number(position.coords.longitude.toFixed(6));
           const accuracy = Math.round(position.coords.accuracy);
           const city = await detectCityCached(lat, lng);
+          const check = checkCoordinatesInCoverage(lat, lng);
+          if (!check.inside) {
+            setError(check.msg || 'Ubicación fuera de la zona de cobertura.');
+            setLocating(false);
+            return;
+          }
+
           const next = await createAddress(userId, {
             title: 'Mi ubicación actual',
             line1: city ? `${city} (${lat}, ${lng})` : `Ubicación actual (${lat}, ${lng})`,
@@ -281,9 +337,25 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
 
           {showMap && (
             <div className="rounded-2xl overflow-hidden border border-border-light z-0" style={{ height: 280 }}>
-              <MapContainer center={mapCenter.current} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
-                <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+              <MapContainer center={mapCenter.current} zoom={coverageArea ? 13 : 15} className="h-full w-full" scrollWheelZoom={true}>
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                />
                 <LocationPicker onPick={handleMapPick} />
+                {coverageArea && (
+                  <Circle
+                    center={coverageArea.center}
+                    radius={coverageArea.radius_km * 1000}
+                    pathOptions={{
+                      color: 'var(--brand)',
+                      fillColor: 'var(--brand)',
+                      fillOpacity: 0.08,
+                      weight: 2,
+                      dashArray: '6 4',
+                    }}
+                  />
+                )}
                 {mapPickLat && mapPickLng && (
                   <Marker position={[mapPickLat, mapPickLng]} />
                 )}

@@ -67,7 +67,7 @@ begin
     new.id,
     coalesce(new.raw_user_meta_data ->> 'full_name', new.raw_user_meta_data ->> 'name', ''),
     new.raw_user_meta_data ->> 'phone',
-    coalesce(new.raw_user_meta_data ->> 'role', 'customer')::public.app_role
+    'customer'::public.app_role
   );
   return new;
 end;

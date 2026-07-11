@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RayoExpress necesita acceso a tu ubicación para el rastreo y entrega de pedidos en tiempo real.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>RayoExpress necesita acceso continuo a tu ubicación para el rastreo y entrega de pedidos en segundo plano.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>RayoExpress necesita acceso a la cámara para tomar fotos de evidencia de entrega o fotos de perfil.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RayoExpress necesita acceso a la galería de fotos para subir documentos e imágenes de perfil.</string>
 </dict>
 </plist>

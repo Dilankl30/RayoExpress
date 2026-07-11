@@ -26,6 +26,7 @@ const AdminDashboard = lazy(() => import('../components/admin/AdminDashboard').t
 const ProfileScreen = lazy(() => import('../components/shared/ProfileScreen').then(m => ({ default: m.ProfileScreen })));
 const StoreApplicationScreen = lazy(() => import('../components/auth/StoreApplicationScreen').then(m => ({ default: m.StoreApplicationScreen })));
 const DriverApplicationScreen = lazy(() => import('../components/auth/DriverApplicationScreen').then(m => ({ default: m.DriverApplicationScreen })));
+const NotFoundScreen = lazy(() => import('../components/public/NotFoundScreen').then(m => ({ default: m.NotFoundScreen })));
 
 function RouteLoader() {
   return (
@@ -135,6 +136,10 @@ export const screenRoutes: RouteObject[] = [
   {
     path: '/profile',
     element: <Lazy><ProtectedRoute element={<ProfileScreen />} /></Lazy>,
+  },
+  {
+    path: '*',
+    element: <Lazy><NotFoundScreen /></Lazy>,
   },
 ];
 

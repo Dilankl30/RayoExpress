@@ -168,3 +168,23 @@ export async function deleteProduct(productId: string, userId: string) {
   if (error) throw error;
   logAuditEvent({ userId, action: 'PRODUCT_DELETED', entityType: 'product', entityId: productId }).catch(() => {});
 }
+
+export async function getProductsByStores(storeIds: string[]): Promise<Product[]> {
+  if (storeIds.length === 0) return [];
+  if (!isSupabaseReady) {
+    const list: Product[] = [];
+    for (const id of storeIds) {
+      list.push(...(getMockProductsByStore(id) as Product[]));
+    }
+    return list;
+  }
+  const supabase = getSupabase();
+  const { data, error } = await supabase
+    .from('products')
+    .select('*')
+    .in('store_id', storeIds)
+    .eq('is_active', true)
+    .order('name');
+  if (error) throw error;
+  return data ?? [];
+}

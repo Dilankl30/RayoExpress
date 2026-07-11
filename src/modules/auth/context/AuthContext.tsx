@@ -57,11 +57,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isSupabaseReady && supabase) {
       const userData = (await supabase.auth.getUser()).data.user;
       if (!userData) throw new Error('No user found');
-      await upsertProfile(userData.id, {
-        full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
-        phone: userData.phone ?? null,
-      });
-      const profile = await getProfile(userData.id);
+      
+      let profile = await getProfile(userData.id);
+      if (!profile) {
+        await upsertProfile(userData.id, {
+          full_name: userData.user_metadata?.full_name ?? userData.email ?? null,
+          phone: userData.phone ?? null,
+        });
+        profile = await getProfile(userData.id);
+      }
+      
       if (!profile) throw new Error('No pudimos cargar tu perfil después del inicio.');
       if (profile.is_suspended) throw new Error('Tu cuenta ha sido suspendida. Contacta a soporte.');
       setUser(profile);

@@ -26,6 +26,12 @@ export function CatalogManager({ storeId }: Props) {
 
   const [resolvedImages, setResolvedImages] = useState<Map<string, string | null>>(new Map());
 
+  const getErrorMessage = (e: any): string => {
+    if (e instanceof Error && e.message) return e.message;
+    if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') return e.message;
+    return 'Error desconocido';
+  };
+
   const load = async () => {
     setLoading(true);
     try {
@@ -97,7 +103,7 @@ export function CatalogManager({ storeId }: Props) {
       await load();
     } catch (e) {
       console.error('Error saving product:', e);
-      alert(`Error al guardar producto: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      alert(`Error al guardar producto: ${getErrorMessage(e)}`);
     }
   };
 
@@ -108,7 +114,7 @@ export function CatalogManager({ storeId }: Props) {
       await load();
     } catch (e) {
       console.error('Error deleting product:', e);
-      alert(`Error al eliminar producto: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      alert(`Error al eliminar producto: ${getErrorMessage(e)}`);
     }
   };
 
@@ -121,7 +127,7 @@ export function CatalogManager({ storeId }: Props) {
       await load();
     } catch (e) {
       console.error('Error adding category:', e);
-      alert(`Error al crear categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      alert(`Error al crear categoría: ${getErrorMessage(e)}`);
     }
   };
 
@@ -132,7 +138,7 @@ export function CatalogManager({ storeId }: Props) {
       await load();
     } catch (e) {
       console.error('Error deleting category:', e);
-      alert(`Error al eliminar categoría: ${e instanceof Error ? e.message : 'Error desconocido'}`);
+      alert(`Error al eliminar categoría: ${getErrorMessage(e)}`);
     }
   };
 
@@ -157,7 +163,7 @@ export function CatalogManager({ storeId }: Props) {
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-text-primary font-semibold">Mi catálogo</h3>
         <button
-          onClick={() => resetForm()}
+          onClick={() => { resetForm(); setShowForm(true); }}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-sm shadow-lg"
           style={{ backgroundColor: 'var(--brand)' }}
         >

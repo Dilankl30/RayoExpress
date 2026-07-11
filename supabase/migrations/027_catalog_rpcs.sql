@@ -32,7 +32,8 @@ begin
 
   -- Initialize inventory
   insert into public.inventory (product_id, quantity, low_stock_threshold)
-  values (v_product.id, 0, 10);
+  values (v_product.id, 0, 10)
+  on conflict (product_id) do nothing;
 
   return v_product;
 end;
