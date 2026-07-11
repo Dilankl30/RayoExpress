@@ -150,6 +150,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => listener.subscription.unsubscribe();
   }, []);
 
+  // Redirect logged-in users away from guest paths (e.g., landing, login)
+  useEffect(() => {
+    if (loading) return;
+    const guestPaths = ['/', '/login'];
+    if (user && guestPaths.includes(location.pathname)) {
+      const target = roleToScreen(user.role);
+      navigate(target);
+    }
+  }, [user, loading, location.pathname, navigate, roleToScreen]);
+
   return (
     <AuthContext.Provider value={{ user, loading, screen, navigate, login, mockLogin, logout, setUser }}>
       {children}

@@ -23,17 +23,17 @@ const OTP_MIN_LENGTH = 6;
 const OTP_MAX_LENGTH = 8;
 
 const brand = {
-  ink: '#12051F',
-  primary: '#4514D8',
-  primaryDark: '#2A087A',
-  accent: '#FFE83D',
-  cyan: '#56E4F2',
-  surface: '#F6F5FA',
+  ink: '#0F172A',
+  primary: '#6D28D9',
+  primaryDark: '#5B21B6',
+  accent: '#FBBF24',
+  cyan: '#06B6D4',
+  surface: '#F8FAFC',
 };
 
 function GoogleMark() {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="flex-shrink-0">
       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
       <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
       <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
@@ -52,12 +52,12 @@ function Field({
   children: ReactNode;
 }) {
   return (
-    <label className="group flex items-center gap-3 rounded-[24px] border border-[#D9D4EA] bg-white px-4 py-3.5 shadow-[0_14px_34px_rgba(18,5,31,0.06)] transition focus-within:border-[#4514D8] focus-within:shadow-[0_18px_42px_rgba(69,20,216,0.12)]">
-      <span className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[#F1EEFF] text-[#4514D8] transition group-focus-within:bg-[#4514D8] group-focus-within:text-white">
+    <label className="group flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm transition-all duration-200 focus-within:border-purple-600 focus-within:ring-2 focus-within:ring-purple-100 focus-within:shadow-md">
+      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-purple-50 text-purple-700 transition-colors duration-200 group-focus-within:bg-purple-600 group-focus-within:text-white">
         {icon}
       </span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#6D6681]">{label}</span>
+        <span className="block text-[10px] font-extrabold uppercase tracking-wider text-slate-400 group-focus-within:text-purple-600 transition-colors duration-200">{label}</span>
         {children}
       </span>
     </label>
@@ -80,9 +80,9 @@ function PrimaryButton({
       type="button"
       onClick={onClick}
       disabled={disabled || loading}
-      className="flex h-14 w-full items-center justify-center gap-2 rounded-[28px] bg-[#4514D8] px-5 text-base font-extrabold text-white shadow-[0_18px_40px_rgba(69,20,216,0.28)] transition hover:bg-[#3710B8] disabled:cursor-not-allowed disabled:bg-[#CFC8E7] disabled:text-white/70 disabled:shadow-none"
+      className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-700 px-5 text-sm font-bold text-white shadow-md transition-all duration-200 hover:bg-purple-800 active:scale-98 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none disabled:active:scale-100"
     >
-      {loading ? <Loader2 size={20} className="animate-spin" /> : null}
+      {loading ? <Loader2 size={16} className="animate-spin" /> : null}
       {children}
     </button>
   );
@@ -141,7 +141,7 @@ export function LoginScreen() {
 
   const signInWithEmail = async () => {
     if (!canLoginWithEmail) {
-      setError('Ingresa tu correo y una clave valida.');
+      setError('Ingresa tu correo y una clave válida.');
       return;
     }
 
@@ -150,7 +150,7 @@ export function LoginScreen() {
     try {
       if (isMockMode) {
         const role = await mockLogin(normalizedEmail, password);
-        if (!role) { setError('Credenciales invalidas.'); return; }
+        if (!role) { setError('Credenciales inválidas.'); return; }
         return;
       }
 
@@ -167,7 +167,7 @@ export function LoginScreen() {
       if (signInError) throw signInError;
       await login('customer');
     } catch (err) {
-      setError(authErrorMessage(err, 'No pudimos iniciar sesion.'));
+      setError(authErrorMessage(err, 'No pudimos iniciar sesión.'));
     } finally {
       setLoading(false);
     }
@@ -198,7 +198,7 @@ export function LoginScreen() {
 
       if (signUpError) throw signUpError;
       setStep('code');
-      setNotice(`Te enviamos un codigo de verificacion a ${normalizedEmail}.`);
+      setNotice(`Te enviamos un código de verificación a ${normalizedEmail}.`);
     } catch (err) {
       setError(authErrorMessage(err, 'No pudimos enviar el código. Intenta de nuevo.'));
     } finally {
@@ -216,7 +216,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        throw new Error('Supabase no esta configurado para reenviar codigos reales.');
+        throw new Error('Supabase no está configurado para reenviar códigos reales.');
       }
 
       const { error: resendError } = await supabase.auth.resend({
@@ -228,7 +228,7 @@ export function LoginScreen() {
       });
 
       if (resendError) throw resendError;
-      setNotice(`Reenviamos un codigo nuevo a ${normalizedEmail}.`);
+      setNotice(`Reenviamos un código nuevo a ${normalizedEmail}.`);
     } catch (err) {
       setError(authErrorMessage(err, 'No pudimos reenviar el código. Intenta de nuevo.'));
     } finally {
@@ -238,7 +238,7 @@ export function LoginScreen() {
 
   const verifyEmailCode = async () => {
     if (cleanCode.length < OTP_MIN_LENGTH || cleanCode.length > OTP_MAX_LENGTH) {
-      setError(`Ingresa el codigo de ${OTP_MIN_LENGTH} a ${OTP_MAX_LENGTH} digitos.`);
+      setError(`Ingresa el código de ${OTP_MIN_LENGTH} a ${OTP_MAX_LENGTH} dígitos.`);
       return;
     }
 
@@ -246,7 +246,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no esta configurado para verificar codigos reales.');
+        setError('Supabase no está configurado para verificar códigos reales.');
         return;
       }
 
@@ -291,148 +291,145 @@ export function LoginScreen() {
 
   return (
     <main
-      className="min-h-screen overflow-hidden bg-[#F6F5FA] text-[#12051F]"
+      className="min-h-screen overflow-x-hidden bg-slate-50 text-slate-900 flex items-center justify-center relative py-12 px-4"
       style={{
         backgroundImage:
-          'radial-gradient(circle at 12% 12%, rgba(255,232,61,0.32), transparent 30%), radial-gradient(circle at 88% 4%, rgba(86,228,242,0.32), transparent 28%), linear-gradient(135deg, #F9F8FF 0%, #F4F1FF 54%, #FFFFFF 100%)',
+          'radial-gradient(circle at 10% 10%, rgba(109,40,217,0.08), transparent 35%), radial-gradient(circle at 90% 90%, rgba(6,182,212,0.06), transparent 35%)',
       }}
     >
-      <div className="mx-auto grid min-h-screen w-full max-w-6xl items-center gap-8 px-5 py-8 lg:grid-cols-[0.95fr_1.05fr] lg:px-8">
-        <motion.section
-          initial={{ opacity: 0, x: -22 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.45 }}
-          className="relative hidden min-h-[720px] overflow-hidden rounded-[40px] bg-[#4514D8] p-10 text-white shadow-[0_28px_80px_rgba(69,20,216,0.28)] lg:block"
-        >
-          <div className="absolute -right-36 -top-24 h-72 w-72 rounded-full bg-[#FFE83D] opacity-75 blur-sm" />
-          <div className="absolute bottom-0 left-0 h-72 w-full bg-gradient-to-t from-[#1C0559] to-transparent" />
-          <div className="absolute left-10 top-44 h-20 w-20 rounded-full border-[18px] border-[#56E4F2]/45" />
-          <div className="absolute right-12 top-56 h-16 w-16 rotate-12 rounded-3xl bg-white/12" />
-          <div className="relative z-10 flex h-full flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-3">
-                <img src={logo} alt="RayoExpress" className="h-14 w-14 rounded-2xl bg-white p-2 shadow-lg" />
+      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 bg-white rounded-[32px] border border-slate-100 shadow-[0_24px_60px_-15px_rgba(15,23,42,0.08)] overflow-hidden min-h-[600px]">
+        
+        {/* Panel Izquierdo: Branding & Visuals (Desktop) */}
+        <div className="hidden lg:flex lg:col-span-5 bg-purple-900 p-8 text-white flex-col justify-between relative overflow-hidden">
+          {/* Circulos decorativos premium */}
+          <div className="absolute -right-20 -top-20 h-56 w-56 rounded-full bg-purple-600/30 blur-2xl pointer-events-none" />
+          <div className="absolute -left-10 -bottom-10 h-44 w-44 rounded-full bg-cyan-600/20 blur-2xl pointer-events-none" />
+          
+          <div className="relative z-10 space-y-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                <img src={logo} alt="RayoExpress" className="h-7 w-7 object-contain" />
+              </div>
+              <span className="font-extrabold text-lg tracking-wider text-purple-200">RayoExpress</span>
+            </div>
+            
+            <div className="space-y-3 pt-6">
+              <h1 className="text-3xl font-extrabold leading-tight">Entregar debe sentirse rápido.</h1>
+              <p className="text-sm leading-relaxed text-purple-200/90 font-medium">
+                Accede a la plataforma de entregas más veloz. Todo lo que necesitas, entregado en un rayo.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative z-10 space-y-3">
+            {[
+              ['Código de un solo uso', 'Ingreso seguro y verificado al instante.'],
+              ['Tus datos protegidos', 'Tranquilidad en cada paso de tu orden.'],
+              ['Experiencia premium', 'Interfaz optimizada para máxima velocidad.'],
+            ].map(([title, text]) => (
+              <div key={title} className="flex gap-3 bg-white/5 p-3.5 rounded-2xl border border-white/5 backdrop-blur-md">
+                <CheckCircle2 className="text-purple-300 flex-shrink-0 mt-0.5" size={18} />
                 <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.22em] text-[#FFE83D]">RayoExpress</p>
-                  <h1 className="text-4xl font-black leading-tight">Entrar debe sentirse rapido.</h1>
+                  <p className="font-bold text-xs text-white">{title}</p>
+                  <p className="text-[11px] text-purple-200/70 leading-normal mt-0.5">{text}</p>
                 </div>
               </div>
-              <p className="mt-8 max-w-md text-lg font-medium leading-8 text-white/82">
-                Accede con Google o entra con correo y clave. Para crear cuenta validamos tu correo con un código.
+            ))}
+          </div>
+        </div>
+
+        {/* Panel Derecho: Formulario */}
+        <div className="lg:col-span-7 p-6 md:p-12 flex flex-col justify-center relative min-h-[500px]">
+          {step !== 'options' && (
+            <button
+              type="button"
+              onClick={() => setStep('options')}
+              className="absolute left-6 top-6 h-10 w-10 flex items-center justify-center rounded-full bg-slate-50 text-slate-600 border border-slate-100 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 active:scale-95 shadow-sm"
+              aria-label="Volver"
+            >
+              <ArrowLeft size={18} />
+            </button>
+          )}
+
+          <div className="w-full max-w-md mx-auto space-y-8">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-[10px] font-extrabold uppercase tracking-wide text-purple-700">
+                  <Zap size={11} className="fill-purple-700" /> Acceso Seguro
+                </span>
+                {/* Logo móvil */}
+                <img src={logo} alt="RayoExpress" className="h-9 w-9 lg:hidden" />
+              </div>
+              <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
+                {step === 'code' ? 'Verifica tu correo' : step === 'email' ? 'Correo electronico' : 'Bienvenido'}
+              </h2>
+              <p className="text-xs text-slate-500 leading-relaxed font-medium">
+                {step === 'code'
+                  ? 'Escribe el código que acabamos de enviarte.'
+                  : step === 'email'
+                    ? isRegistering
+                      ? 'Crea tu cuenta nueva y valida tu dirección.'
+                      : 'Ingresa con tu correo y clave de acceso.'
+                    : 'Elige tu método de ingreso favorito para ingresar.'}
               </p>
             </div>
 
-            <div className="grid gap-4">
-              {[
-                ['Codigo seguro', 'Cada ingreso por correo se confirma con un codigo temporal.'],
-                ['Clave protegida', 'Tu cuenta queda lista solo después de verificar el código.'],
-                ['Perfil limpio', 'Tus datos se completan después, dentro de la app.'],
-              ].map(([title, text]) => (
-                <div key={title} className="flex items-start gap-3 rounded-[26px] bg-white/12 p-4 backdrop-blur">
-                  <CheckCircle2 className="mt-0.5 text-[#FFE83D]" size={22} />
-                  <div>
-                    <p className="font-extrabold">{title}</p>
-                    <p className="text-sm leading-6 text-white/72">{text}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.section
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mx-auto w-full max-w-[520px]"
-        >
-          <button
-            type="button"
-            onClick={() => (step === 'options' ? window.history.back() : setStep('options'))}
-            className="mb-5 flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#12051F] shadow-[0_14px_34px_rgba(18,5,31,0.08)] transition hover:-translate-x-0.5"
-            aria-label="Volver"
-          >
-            <ArrowLeft size={24} />
-          </button>
-
-          <div className="rounded-[36px] border border-white/70 bg-white/86 p-6 shadow-[0_24px_80px_rgba(18,5,31,0.12)] backdrop-blur md:p-8">
-            <div className="mb-7 flex items-center justify-between gap-4">
-              <div>
-                <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-[#FFF6B8] px-3 py-1 text-xs font-black uppercase tracking-[0.14em] text-[#3B2B00]">
-                  <Zap size={14} /> Acceso seguro
-                </p>
-                <h2 className="text-3xl font-black leading-tight md:text-4xl">
-                  {step === 'code' ? 'Verifica tu correo' : step === 'email' ? 'Correo electronico' : 'Bienvenido'}
-                </h2>
-                <p className="mt-2 text-sm leading-6 text-[#686174]">
-                  {step === 'code'
-                    ? 'Escribe el codigo que acabamos de enviarte.'
-                    : step === 'email'
-                      ? isRegistering
-                        ? 'Crea tu cuenta y valida tu correo con un código.'
-                        : 'Ingresa con tu correo y clave.'
-                      : 'Elige como quieres entrar a RayoExpress.'}
-                </p>
-              </div>
-              <img src={logo} alt="RayoExpress" className="h-14 w-14 rounded-2xl bg-[#F2EEFF] p-2" />
-            </div>
-
-            {step === 'options' ? (
-              <div className="grid gap-3">
+            {step === 'options' && (
+              <div className="space-y-3">
                 <button
                   type="button"
                   onClick={loginWithGoogle}
                   disabled={googleLoading}
-                  className="flex h-14 items-center justify-between rounded-[20px] border border-[#DCD7EA] bg-white px-4 text-left font-extrabold text-[#12051F] shadow-sm transition hover:border-[#4514D8]/35 hover:shadow-[0_14px_34px_rgba(18,5,31,0.08)] disabled:cursor-wait"
+                  className="flex h-12 w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 font-bold text-slate-700 shadow-sm transition-all duration-200 hover:border-slate-300 hover:bg-slate-50 active:scale-98 disabled:opacity-50"
                 >
                   <span className="flex items-center gap-3">
-                    {googleLoading ? <Loader2 size={20} className="animate-spin text-[#4514D8]" /> : <GoogleMark />}
-                    Continuar con Google
+                    {googleLoading ? <Loader2 size={16} className="animate-spin text-purple-600" /> : <GoogleMark />}
+                    <span>Continuar con Google</span>
                   </span>
-                  <ArrowRight size={20} />
+                  <ArrowRight size={16} className="text-slate-400" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => startEmailFlow(false)}
-                  className="flex h-14 items-center justify-between rounded-[20px] bg-[#4514D8] px-4 text-left font-extrabold text-white shadow-[0_14px_34px_rgba(69,20,216,0.22)] transition hover:bg-[#3710B8]"
+                  className="flex h-12 w-full items-center justify-between rounded-2xl bg-purple-700 px-4 font-bold text-white shadow-sm transition-all duration-200 hover:bg-purple-800 active:scale-98"
                 >
                   <span className="flex items-center gap-3">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#FFE83D] text-[#12051F]">
-                      <Mail size={18} />
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/10 text-white">
+                      <Mail size={15} />
                     </span>
-                    Correo electronico
+                    <span>Correo electronico</span>
                   </span>
-                  <ArrowRight size={20} />
+                  <ArrowRight size={16} className="text-purple-200" />
                 </button>
 
                 <button
                   type="button"
                   onClick={() => startEmailFlow(true)}
-                  className="mt-2 rounded-[20px] bg-[#F1EEFF] px-4 py-4 text-center text-sm font-extrabold text-[#4514D8] transition hover:bg-[#E8E0FF]"
+                  className="w-full h-11 rounded-2xl bg-slate-50 border border-slate-200/60 text-xs font-bold text-purple-700 transition-all duration-200 hover:bg-slate-100 hover:border-slate-300 active:scale-98"
                 >
                   Crear cuenta nueva
                 </button>
 
-                <div className="mt-5 flex items-start gap-3 rounded-[24px] bg-[#F6F5FA] p-4">
-                  <ShieldCheck size={22} className="mt-0.5 text-[#4514D8]" />
-                  <p className="text-sm leading-6 text-[#686174]">
-                    Google entra directo. El registro por correo se activa solo cuando el codigo enviado coincide.
+                <div className="flex gap-2.5 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                  <ShieldCheck size={16} className="text-purple-600 flex-shrink-0 mt-0.5" />
+                  <p className="text-[11px] text-slate-500 leading-normal font-medium">
+                    El ingreso con Google es directo y automático. El registro con correo requiere verificación mediante código temporal.
                   </p>
                 </div>
               </div>
-            ) : null}
+            )}
 
-            {step === 'email' ? (
-              <div className="grid gap-4">
-                <div className="grid grid-cols-2 rounded-[22px] bg-[#F1EEFF] p-1">
+            {step === 'email' && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 rounded-xl bg-slate-100 p-1 border border-slate-200/50">
                   <button
                     type="button"
                     onClick={() => {
                       setIsRegistering(false);
                       resetMessages();
                     }}
-                    className={`h-11 rounded-[18px] text-sm font-black transition ${!isRegistering ? 'bg-white text-[#4514D8] shadow-sm' : 'text-[#6D6681]'}`}
+                    className={`h-9 rounded-lg text-xs font-bold transition-all duration-200 ${!isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Ingresar
                   </button>
@@ -442,25 +439,25 @@ export function LoginScreen() {
                       setIsRegistering(true);
                       resetMessages();
                     }}
-                    className={`h-11 rounded-[18px] text-sm font-black transition ${isRegistering ? 'bg-white text-[#4514D8] shadow-sm' : 'text-[#6D6681]'}`}
+                    className={`h-9 rounded-lg text-xs font-bold transition-all duration-200 ${isRegistering ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                   >
                     Registrarme
                   </button>
                 </div>
 
-                {isRegistering ? (
-                  <Field icon={<UserRound size={20} />} label="Nombre">
+                {isRegistering && (
+                  <Field icon={<UserRound size={16} />} label="Nombre">
                     <input
                       aria-label="Nombre completo"
                       value={fullName}
                       onChange={(event) => setFullName(event.target.value)}
                       placeholder="Tu nombre completo"
-                      className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                      className="mt-0.5 w-full bg-transparent text-sm font-bold text-slate-850 outline-none placeholder:text-slate-350"
                     />
                   </Field>
-                ) : null}
+                )}
 
-                <Field icon={<Mail size={20} />} label="Correo">
+                <Field icon={<Mail size={16} />} label="Correo">
                   <input
                     aria-label="Correo electronico"
                     value={email}
@@ -468,11 +465,11 @@ export function LoginScreen() {
                     placeholder="correo@ejemplo.com"
                     type="email"
                     autoComplete="email"
-                    className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                    className="mt-0.5 w-full bg-transparent text-sm font-bold text-slate-850 outline-none placeholder:text-slate-350"
                   />
                 </Field>
 
-                <Field icon={<LockKeyhole size={20} />} label="Clave">
+                <Field icon={<LockKeyhole size={16} />} label="Clave">
                   <input
                     aria-label="Clave"
                     value={password}
@@ -480,23 +477,23 @@ export function LoginScreen() {
                     placeholder="Minimo 6 caracteres"
                     type="password"
                     autoComplete={isRegistering ? 'new-password' : 'current-password'}
-                    className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                    className="mt-0.5 w-full bg-transparent text-sm font-bold text-slate-850 outline-none placeholder:text-slate-350"
                   />
                 </Field>
 
-                {isRegistering ? (
-                  <Field icon={<LockKeyhole size={20} />} label="Confirmar clave">
+                {isRegistering && (
+                  <Field icon={<LockKeyhole size={16} />} label="Confirmar clave">
                     <input
                       aria-label="Confirmar clave"
                       value={passwordConfirm}
                       onChange={(event) => setPasswordConfirm(event.target.value)}
-                      placeholder="Repite tu clave"
+                      placeholder="Repite tu contraseña"
                       type="password"
                       autoComplete="new-password"
-                      className="mt-1 w-full bg-transparent text-base font-bold text-[#12051F] outline-none placeholder:text-[#9A94AA]"
+                      className="mt-0.5 w-full bg-transparent text-sm font-bold text-slate-850 outline-none placeholder:text-slate-355"
                     />
                   </Field>
-                ) : null}
+                )}
 
                 <PrimaryButton
                   onClick={isRegistering ? sendEmailCode : signInWithEmail}
@@ -506,75 +503,69 @@ export function LoginScreen() {
                   {isRegistering ? 'Enviar codigo' : 'Iniciar sesion'}
                 </PrimaryButton>
               </div>
-            ) : null}
+            )}
 
-            {step === 'code' ? (
-              <div className="grid gap-4">
-                <div className="rounded-[24px] bg-[#F1EEFF] p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.14em] text-[#6D6681]">Correo</p>
-                  <p className="mt-1 truncate text-base font-extrabold text-[#12051F]">{normalizedEmail}</p>
-                </div>
-
-                <Field icon={<Sparkles size={20} />} label="Codigo">
-                <input
-                  aria-label="Codigo de verificacion"
-                  value={code}
-                  onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
-                  placeholder="00000000"
-                  inputMode="numeric"
-                  autoComplete="one-time-code"
-                  className="mt-1 w-full bg-transparent text-2xl font-black tracking-[0.24em] text-[#12051F] outline-none placeholder:tracking-normal placeholder:text-[#9A94AA]"
-                />
-                </Field>
-
-                <PrimaryButton onClick={verifyEmailCode} disabled={cleanCode.length < OTP_MIN_LENGTH} loading={loading}>
-                  Verificar codigo
-                </PrimaryButton>
-
-                <div className="grid grid-cols-2 gap-3">
+            {step === 'code' && (
+              <div className="space-y-4">
+                <div className="rounded-2xl bg-slate-50 p-4 border border-slate-100 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-extrabold uppercase tracking-wide text-slate-400">Verificando Correo</p>
+                    <p className="mt-0.5 truncate text-sm font-bold text-slate-800 max-w-[200px] md:max-w-[280px]">{normalizedEmail}</p>
+                  </div>
                   <button
                     type="button"
                     onClick={() => setStep('email')}
-                    className="h-12 rounded-[20px] bg-[#F6F5FA] text-sm font-extrabold text-[#12051F] transition hover:bg-[#ECE8F8]"
+                    className="text-xs font-bold text-purple-700 hover:text-purple-800"
                   >
-                    Cambiar correo
+                    Cambiar
                   </button>
+                </div>
+
+                <Field icon={<Sparkles size={16} />} label="Código Recibido">
+                  <input
+                    aria-label="Código de verificación"
+                    value={code}
+                    onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, OTP_MAX_LENGTH))}
+                    placeholder="000000"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    className="mt-0.5 w-full bg-transparent text-lg font-black tracking-[0.2em] text-slate-850 outline-none placeholder:tracking-normal placeholder:text-slate-355"
+                  />
+                </Field>
+
+                <PrimaryButton onClick={verifyEmailCode} disabled={cleanCode.length < OTP_MIN_LENGTH} loading={loading}>
+                  Enviar codigo
+                </PrimaryButton>
+
+                <div className="flex justify-center">
                   <button
                     type="button"
                     onClick={resendEmailCode}
                     disabled={loading}
-                    className="h-12 rounded-[20px] bg-[#FFF6B8] text-sm font-extrabold text-[#3B2B00] transition hover:bg-[#FFE83D] disabled:opacity-60"
+                    className="text-xs font-bold text-purple-700 hover:text-purple-800 disabled:opacity-50"
                   >
-                    Reenviar
+                    ¿No recibiste el código? Reenviar código
                   </button>
                 </div>
               </div>
-            ) : null}
+            )}
 
-            {notice ? (
-              <div className="mt-5 rounded-[20px] border border-[#BFEEDC] bg-[#ECFFF7] px-4 py-3 text-sm font-bold text-[#147B55]">
+            {/* Avisos y Mensajes de Feedback */}
+            {notice && (
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 leading-normal animate-fadeIn">
                 {notice}
               </div>
-            ) : null}
+            )}
 
-            {error ? (
-              <div className="mt-5 rounded-[20px] border border-[#FFD3D3] bg-[#FFF3F3] px-4 py-3 text-sm font-bold text-[#9F1D1D]">
+            {error && (
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-xs font-bold text-rose-800 leading-normal animate-fadeIn">
                 {error}
               </div>
-            ) : null}
-
+            )}
           </div>
+        </div>
 
-          <p className="mx-auto mt-5 max-w-md text-center text-xs font-semibold leading-5 text-[#827B91]">
-            Al continuar aceptas entrar de forma segura a RayoExpress. Las cuentas de tiendas y repartidores se validan desde el panel correspondiente.
-          </p>
-        </motion.section>
       </div>
-
-      <div
-        className="pointer-events-none fixed bottom-0 left-0 right-0 h-24"
-        style={{ background: `linear-gradient(180deg, transparent, ${brand.surface})` }}
-      />
     </main>
   );
 }
