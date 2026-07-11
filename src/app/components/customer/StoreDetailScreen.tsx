@@ -236,11 +236,11 @@ export function StoreDetailScreen() {
           </div>
         )}
         {store?.latitude && store?.longitude && (
-          <div className="mt-3 rounded-xl overflow-hidden border border-border-light" style={{ height: 140 }}>
-            <MapContainer center={[store.latitude, store.longitude]} zoom={16} className="h-full w-full" scrollWheelZoom={false} dragging={false} zoomControl={false}>
+          <div className="mt-3 rounded-xl overflow-hidden border border-border-light shadow-sm" style={{ height: 140 }}>
+            <MapContainer center={[store.latitude, store.longitude]} zoom={15} className="h-full w-full" scrollWheelZoom={false} dragging={false} zoomControl={false}>
               <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
               />
               <Marker position={[store.latitude, store.longitude]} />
             </MapContainer>

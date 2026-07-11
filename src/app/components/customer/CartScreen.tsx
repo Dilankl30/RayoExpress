@@ -142,7 +142,7 @@ export function CartScreen() {
         <p className="text-text-secondary mt-1">Revisa productos, dirección, facturación y pago antes de confirmar.</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-36 lg:pb-8">
+      <div className="flex-1 overflow-y-auto pb-10 lg:pb-8">
         {cart.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 px-8 text-center">
             <span style={{ fontSize: 64 }}>🛒</span>
@@ -467,15 +467,15 @@ export function CartScreen() {
                   <span style={{ color: 'var(--brand)' }}>${total.toFixed(2)}</span>
                 </div>
               </div>
-              {/* Desktop confirm button */}
+              {/* Confirm button in scroll flow */}
               <button
                 onClick={handlePlaceOrder}
                 disabled={placing}
-                className="hidden lg:flex w-full mt-3 py-4 rounded-2xl text-white shadow-lg items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full mt-4 py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ backgroundColor: 'var(--brand)' }}
               >
                 <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-                {placing ? 'Procesando...' : `Confirmar pedido`}
+                {placing ? 'Procesando...' : `Confirmar pedido · $${total.toFixed(2)}`}
               </button>
             </div>
               </div>
@@ -483,20 +483,6 @@ export function CartScreen() {
           </>
         )}
       </div>
-
-      {cart.length > 0 && (
-        <div className="fixed lg:hidden bottom-0 left-0 right-0 px-4 pb-6 pt-3 max-w-md mx-auto" style={{ background: 'linear-gradient(to top, white 80%, transparent)' }}>
-          <button
-            onClick={handlePlaceOrder}
-            disabled={placing}
-            className="w-full py-4 rounded-2xl text-white shadow-lg flex items-center justify-center gap-2 disabled:opacity-50"
-            style={{ backgroundColor: 'var(--brand)' }}
-          >
-            <Zap size={17} style={{ color: '#FFD400' }} fill="#FFD400" />
-            {placing ? 'Procesando...' : `Confirmar pedido · $${total.toFixed(2)}`}
-          </button>
-        </div>
-      )}
 
       {user && (
         <LocationDialog

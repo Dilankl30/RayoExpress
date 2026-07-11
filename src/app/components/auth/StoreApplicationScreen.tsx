@@ -228,8 +228,8 @@ export function StoreApplicationScreen() {
               <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
                 <MapContainer center={latitude && longitude ? [latitude, longitude] : mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
                   <TileLayer
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   />
                   <LocationPicker onPick={(lat: number, lng: number) => { setLatitude(lat); setLongitude(lng); }} />
                   {latitude && longitude && <Marker position={[latitude, longitude]} />}
