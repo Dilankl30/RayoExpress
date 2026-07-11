@@ -4,11 +4,12 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
   Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus, Map,
-  Minus, Locate, Home,
+  Minus, Locate, Home, Star, X,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
+import { getSupabase } from '../../../integrations/supabase/client';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
@@ -92,6 +93,27 @@ export function HomeScreen() {
   const [mapStores, setMapStores] = useState<Store[]>([]);
   const [map, setMap] = useState<L.Map | null>(null);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
+  const [selectedStoreOnMap, setSelectedStoreOnMap] = useState<Store | null>(null);
+  const [coverageArea, setCoverageArea] = useState<{ center: [number, number]; radius_km: number; city_name: string } | null>(null);
+
+  useEffect(() => {
+    const loadCoverage = async () => {
+      try {
+        const supabase = getSupabase();
+        const { data } = await supabase
+          .from('app_config')
+          .select('*')
+          .eq('key', 'coverage_area')
+          .maybeSingle();
+        if (data && data.value) {
+          setCoverageArea(data.value as any);
+        }
+      } catch (e) {
+        console.error('Error loading operations coverage config:', e);
+      }
+    };
+    void loadCoverage();
+  }, []);
 
   const handleBoundsChange = async (bounds: { northEast: [number, number], southWest: [number, number] }) => {
     try {
@@ -450,8 +472,8 @@ export function HomeScreen() {
           </div>
 
           {showMap ? (
-            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4 relative shadow-md" style={{ height: 380 }}>
-              <MapContainer center={userCoords || [-2.1706, -79.9223]} zoom={userCoords ? 14 : 12} className="h-full w-full" zoomControl={false}>
+            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4 relative shadow-md" style={{ height: 420 }}>
+              <MapContainer center={userCoords || (coverageArea?.center || [-0.4632, -76.9892])} zoom={userCoords ? 14 : 13} className="h-full w-full" zoomControl={false}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
@@ -466,38 +488,25 @@ export function HomeScreen() {
                     position={[store.latitude!, store.longitude!]}
                     icon={L.divIcon({
                       className: '',
-                      html: `<div class="relative flex items-center justify-center w-10 h-10 rounded-full border-2 border-white shadow-lg transition-transform hover:scale-110" style="background: ${store.is_open ? 'var(--brand)' : '#9CA3AF'}">
-                        <span style="font-size:18px;">${store.emoji || '🏪'}</span>
-                        ${store.is_open ? '<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-white animate-pulse" style="background:#22C55E"></span>' : ''}
-                      </div>`,
-                      iconSize: [40, 40],
-                      iconAnchor: [20, 20],
-                    })}
-                  >
-                    <Popup>
-                      <div className="text-center p-1.5 min-w-[140px] font-sans">
-                        <div className="w-9 h-9 mx-auto rounded-full bg-brand-light flex items-center justify-center text-lg mb-1.5">
-                          {store.emoji || '🏪'}
+                      html: `<div class="relative flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-xl shadow-[0_4px_12px_rgba(15,23,42,0.15)] border border-slate-100/50 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap">
+                        <div class="w-6 h-6 rounded-lg flex items-center justify-center text-sm bg-purple-50 text-purple-700">
+                          ${store.emoji || '🏪'}
                         </div>
-                        <p className="font-bold text-xs text-text-primary mb-0.5 leading-tight">{store.name}</p>
-                        <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${store.is_open ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>
-                          {store.is_open ? 'Abierto' : 'Cerrado'}
-                        </span>
-                        {store.description && (
-                          <p className="text-[10px] text-text-secondary mt-1.5 line-clamp-2 leading-tight">
-                            {store.description}
-                          </p>
-                        )}
-                        <button
-                          onClick={() => handleSelectStore(store.id)}
-                          className="mt-2.5 w-full py-1.5 rounded-xl text-white text-[11px] font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-transform"
-                          style={{ backgroundColor: 'var(--brand)' }}
-                        >
-                          Entrar
-                        </button>
-                      </div>
-                    </Popup>
-                  </Marker>
+                        <div class="flex flex-col text-left pr-1">
+                          <span class="text-[9px] font-extrabold text-slate-800 leading-tight">${store.name}</span>
+                          <span class="text-[7.5px] text-slate-400 font-bold mt-0.5 leading-none">
+                            ${store.is_open ? '🟢 Abierto' : '🔴 Cerrado'}
+                          </span>
+                        </div>
+                        <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-white rotate-45 border-r border-b border-slate-100/50"></div>
+                      </div>`,
+                      iconSize: [120, 34],
+                      iconAnchor: [60, 34],
+                    })}
+                    eventHandlers={{
+                      click: () => setSelectedStoreOnMap(store),
+                    }}
+                  />
                 ))}
 
                 {/* Marcador de mi ubicación */}
@@ -506,11 +515,12 @@ export function HomeScreen() {
                     position={userCoords}
                     icon={L.divIcon({
                       className: '',
-                      html: `<div class="flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg bg-blue-600 text-white">
-                        <span style="font-size:12px;">🏠</span>
+                      html: `<div class="relative flex items-center justify-center w-6 h-6">
+                        <div class="absolute inset-0 w-6 h-6 rounded-full bg-blue-500/30 animate-ping"></div>
+                        <div class="absolute w-3.5 h-3.5 rounded-full bg-blue-600 border-2 border-white shadow-md"></div>
                       </div>`,
-                      iconSize: [32, 32],
-                      iconAnchor: [16, 16],
+                      iconSize: [24, 24],
+                      iconAnchor: [12, 12],
                     })}
                   >
                     <Popup>
@@ -542,17 +552,20 @@ export function HomeScreen() {
 
                 <div className="h-[1px] bg-border-light my-0.5" />
 
-                {userCoords && (
-                  <button
-                    onClick={() => {
-                      if (map && userCoords) map.panTo(userCoords);
-                    }}
-                    className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
-                    title="Centrar en mi ubicación"
-                  >
-                    <Home size={14} />
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    if (!map) return;
+                    if (userCoords) {
+                      map.panTo(userCoords);
+                    } else {
+                      map.panTo(coverageArea?.center || [-0.4632, -76.9892]);
+                    }
+                  }}
+                  className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
+                  title="Centrar mapa"
+                >
+                  <Home size={14} />
+                </button>
 
                 <button
                   onClick={() => {
@@ -571,6 +584,61 @@ export function HomeScreen() {
                   <Locate size={14} />
                 </button>
               </div>
+
+              {/* Tarjeta de tienda seleccionada (Slide Up Sheet) */}
+              <AnimatePresence>
+                {selectedStoreOnMap && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 40 }}
+                    transition={{ type: 'spring', damping: 22, stiffness: 220 }}
+                    className="absolute bottom-4 left-4 right-4 z-[1000] bg-white rounded-2xl border border-slate-100 shadow-2xl p-4 flex flex-col gap-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-2xl shadow-sm border border-purple-100/50">
+                          {selectedStoreOnMap.emoji || '🏪'}
+                        </div>
+                        <div className="text-left">
+                          <h4 className="font-extrabold text-sm text-slate-900 leading-tight">{selectedStoreOnMap.name}</h4>
+                          <p className="text-[10px] text-slate-500 font-bold mt-1 line-clamp-1">
+                            {selectedStoreOnMap.description || 'Tienda registrada'}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setSelectedStoreOnMap(null)}
+                        className="w-7 h-7 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center text-slate-400 hover:text-slate-900 active:scale-90 transition-all shadow-sm"
+                      >
+                        <X size={13} />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-50 pt-3">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold ${selectedStoreOnMap.is_open ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-rose-50 text-rose-700 border border-rose-100'}`}>
+                          {selectedStoreOnMap.is_open ? 'Abierto' : 'Cerrado'}
+                        </span>
+                        <span className="text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-100/50 px-2 py-0.5 rounded-full flex items-center gap-0.5">
+                          <Star size={9} className="fill-amber-400 text-amber-400" /> 4.8
+                        </span>
+                        <span className="text-[10px] font-black text-slate-600 bg-slate-50 border border-slate-100/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Clock size={10} /> 25-35 min
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => handleSelectStore(selectedStoreOnMap.id)}
+                        className="px-4 py-2 rounded-xl text-white text-xs font-bold shadow-md shadow-purple-600/10 transition-all active:scale-95 hover:opacity-95"
+                        style={{ backgroundColor: 'var(--brand)' }}
+                      >
+                        Ver tienda
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : filteredStores.length === 0 ? (
             <div className="py-10 text-center text-text-secondary">
