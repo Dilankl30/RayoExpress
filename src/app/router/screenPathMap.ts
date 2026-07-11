@@ -18,4 +18,5 @@ export const screenPathMap: Record<string, string> = {
   'store-admin': '/store-admin',
   admin: '/admin',
   profile: '/profile',
+  explore: '/explore',
 };

@@ -9,6 +9,7 @@ export { screenPathMap } from './screenPathMap';
 const LandingScreen = lazy(() => import('../components/public/LandingScreen').then(m => ({ default: m.LandingScreen })));
 const LoginScreen = lazy(() => import('../components/auth/LoginScreen').then(m => ({ default: m.LoginScreen })));
 const HomeScreen = lazy(() => import('../components/customer/HomeScreen').then(m => ({ default: m.HomeScreen })));
+const ExploreScreen = lazy(() => import('../components/customer/ExploreScreen').then(m => ({ default: m.ExploreScreen })));
 const StoreDetailScreen = lazy(() => import('../components/customer/StoreDetailScreen').then(m => ({ default: m.StoreDetailScreen })));
 const CartScreen = lazy(() => import('../components/customer/CartScreen').then(m => ({ default: m.CartScreen })));
 const TrackingScreen = lazy(() => import('../components/customer/TrackingScreen').then(m => ({ default: m.TrackingScreen })));
@@ -59,7 +60,7 @@ export function ProtectedRoute({ element, allowedRoles }: { element: React.React
 }
 
 const roleRoutes: Record<Role, string[]> = {
-  customer: ['home', 'super', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
+  customer: ['home', 'explore', 'super', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
   driver: ['driver', 'profile'],
   store: ['store-admin', 'profile'],
   admin: ['admin', 'profile'],
@@ -76,6 +77,10 @@ export const screenRoutes: RouteObject[] = [
   {
     path: '/home',
     element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<HomeScreen />} /></Lazy>,
+  },
+  {
+    path: '/explore',
+    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<ExploreScreen />} /></Lazy>,
   },
   {
     path: '/super',

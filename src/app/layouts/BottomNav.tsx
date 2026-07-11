@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router';
-import { Home, ShoppingBasket, Percent, User, ClipboardList } from 'lucide-react';
+import { Home, User, ClipboardList, Compass, Heart } from 'lucide-react';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
 import { screenPathMap } from '../router';
@@ -14,10 +14,10 @@ interface NavItem {
 const itemsByRole: Record<string, NavItem[]> = {
   customer: [
     { id: 'home', label: 'Inicio', icon: Home, screen: 'home' },
-    { id: 'super', label: 'Súper', icon: ShoppingBasket, screen: 'super' },
-    { id: 'promotions', label: 'Promos', icon: Percent, screen: 'promotions' },
     { id: 'orders', label: 'Pedidos', icon: ClipboardList, screen: 'orders' },
-    { id: 'profile', label: 'Mi perfil', icon: User, screen: 'profile' },
+    { id: 'explore', label: 'Explorar', icon: Compass, screen: 'explore' },
+    { id: 'favorites', label: 'Favoritos', icon: Heart, screen: 'favorites' },
+    { id: 'profile', label: 'Perfil', icon: User, screen: 'profile' },
   ],
 };
 
@@ -36,14 +36,14 @@ export function BottomNav() {
     switch (item.screen) {
       case 'home':
         return path === '/home' || path === '/cart' || path === '/tracking' || path.startsWith('/store-detail/');
-      case 'super':
-        return path === '/super';
-      case 'promotions':
-        return path === '/promotions';
       case 'orders':
         return path === '/orders';
+      case 'explore':
+        return path === '/explore';
+      case 'favorites':
+        return path === '/favorites';
       case 'profile':
-        return path === '/profile' || path === '/personal-info' || path === '/addresses' || path === '/favorites' || path === '/notification-settings' || path === '/wallet';
+        return path === '/profile' || path === '/personal-info' || path === '/addresses' || path === '/notification-settings' || path === '/wallet';
       default:
         return path === (screenPathMap[item.screen] || `/${item.screen}`);
     }

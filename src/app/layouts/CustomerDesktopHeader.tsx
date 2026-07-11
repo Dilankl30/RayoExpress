@@ -13,6 +13,7 @@ import {
   Search,
   ShoppingCart,
   User,
+  Compass,
 } from 'lucide-react';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
@@ -22,6 +23,7 @@ import type { Address } from '../../shared/types';
 
 const customerMenu = [
   { label: 'Inicio', path: '/home', icon: Home },
+  { label: 'Explorar locales', path: '/explore', icon: Compass },
   { label: 'Mis direcciones', path: '/addresses', icon: MapPin },
   { label: 'Mis favoritos', path: '/favorites', icon: Heart },
   { label: 'Mis pedidos', path: '/orders', icon: ClipboardList },
