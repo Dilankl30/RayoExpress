@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
@@ -15,6 +16,7 @@ import { Package, X, ChevronRight, RefreshCw } from 'lucide-react';
 
 type Tab = 'dashboard' | 'orders' | 'catalog' | 'payments' | 'reports' | 'settings';
 type OrderFilter = 'all' | 'active' | 'delivered' | 'cancelled';
+type DashboardOrder = OrderSummary & { driver_name?: string | null };
 
 const TAB_ICONS: Record<Tab, string> = { dashboard: '📊', orders: '📋', catalog: '📦', payments: '💳', reports: '📈', settings: '⚙️' };
 const ACTIVE_STATUSES = ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'];
@@ -27,7 +29,14 @@ const ACTION_LABELS: Record<string, string> = {
 
 export function StoreDashboard() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab as Tab);
+    }
+  }, [location.state]);
   const [storeId, setStoreId] = useState<string | null>(null);
   const [storeName, setStoreName] = useState('Mi Tienda');
   const [storeCity, setStoreCity] = useState<string | null>(null);
@@ -35,7 +44,7 @@ export function StoreDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState<StoreDashboardStats>({ salesToday: 0, activeOrders: 0, productCount: 0, rating: 0 });
-  const [allOrders, setAllOrders] = useState<OrderSummary[]>([]);
+  const [allOrders, setAllOrders] = useState<DashboardOrder[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [orderFilter, setOrderFilter] = useState<OrderFilter>('active');
   const [detailOrder, setDetailOrder] = useState<Record<string, unknown> | null>(null);
@@ -66,9 +75,10 @@ export function StoreDashboard() {
     setOrdersLoading(true);
     try {
       const data = await getStoreOrders(storeId);
-      setAllOrders((data as OrderSummary[]).map((o: any) => ({
+      setAllOrders((data as any[]).map((o: any) => ({
         id: o.id, status: o.status, total: o.total ?? 0,
         customer_name: o.customer_name ?? null,
+        driver_name: o.driver?.full_name ?? null,
         created_at: o.created_at,
       })));
     } catch { /* noop */ } finally { setOrdersLoading(false); }
@@ -285,6 +295,12 @@ export function StoreDashboard() {
                           <p className="text-text-primary font-bold">${order.total.toFixed(2)}</p>
                         </div>
                       </div>
+                      {order.driver_name && (
+                        <div className="mt-1 mb-2 text-xs text-brand bg-purple-50 rounded-lg px-2.5 py-1 flex items-center gap-1.5 w-fit">
+                          <span>🏍️</span>
+                          <span>Repartidor: <strong className="font-semibold">{order.driver_name}</strong></span>
+                        </div>
+                      )}
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {transitions.map((t) => {
                           const isCancel = t === 'cancelled';
@@ -353,6 +369,17 @@ export function StoreDashboard() {
                     'bg-warning-light text-warning'
                   }`}>{(STATUS_LABELS as Record<string, string>)[detailOrder.status as string] || detailOrder.status as string}</span>
                 </div>
+                {detailOrder.driver && (
+                  <div className="bg-surface rounded-2xl p-4 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg">
+                      🏍️
+                    </div>
+                    <div>
+                      <p className="text-xs text-text-secondary mb-1">Repartidor asignado</p>
+                      <p className="font-medium text-text-primary">{(detailOrder.driver as any).full_name}</p>
+                    </div>
+                  </div>
+                )}
                 <div className="bg-surface rounded-2xl p-4">
                   <p className="text-xs text-text-secondary mb-2">Productos</p>
                   {(detailOrder.order_items as Array<{ product_name?: string; quantity?: number; unit_price?: number }> || []).map((item, i) => (

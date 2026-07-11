@@ -1,10 +1,14 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bell, CheckCheck, X, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { useAuth } from '../../auth/context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
   const timeAgo = (dateStr: string) => {
@@ -14,6 +18,25 @@ export function NotificationBell() {
     if (mins < 60) return `hace ${mins} min`;
     const hrs = Math.floor(mins / 60);
     return `hace ${hrs}h`;
+  };
+
+  const handleNotificationClick = (n: any) => {
+    if (!n.read_at) {
+      markAsRead(n.id);
+    }
+    setOpen(false);
+
+    if (!user) return;
+
+    if (user.role === 'store') {
+      navigate('/store-admin', { state: { tab: 'orders' } });
+    } else if (user.role === 'driver') {
+      navigate('/driver');
+    } else if (user.role === 'admin') {
+      navigate('/admin');
+    } else if (user.role === 'customer') {
+      navigate('/orders');
+    }
   };
 
   return (
@@ -56,7 +79,7 @@ export function NotificationBell() {
                     notifications.map((n) => (
                       <button
                         key={n.id}
-                        onClick={() => { if (!n.read_at) markAsRead(n.id); }}
+                        onClick={() => handleNotificationClick(n)}
                         className="w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-surface-hover transition-colors border-b border-border-light last:border-0"
                         style={{ backgroundColor: n.read_at ? 'transparent' : '#F5F3FF' }}
                       >

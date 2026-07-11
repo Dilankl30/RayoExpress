@@ -105,7 +105,7 @@ export async function getStoreOrders(storeId: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('*')
+    .select('*, driver:profiles!driver_id(full_name)')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false });
   if (error) throw error;
