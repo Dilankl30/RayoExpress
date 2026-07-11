@@ -7,6 +7,7 @@ import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
 import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
 import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { getStoreOrders, updateOrderStatus, getOrderById } from '../../../modules/orders/application/order-service';
+import { getSupabase } from '../../../integrations/supabase/client';
 import type { OrderSummary, StoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { STATUS_LABELS, STATUS_ICONS, getAvailableTransitions } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
@@ -35,6 +36,9 @@ export function StoreDashboard() {
   useEffect(() => {
     if (location.state?.tab) {
       setActiveTab(location.state.tab as Tab);
+    }
+    if (location.state?.openOrderId) {
+      openDetail(location.state.openOrderId as string);
     }
   }, [location.state]);
   const [storeId, setStoreId] = useState<string | null>(null);
@@ -369,17 +373,17 @@ export function StoreDashboard() {
                     'bg-warning-light text-warning'
                   }`}>{(STATUS_LABELS as Record<string, string>)[detailOrder.status as string] || detailOrder.status as string}</span>
                 </div>
-                {detailOrder.driver && (
+                {detailOrder.driver ? (
                   <div className="bg-surface rounded-2xl p-4 flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-lg">
                       🏍️
                     </div>
                     <div>
                       <p className="text-xs text-text-secondary mb-1">Repartidor asignado</p>
-                      <p className="font-medium text-text-primary">{(detailOrder.driver as any).full_name}</p>
+                      <p className="font-medium text-text-primary">{(detailOrder.driver as Record<string, unknown>)?.full_name as string}</p>
                     </div>
                   </div>
-                )}
+                ) : null}
                 <div className="bg-surface rounded-2xl p-4">
                   <p className="text-xs text-text-secondary mb-2">Productos</p>
                   {(detailOrder.order_items as Array<{ product_name?: string; quantity?: number; unit_price?: number }> || []).map((item, i) => (

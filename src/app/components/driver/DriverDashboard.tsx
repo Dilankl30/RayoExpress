@@ -104,9 +104,19 @@ function isAssignableToDriver(status: string) {
   return ACTIVE_DELIVERY_STATUSES.includes(status);
 }
 
+import { useLocation } from 'react-router-dom';
+
 export function DriverDashboard() {
   const { user, logout } = useAuth();
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState<DriverTab>('dashboard');
+  
+  useEffect(() => {
+    if (location.state?.tab) {
+      setActiveTab(location.state.tab as DriverTab);
+    }
+  }, [location.state]);
+
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

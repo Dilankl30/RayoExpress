@@ -10,6 +10,7 @@ interface Notification {
   body: string;
   read_at: string | null;
   created_at: string;
+  data?: any;
 }
 
 interface NotificationContextType {

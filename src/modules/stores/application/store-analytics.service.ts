@@ -37,7 +37,7 @@ export async function getStoreDashboardStats(storeId: string): Promise<StoreDash
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [salesRes, activeRes, productsRes, ratingRes] = await Promise.all([
+  const [salesRes, activeRes, productsRes] = await Promise.all([
     supabase
       .from('orders')
       .select('total')
@@ -54,10 +54,6 @@ export async function getStoreDashboardStats(storeId: string): Promise<StoreDash
       .select('id', { count: 'exact', head: true })
       .eq('store_id', storeId)
       .eq('is_active', true),
-    supabase
-      .from('stores')
-      .select('id')
-      .eq('id', storeId),
   ]);
 
   if (salesRes.error) throw salesRes.error;
