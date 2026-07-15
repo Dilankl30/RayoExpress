@@ -51,7 +51,7 @@ export function CartScreen() {
         const selected = addresses.find((item) => item.is_default) ?? addresses[0];
         if (selected?.line1) {
           setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
-          if (selected.lat && selected.lng) {
+          if (selected.lat != null && selected.lng != null) {
             setAddressCoords({ lat: selected.lat, lng: selected.lng });
           }
         }
@@ -63,7 +63,7 @@ export function CartScreen() {
     const selected = addresses.find((item) => item.is_default) ?? addresses[0];
     if (selected?.line1) {
       setAddress(selected.details ? `${selected.line1}, ${selected.details}` : selected.line1);
-      if (selected.lat && selected.lng) {
+      if (selected.lat != null && selected.lng != null) {
         setAddressCoords({ lat: selected.lat, lng: selected.lng });
       }
     }

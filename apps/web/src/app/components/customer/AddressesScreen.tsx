@@ -160,7 +160,7 @@ export function AddressesScreen() {
                   <div className="flex-1 min-w-0">
                     <p className="text-text-primary font-bold truncate">{address.line1}</p>
                     <p className="text-sm text-text-secondary truncate">{address.details || address.title}</p>
-                    {address.lat && address.lng && (
+                    {address.lat != null && address.lng != null && (
                       <p className="text-xs text-text-secondary mt-1">GPS: {address.lat}, {address.lng}</p>
                     )}
                   </div>

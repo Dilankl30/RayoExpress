@@ -218,21 +218,21 @@ export function StoreApplicationScreen() {
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-text-secondary font-medium">Ubicación del negocio</p>
               <button onClick={() => setShowMap(!showMap)} className={`text-xs font-medium px-2 py-0.5 rounded-full ${showMap ? 'text-brand bg-purple-100' : 'text-text-secondary bg-surface-hover'}`}>
-                {showMap ? 'Cerrar mapa' : latitude ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
+                {showMap ? 'Cerrar mapa' : latitude != null ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
               </button>
             </div>
-            {latitude && longitude && !showMap && (
+            {latitude != null && longitude != null && !showMap && (
               <p className="text-xs text-text-secondary">{latitude.toFixed(4)}, {longitude.toFixed(4)}</p>
             )}
             {showMap && (
               <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
-                <MapContainer center={latitude && longitude ? [latitude, longitude] : mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
+                <MapContainer center={latitude != null && longitude != null ? [latitude, longitude] : mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
                   <TileLayer
                     attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   />
                   <LocationPicker onPick={(lat: number, lng: number) => { setLatitude(lat); setLongitude(lng); }} />
-                  {latitude && longitude && <Marker position={[latitude, longitude]} />}
+                  {latitude != null && longitude != null && <Marker position={[latitude, longitude]} />}
                 </MapContainer>
               </div>
             )}

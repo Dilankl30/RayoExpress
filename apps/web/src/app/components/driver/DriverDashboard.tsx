@@ -668,11 +668,11 @@ function DriverOrderCard({ order, primary = false, busy, location, locationError
   const waitingForStore = !action && !ACTIVE_DELIVERY_STATUSES.includes(order.status);
 
   const storeCoords = useMemo<[number, number] | null>(() => {
-    return order.store_lat && order.store_lng ? [order.store_lat, order.store_lng] : null;
+    return order.store_lat != null && order.store_lng != null ? [order.store_lat, order.store_lng] : null;
   }, [order.store_lat, order.store_lng]);
 
   const destCoords = useMemo<[number, number] | null>(() => {
-    return order.delivery_lat && order.delivery_lng ? [order.delivery_lat, order.delivery_lng] : null;
+    return order.delivery_lat != null && order.delivery_lng != null ? [order.delivery_lat, order.delivery_lng] : null;
   }, [order.delivery_lat, order.delivery_lng]);
 
   const currentCoords = useMemo<[number, number] | null>(() => {

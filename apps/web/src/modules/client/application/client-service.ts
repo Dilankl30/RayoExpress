@@ -170,7 +170,7 @@ export async function resolvePreferredLocation(userId: string | undefined | null
 
   const addresses = await getAddresses(userId).catch(() => [] as Address[]);
   const selected = addresses.find((address) => address.is_default) ?? addresses[0] ?? null;
-  if (selected?.lat && selected?.lng) {
+  if (selected?.lat != null && selected?.lng != null) {
     const coords: [number, number] = [selected.lat, selected.lng];
     const city = await detectCityCached(selected.lat, selected.lng);
     return { coords, city, address: selected };

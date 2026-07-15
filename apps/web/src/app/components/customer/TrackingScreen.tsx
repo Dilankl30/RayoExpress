@@ -155,10 +155,10 @@ export function TrackingScreen() {
   const eta = estimateEta(activeStatus);
 
   // Derive coordinates from order data or use mock
-  const storeCoords: [number, number] = activeOrder?.store?.lat && activeOrder.store.lng
+  const storeCoords: [number, number] = activeOrder?.store?.lat != null && activeOrder.store.lng != null
     ? [activeOrder.store.lat, activeOrder.store.lng]
     : MOCK_STORE_COORDS;
-  const destCoords: [number, number] = activeOrder?.delivery_lat && activeOrder?.delivery_lng
+  const destCoords: [number, number] = activeOrder?.delivery_lat != null && activeOrder?.delivery_lng != null
     ? [activeOrder.delivery_lat, activeOrder.delivery_lng]
     : MOCK_DEST_COORDS;
   const driverCoords: [number, number] | null = driverLocation
