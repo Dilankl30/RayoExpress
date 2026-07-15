@@ -12,6 +12,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ['dist/', 'node_modules/'],
+    ignores: ['dist/', 'apps/web/dist/', 'node_modules/'],
   },
 );
