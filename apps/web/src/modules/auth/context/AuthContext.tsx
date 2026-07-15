@@ -57,13 +57,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data } = await supabase.auth.getSession();
     const sessionUser = data.session?.user;
-    const profile = await resolveCurrentProfile({
-      accessToken: accessToken ?? data.session?.access_token ?? null,
-      userId: sessionUser?.id,
-      fullName: sessionUser?.user_metadata?.full_name ?? sessionUser?.email ?? null,
-      phone: sessionUser?.phone ?? null,
-      avatarUrl: sessionUser?.user_metadata?.avatar_url ?? null,
-      role: sessionUser?.user_metadata?.role as Role | null,
+        const profile = await resolveCurrentProfile({
+          accessToken: accessToken ?? data.session?.access_token ?? null,
+          userId: sessionUser?.id,
+          email: sessionUser?.email ?? null,
+          fullName: sessionUser?.user_metadata?.full_name ?? sessionUser?.email ?? null,
+          phone: sessionUser?.phone ?? null,
+          avatarUrl: sessionUser?.user_metadata?.avatar_url ?? null,
+          role: sessionUser?.user_metadata?.role as Role | null,
     });
 
     if (!profile) throw new Error('No pudimos cargar tu perfil despues del inicio.');
@@ -105,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await resolveCurrentProfile({
           accessToken: session.access_token ?? null,
           userId: session.user.id,
+          email: session.user.email ?? null,
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? null,
           phone: session.user.phone ?? null,
           avatarUrl: session.user.user_metadata?.avatar_url ?? null,
@@ -134,6 +136,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const profile = await resolveCurrentProfile({
           accessToken: session.access_token ?? null,
           userId: session.user.id,
+          email: session.user.email ?? null,
           fullName: session.user.user_metadata?.full_name ?? session.user.email ?? null,
           phone: session.user.phone ?? null,
           avatarUrl: session.user.user_metadata?.avatar_url ?? null,

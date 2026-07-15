@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { isSupabaseReady, supabase } from '../../../integrations/supabase/client';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { getAuthRedirectUrl } from '../../../shared/auth/auth-redirect';
 import { isMockMode } from '../../../shared/lib/mockData';
 import { getRoleHomeScreen } from '../../../shared/security/access-policy';
 import logo from '../../../imports/image-1.png';
@@ -180,7 +181,7 @@ export function LoginScreen() {
         email: normalizedEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: getAuthRedirectUrl('/login'),
           data: { full_name: fullName.trim() },
         },
       });
@@ -212,7 +213,7 @@ export function LoginScreen() {
         type: 'signup',
         email: normalizedEmail,
         options: {
-          emailRedirectTo: `${window.location.origin}/login`,
+          emailRedirectTo: getAuthRedirectUrl('/login'),
         },
       });
 
@@ -266,7 +267,7 @@ export function LoginScreen() {
       const { error: oauthError } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/login`,
+          redirectTo: getAuthRedirectUrl('/login'),
           queryParams: { prompt: 'select_account' },
         },
       });

@@ -1,4 +1,5 @@
 import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
+import { getBootstrapRoleForEmail } from '../../../shared/auth/admin-bootstrap';
 import { hashText } from '../../../shared/validation';
 import { logAuditEvent } from '../../audit/application/audit.service';
 import { checkRateLimit, recordAttempt, resetAttempts } from '../../../shared/auth/rate-limiter';
@@ -70,6 +71,7 @@ export async function loginUser(email: string, password: string) {
 export async function resolveCurrentProfile(options?: {
   accessToken?: string | null;
   userId?: string;
+  email?: string | null;
   fullName?: string | null;
   phone?: string | null;
   avatarUrl?: string | null;
@@ -86,11 +88,23 @@ export async function resolveCurrentProfile(options?: {
   const userId = options?.userId ?? (await supabase.auth.getUser()).data.user?.id;
   if (!userId) return null;
 
+  const bootstrapRole = getBootstrapRoleForEmail(options?.email ?? null);
+  const desiredRole = bootstrapRole ?? options?.role ?? 'customer';
+
+  const current = await getProfile(userId);
+  if (current) {
+    if (bootstrapRole === 'admin' && current.role !== 'admin') {
+      await upsertProfile(userId, { ...current, role: 'admin' });
+      return getProfile(userId);
+    }
+    return current;
+  }
+
   return loadOrCreateLocalProfile(userId, {
     full_name: options?.fullName ?? null,
     phone: options?.phone ?? null,
     avatar_url: options?.avatarUrl ?? null,
-    role: options?.role ?? 'customer',
+    role: desiredRole,
   });
 }
 
