@@ -24,6 +24,27 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { getSupabase } from '../../../integrations/supabase/client';
+import {
+  claimDriverOrder,
+  getAvailableDriverOrders,
+  getDriverEarnings,
+  getDriverOrdersToday,
+  getDriverProfile,
+  getDriverTripCount,
+  getDriverWeeklyHistory,
+  getDriverWorkOrders,
+  saveDriverLocation,
+  setDriverOnline,
+  uploadDeliveryEvidence,
+  type AvailableDriverOrder,
+  type DriverLocation,
+  type DriverWorkOrder,
+} from '../../../modules/delivery/application/driver.service';
+import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
+import { updateOrderStatus } from '../../../modules/orders/application/order-service';
+import { STATUS_LABELS, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
+import logo from '../../../imports/image-1.png';
+import mascot from '../../../imports/image.png';
 
 delete (L.Icon.Default.prototype as any)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -67,29 +88,9 @@ function DriverMapController({ storeCoords, destCoords, currentCoords }: { store
   }, [map, storeCoords, destCoords, currentCoords]);
   return null;
 }
-import {
-  claimDriverOrder,
-  getAvailableDriverOrders,
-  getDriverEarnings,
-  getDriverOrdersToday,
-  getDriverProfile,
-  getDriverTripCount,
-  getDriverWeeklyHistory,
-  getDriverWorkOrders,
-  saveDriverLocation,
-  setDriverOnline,
-  uploadDeliveryEvidence,
-  type AvailableDriverOrder,
-  type DriverLocation,
-  type DriverWorkOrder,
-} from '../../../modules/delivery/application/driver.service';
-import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
-import { updateOrderStatus } from '../../../modules/orders/application/order-service';
-import { STATUS_LABELS, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
-import logo from '../../../imports/image-1.png';
-import mascot from '../../../imports/image.png';
 
 type DriverTab = 'dashboard' | 'orders' | 'wallet' | 'profile';
+type DriverLocationState = { tab?: DriverTab } | null;
 
 const ACTIVE_DELIVERY_STATUSES = ['picked_up', 'on_the_way', 'arrived'];
 
@@ -108,13 +109,14 @@ function isAssignableToDriver(status: string) {
 export function DriverDashboard() {
   const { user, logout } = useAuth();
   const location = useLocation();
+  const locationState = location.state as DriverLocationState;
   const [activeTab, setActiveTab] = useState<DriverTab>('dashboard');
   
   useEffect(() => {
-    if (location.state?.tab) {
-      setActiveTab(location.state.tab as DriverTab);
+    if (locationState?.tab) {
+      setActiveTab(locationState.tab);
     }
-  }, [location.state]);
+  }, [locationState?.tab]);
 
   const [isOnline, setIsOnline] = useState(false);
   const [loading, setLoading] = useState(true);
