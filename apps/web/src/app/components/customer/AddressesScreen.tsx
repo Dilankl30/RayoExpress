@@ -3,8 +3,9 @@ import { motion } from 'motion/react';
 import { ArrowLeft, Check, LocateFixed, MapPin, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { getAddresses, markDefaultAddress, removeAddress } from '../../../modules/client/application/client-service';
-import type { Address } from '../../../shared/types';
 import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
+import { formatCoordinates, toCoordinatePair } from '../../../shared/utils/coordinates';
+import type { Address } from '../../../shared/types';
 
 export function AddressesScreen() {
   const { navigate, user } = useAuth();
@@ -15,7 +16,7 @@ export function AddressesScreen() {
 
   useEffect(() => {
     if (!user) return;
-    loadAddresses();
+    void loadAddresses();
   }, [user]);
 
   const publishAddresses = (items: Address[]) => {
@@ -147,44 +148,45 @@ export function AddressesScreen() {
           </div>
         ) : (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            {addresses.map((address, index) => (
-              <motion.div
-                key={address.id}
-                className="bg-card rounded-3xl p-4 lg:p-5 shadow-sm border border-border-light"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
-              >
-                <div className="flex items-start gap-3">
-                  <MapPin size={21} className="mt-0.5 flex-shrink-0" style={{ color: address.is_default ? 'var(--brand)' : '#9CA3AF' }} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-text-primary font-bold truncate">{address.line1}</p>
-                    <p className="text-sm text-text-secondary truncate">{address.details || address.title}</p>
-                    {address.lat != null && address.lng != null && (
-                      <p className="text-xs text-text-secondary mt-1">GPS: {address.lat}, {address.lng}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!address.is_default && (
+            {addresses.map((address, index) => {
+              const gps = toCoordinatePair(address.lat, address.lng);
+              return (
+                <motion.div
+                  key={address.id}
+                  className="bg-card rounded-3xl p-4 lg:p-5 shadow-sm border border-border-light"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03 }}
+                >
+                  <div className="flex items-start gap-3">
+                    <MapPin size={21} className="mt-0.5 flex-shrink-0" style={{ color: address.is_default ? 'var(--brand)' : '#9CA3AF' }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-text-primary font-bold truncate">{address.line1}</p>
+                      <p className="text-sm text-text-secondary truncate">{address.details || address.title}</p>
+                      {gps && <p className="text-xs text-text-secondary mt-1">GPS: {formatCoordinates(gps, 5)}</p>}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {!address.is_default && (
+                        <button
+                          onClick={() => handleSetDefault(address.id)}
+                          className="w-9 h-9 rounded-xl flex items-center justify-center bg-surface hover:bg-brand-light transition-colors"
+                          aria-label="Marcar como principal"
+                        >
+                          <Check size={15} className="text-text-secondary" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => handleSetDefault(address.id)}
-                        className="w-9 h-9 rounded-xl flex items-center justify-center bg-surface hover:bg-brand-light transition-colors"
-                        aria-label="Marcar como principal"
+                        onClick={() => handleRemove(address.id)}
+                        className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 hover:bg-red-100 transition-colors"
+                        aria-label="Eliminar dirección"
                       >
-                        <Check size={15} className="text-text-secondary" />
+                        <Trash2 size={15} className="text-red-500" />
                       </button>
-                    )}
-                    <button
-                      onClick={() => handleRemove(address.id)}
-                      className="w-9 h-9 rounded-xl flex items-center justify-center bg-red-50 hover:bg-red-100 transition-colors"
-                      aria-label="Eliminar dirección"
-                    >
-                      <Trash2 size={15} className="text-red-500" />
-                    </button>
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              );
+            })}
           </section>
         )}
       </main>

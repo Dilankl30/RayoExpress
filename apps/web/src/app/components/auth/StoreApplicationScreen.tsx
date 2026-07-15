@@ -7,6 +7,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { submitStoreApplication, getMyStoreApplication } from '../../../modules/stores/application/store-application.service';
 import { uploadFile } from '../../../shared/storage/storage.service';
+import { formatCoordinates, toCoordinatePair } from '../../../shared/utils/coordinates';
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -33,6 +34,7 @@ export function StoreApplicationScreen() {
   const [checking, setChecking] = useState(true);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const mapCenter: [number, number] = [-2.1706, -79.9223];
+  const storeCoords = toCoordinatePair(latitude, longitude);
 
   useEffect(() => {
     if (!user) return;
@@ -218,21 +220,21 @@ export function StoreApplicationScreen() {
             <div className="flex items-center justify-between mb-1">
               <p className="text-xs text-text-secondary font-medium">Ubicación del negocio</p>
               <button onClick={() => setShowMap(!showMap)} className={`text-xs font-medium px-2 py-0.5 rounded-full ${showMap ? 'text-brand bg-purple-100' : 'text-text-secondary bg-surface-hover'}`}>
-                {showMap ? 'Cerrar mapa' : latitude != null ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
+                {showMap ? 'Cerrar mapa' : storeCoords ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
               </button>
             </div>
-            {latitude != null && longitude != null && !showMap && (
-              <p className="text-xs text-text-secondary">{latitude.toFixed(4)}, {longitude.toFixed(4)}</p>
+            {storeCoords && !showMap && (
+              <p className="text-xs text-text-secondary">{formatCoordinates(storeCoords)}</p>
             )}
             {showMap && (
               <div className="rounded-xl overflow-hidden border border-border-light z-0" style={{ height: 260 }}>
-                <MapContainer center={latitude != null && longitude != null ? [latitude, longitude] : mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
+                <MapContainer center={storeCoords ?? mapCenter} zoom={15} className="h-full w-full" scrollWheelZoom={true}>
                   <TileLayer
                     attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
                     url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
                   />
                   <LocationPicker onPick={(lat: number, lng: number) => { setLatitude(lat); setLongitude(lng); }} />
-                  {latitude != null && longitude != null && <Marker position={[latitude, longitude]} />}
+                  {storeCoords && <Marker position={storeCoords} />}
                 </MapContainer>
               </div>
             )}

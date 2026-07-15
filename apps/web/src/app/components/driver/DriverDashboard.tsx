@@ -43,6 +43,7 @@ import {
 import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
 import { updateOrderStatus } from '../../../modules/orders/application/order-service';
 import { STATUS_LABELS, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
+import { toCoordinatePair } from '../../../shared/utils/coordinates';
 import logo from '../../../imports/image-1.png';
 import mascot from '../../../imports/image.png';
 
@@ -667,13 +668,9 @@ function DriverOrderCard({ order, primary = false, busy, location, locationError
   const action = nextDriverStatus(order.status);
   const waitingForStore = !action && !ACTIVE_DELIVERY_STATUSES.includes(order.status);
 
-  const storeCoords = useMemo<[number, number] | null>(() => {
-    return order.store_lat != null && order.store_lng != null ? [order.store_lat, order.store_lng] : null;
-  }, [order.store_lat, order.store_lng]);
+  const storeCoords = useMemo(() => toCoordinatePair(order.store_lat, order.store_lng), [order.store_lat, order.store_lng]);
 
-  const destCoords = useMemo<[number, number] | null>(() => {
-    return order.delivery_lat != null && order.delivery_lng != null ? [order.delivery_lat, order.delivery_lng] : null;
-  }, [order.delivery_lat, order.delivery_lng]);
+  const destCoords = useMemo(() => toCoordinatePair(order.delivery_lat, order.delivery_lng), [order.delivery_lat, order.delivery_lng]);
 
   const currentCoords = useMemo<[number, number] | null>(() => {
     return location ? [location.lat, location.lng] : null;

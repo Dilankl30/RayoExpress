@@ -10,6 +10,7 @@ import { getSupabase } from '../../../integrations/supabase/client';
 import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
+import { formatCoordinates, toCoordinatePair } from '../../../shared/utils/coordinates';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import type { Database } from '../../../shared/types';
 
@@ -155,15 +156,12 @@ export function TrackingScreen() {
   const eta = estimateEta(activeStatus);
 
   // Derive coordinates from order data or use mock
-  const storeCoords: [number, number] = activeOrder?.store?.lat != null && activeOrder.store.lng != null
-    ? [activeOrder.store.lat, activeOrder.store.lng]
-    : MOCK_STORE_COORDS;
-  const destCoords: [number, number] = activeOrder?.delivery_lat != null && activeOrder?.delivery_lng != null
-    ? [activeOrder.delivery_lat, activeOrder.delivery_lng]
-    : MOCK_DEST_COORDS;
+  const storeCoords = toCoordinatePair(activeOrder?.store?.lat, activeOrder?.store?.lng) ?? MOCK_STORE_COORDS;
+  const destCoords = toCoordinatePair(activeOrder?.delivery_lat, activeOrder?.delivery_lng) ?? MOCK_DEST_COORDS;
   const driverCoords: [number, number] | null = driverLocation
     ? [driverLocation.lat, driverLocation.lng]
     : null;
+  const driverCoordsLabel = formatCoordinates(driverCoords, 5);
 
   const loadOrders = async (showSpinner = false) => {
     if (!user) return;
@@ -429,7 +427,7 @@ export function TrackingScreen() {
                   <p className="text-text-primary font-medium">{currentStatusLabel}</p>
                   <p className="text-sm text-text-secondary">
                     {driverLocation
-                      ? `Ultima ubicacion ${new Date(driverLocation.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}`
+                      ? `Ultima ubicacion ${new Date(driverLocation.created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}${driverCoordsLabel ? ` · ${driverCoordsLabel}` : ''}`
                       : activeOrder ? 'Esperando ubicacion del repartidor' : 'No hay un pedido activo para seguir'}
                   </p>
                 </div>
