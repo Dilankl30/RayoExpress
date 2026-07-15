@@ -33,7 +33,7 @@ export async function getStoresInBounds(northEast: [number, number], southWest: 
 export async function getStores(city?: string): Promise<Store[]> {
   if (!isSupabaseReady) {
     let list = mockStores as Store[];
-    if (city) list = list.filter((s) => (s as any).city === city);
+    if (city) list = list.filter((s) => s.city === city);
     return list;
   }
   const supabase = getSupabase();
@@ -47,8 +47,8 @@ export async function getStores(city?: string): Promise<Store[]> {
 export async function getStoresWithLocation(city?: string): Promise<Store[]> {
   if (!isSupabaseReady) {
     let list = mockStores as Store[];
-    if (city) list = list.filter((s) => (s as any).city === city);
-    return list.filter((s) => (s as any).latitude && (s as any).longitude);
+    if (city) list = list.filter((s) => s.city === city);
+    return list.filter((s) => s.latitude !== null && s.longitude !== null);
   }
   const supabase = getSupabase();
   let query = supabase.from('stores').select('*').not('latitude', 'is', null).not('longitude', 'is', null);
@@ -103,7 +103,7 @@ export async function getProductsByCategory(categoryId: string): Promise<Product
 export async function createStore(data: { name: string; description?: string; emoji?: string; city?: string; user_id: string; owner_id?: string }) {
   const ownerId = data.owner_id ?? data.user_id;
   if (!isSupabaseReady) {
-    const store = { id: `mock-store-${Date.now()}`, ...data, owner_id: ownerId } as any;
+    const store = { id: `mock-store-${Date.now()}`, ...data, owner_id: ownerId } as unknown as Store;
     logAuditEvent({ userId: ownerId, action: 'STORE_CREATED', entityType: 'store', entityId: store.id, details: { name: data.name, city: data.city } }).catch(() => {});
     return store;
   }

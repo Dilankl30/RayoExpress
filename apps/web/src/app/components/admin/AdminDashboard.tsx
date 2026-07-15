@@ -26,6 +26,7 @@ import {
 } from '../../../modules/admin/application/admin.service';
 import { AdminApplications } from '../../../modules/admin/ui/AdminApplications';
 import type { RecentOrder, RecentUser, DailyOrders } from '../../../modules/admin/application/admin-analytics.service';
+import { parseCoverageAreaConfig } from '../../../shared/utils/coverage-area';
 
 const PIE_COLORS = ['var(--brand)', '#22C55E', '#F59E0B', '#3B82F6', '#EF4444'];
 const STATUS_STYLES: Record<string, string> = {
@@ -47,7 +48,7 @@ const ROLE_LABELS: Record<string, string> = {
 
 // Fix Leaflet default marker icon paths for Vite
 if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
-  delete (L.Icon.Default.prototype as any)._getIconUrl;
+  delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
   L.Icon.Default.mergeOptions({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -160,11 +161,11 @@ export function AdminDashboard() {
 
         if (storesRes.data) setCoverageStores(storesRes.data as CoverageStore[]);
 
-        if (configRes.data && configRes.data.value) {
-          const val = configRes.data.value as any;
-          if (val.center) setCoverageCenter(val.center);
-          if (val.radius_km) setCoverageRadius(val.radius_km);
-          if (val.city_name) setCoverageCity(val.city_name);
+        const val = parseCoverageAreaConfig(configRes.data?.value);
+        if (val) {
+          setCoverageCenter(val.center);
+          setCoverageRadius(val.radius_km);
+          setCoverageCity(val.city_name);
         }
       } catch (e) {
         console.error('Error loading coverage config:', e);
@@ -612,9 +613,12 @@ export function AdminDashboard() {
     </div>
   );
 
-  const getErrorMessage = (e: any): string => {
+  const getErrorMessage = (e: unknown): string => {
     if (e instanceof Error && e.message) return e.message;
-    if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') return e.message;
+    if (typeof e === 'object' && e !== null && 'message' in e) {
+      const message = (e as { message?: unknown }).message;
+      if (typeof message === 'string') return message;
+    }
     return 'Error desconocido';
   };
 

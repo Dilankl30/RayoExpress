@@ -12,6 +12,7 @@ import {
 import { detectCityCached } from '../../../shared/lib/city';
 import type { Address } from '../../../shared/types';
 import { getSupabase } from '../../../integrations/supabase/client';
+import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
 
 // Fix Leaflet marker icons for Vite
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -82,17 +83,17 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [mapPickLat, setMapPickLat] = useState<number | null>(null);
   const [mapPickLng, setMapPickLng] = useState<number | null>(null);
   const mapCenter = useRef<[number, number]>(DEFAULT_CENTER);
-  const [coverageArea, setCoverageArea] = useState<{ center: [number, number]; radius_km: number; city_name: string } | null>(null);
+  const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
 
   useEffect(() => {
     const loadCoverage = async () => {
       try {
         const supabase = getSupabase();
         const { data } = await supabase.from('app_config').select('*').eq('key', 'coverage_area').maybeSingle();
-        if (data && data.value) {
-          const val = data.value as any;
+        const val = parseCoverageAreaConfig(data?.value);
+        if (val) {
           setCoverageArea(val);
-          if (val.center && !mapPickLat) {
+          if (!mapPickLat) {
             mapCenter.current = val.center;
           }
         }

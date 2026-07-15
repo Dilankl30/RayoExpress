@@ -35,7 +35,7 @@ export interface ActivityItem {
   id: string;
   action: string;
   type: string;
-  details: any;
+  details: Record<string, unknown> | null;
   created_at: string;
   user_name: string | null;
 }
@@ -134,12 +134,23 @@ export async function getRecentActivity(limit = 50): Promise<ActivityItem[]> {
   if (error) throw error;
   if (!data) return [];
   const items = Array.isArray(data) ? data : (typeof data === 'object' ? Object.values(data) : []);
-  return (items as any[]).map(item => ({
-    id: item.id,
-    action: item.action,
-    type: item.entity_type,
-    details: item.details,
-    created_at: item.created_at,
-    user_name: item.user_name
-  }));
+  return items
+    .map((item): ActivityItem | null => {
+      if (!item || typeof item !== 'object') return null;
+      const record = item as Record<string, unknown>;
+      const id = typeof record.id === 'string' ? record.id : null;
+      const action = typeof record.action === 'string' ? record.action : null;
+      const type = typeof record.entity_type === 'string' ? record.entity_type : null;
+      const createdAt = typeof record.created_at === 'string' ? record.created_at : null;
+      if (!id || !action || !type || !createdAt) return null;
+      return {
+        id,
+        action,
+        type,
+        details: record.details && typeof record.details === 'object' ? record.details as Record<string, unknown> : null,
+        created_at: createdAt,
+        user_name: typeof record.user_name === 'string' ? record.user_name : null,
+      };
+    })
+    .filter((item): item is ActivityItem => item !== null);
 }

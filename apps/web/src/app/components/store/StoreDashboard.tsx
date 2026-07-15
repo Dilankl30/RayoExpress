@@ -66,7 +66,7 @@ export function StoreDashboard() {
         const store = await getStoreByOwner(user.id);
         if (!store) throw new Error('No tienes una tienda registrada');
         setStoreId(store.id); setStoreName(store.name); setIsOpen(store.is_open);
-        setStoreCity((store as any).city || null);
+        setStoreCity(store.city ?? null);
         setStats(await getStoreDashboardStats(store.id));
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Error al cargar');
@@ -81,11 +81,15 @@ export function StoreDashboard() {
     setOrdersLoading(true);
     try {
       const data = await getStoreOrders(storeId);
-      setAllOrders((data as any[]).map((o: any) => ({
-        id: o.id, status: o.status, total: o.total ?? 0,
-        customer_name: o.customer_name ?? null,
-        driver_name: o.driver?.full_name ?? null,
-        created_at: o.created_at,
+      setAllOrders((data as Array<Record<string, unknown>>).map((o) => ({
+        id: o.id as string,
+        status: o.status as string,
+        total: typeof o.total === 'number' ? o.total : 0,
+        customer_name: typeof o.customer_name === 'string' ? o.customer_name : null,
+        driver_name: typeof o.driver === 'object' && o.driver !== null && 'full_name' in o.driver && typeof (o.driver as { full_name?: unknown }).full_name === 'string'
+          ? (o.driver as { full_name?: string }).full_name ?? null
+          : null,
+        created_at: o.created_at as string,
       })));
     } catch { /* noop */ } finally { setOrdersLoading(false); }
   }, [storeId]);

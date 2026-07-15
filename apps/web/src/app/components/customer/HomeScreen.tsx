@@ -18,6 +18,7 @@ import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { resolvePreferredLocation } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
 import type { Address, Database } from '../../../shared/types';
+import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
 import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -93,7 +94,7 @@ export function HomeScreen() {
   const [map, setMap] = useState<L.Map | null>(null);
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
   const [selectedStoreOnMap, setSelectedStoreOnMap] = useState<Store | null>(null);
-  const [coverageArea, setCoverageArea] = useState<{ center: [number, number]; radius_km: number; city_name: string } | null>(null);
+  const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
 
   useEffect(() => {
     const loadCoverage = async () => {
@@ -104,8 +105,9 @@ export function HomeScreen() {
           .select('*')
           .eq('key', 'coverage_area')
           .maybeSingle();
-        if (data && data.value) {
-          setCoverageArea(data.value as any);
+        const val = parseCoverageAreaConfig(data?.value);
+        if (val) {
+          setCoverageArea(val);
         }
       } catch (e) {
         console.error('Error loading operations coverage config:', e);

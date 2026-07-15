@@ -12,6 +12,7 @@ import { getSupabase } from '../../../integrations/supabase/client';
 import { getStores, getCategories, getStoresInBounds, getProductsByStores } from '../../../modules/stores/application/store-service';
 import { resolvePreferredLocation } from '../../../modules/client/application/client-service';
 import type { Database } from '../../../shared/types';
+import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -50,7 +51,7 @@ export function ExploreScreen() {
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
   const [userAddress, setUserAddress] = useState('Ubicación de entrega');
   const [selectedStoreOnMap, setSelectedStoreOnMap] = useState<Store | null>(null);
-  const [coverageArea, setCoverageArea] = useState<{ center: [number, number]; radius_km: number; city_name: string } | null>(null);
+  const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
 
   // Load configuration and data
@@ -64,8 +65,8 @@ export function ExploreScreen() {
           .eq('key', 'coverage_area')
           .maybeSingle();
         
-        if (configData && configData.value) {
-          const val = configData.value as any;
+        const val = parseCoverageAreaConfig(configData?.value);
+        if (val) {
           setCoverageArea(val);
         }
 
