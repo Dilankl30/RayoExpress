@@ -12,7 +12,12 @@ import { getSupabase } from '../../../integrations/supabase/client';
 import { getStores, getCategories, getStoresInBounds, getProductsByStores } from '../../../modules/stores/application/store-service';
 import { resolvePreferredLocation } from '../../../modules/client/application/client-service';
 import type { Database } from '../../../shared/types';
-import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
+import {
+  getActiveCoverageZone,
+  parseCoverageAreaConfig,
+  parseCoverageZonesConfig,
+  type CoverageAreaConfig,
+} from '../../../shared/utils/coverage-area';
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
@@ -59,15 +64,30 @@ export function ExploreScreen() {
     const loadCoverageAndStores = async () => {
       try {
         const supabase = getSupabase();
-        const { data: configData } = await supabase
+        const { data: zonesData } = await supabase
           .from('app_config')
           .select('*')
-          .eq('key', 'coverage_area')
+          .eq('key', 'coverage_zones')
           .maybeSingle();
-        
-        const val = parseCoverageAreaConfig(configData?.value);
-        if (val) {
-          setCoverageArea(val);
+        const zones = parseCoverageZonesConfig(zonesData?.value);
+        const activeZone = getActiveCoverageZone(zones);
+        if (activeZone) {
+          setCoverageArea({
+            center: [activeZone.center[0], activeZone.center[1]],
+            radius_km: activeZone.radius_km,
+            city_name: activeZone.city_name,
+          });
+        } else {
+          const { data: configData } = await supabase
+            .from('app_config')
+            .select('*')
+            .eq('key', 'coverage_area')
+            .maybeSingle();
+
+          const val = parseCoverageAreaConfig(configData?.value);
+          if (val) {
+            setCoverageArea(val);
+          }
         }
 
         // Get stores and categories

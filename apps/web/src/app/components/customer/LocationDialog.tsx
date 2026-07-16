@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Plus, Search, X } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents, Circle } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
@@ -12,7 +12,14 @@ import {
 import { detectCityCached } from '../../../shared/lib/city';
 import type { Address } from '../../../shared/types';
 import { getSupabase } from '../../../integrations/supabase/client';
-import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
+import {
+  getActiveCoverageZone,
+  isPointInAnyCoverageZone,
+  parseCoverageAreaConfig,
+  parseCoverageZonesConfig,
+  type CoverageAreaConfig,
+  type CoverageZonesConfig,
+} from '../../../shared/utils/coverage-area';
 
 // Fix Leaflet marker icons for Vite
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -84,17 +91,36 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [mapPickLng, setMapPickLng] = useState<number | null>(null);
   const mapCenter = useRef<[number, number]>(DEFAULT_CENTER);
   const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
+  const [coverageZones, setCoverageZones] = useState<CoverageZonesConfig | null>(null);
 
   useEffect(() => {
     const loadCoverage = async () => {
       try {
         const supabase = getSupabase();
+        const { data: zonesData } = await supabase.from('app_config').select('*').eq('key', 'coverage_zones').maybeSingle();
+        const zones = parseCoverageZonesConfig(zonesData?.value);
+        if (zones) {
+          setCoverageZones(zones);
+          const activeZone = getActiveCoverageZone(zones);
+          if (activeZone) {
+            setCoverageArea({
+              center: [activeZone.center[0], activeZone.center[1]],
+              radius_km: activeZone.radius_km,
+              city_name: activeZone.city_name,
+            });
+            if (!mapPickLat) {
+              mapCenter.current = activeZone.center;
+            }
+          }
+          return;
+        }
+
         const { data } = await supabase.from('app_config').select('*').eq('key', 'coverage_area').maybeSingle();
-        const val = parseCoverageAreaConfig(data?.value);
-        if (val) {
-          setCoverageArea(val);
+        const legacy = parseCoverageAreaConfig(data?.value);
+        if (legacy) {
+          setCoverageArea(legacy);
           if (!mapPickLat) {
-            mapCenter.current = val.center;
+            mapCenter.current = legacy.center;
           }
         }
       } catch { /* noop */ }
@@ -103,22 +129,36 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   }, [mapPickLat]);
 
   const checkCoordinatesInCoverage = (lat: number, lng: number): { inside: boolean; msg?: string } => {
-    if (!coverageArea) return { inside: true };
-    
-    const R = 6371; // Earth radius in km
-    const dLat = (lat - coverageArea.center[0]) * Math.PI / 180;
-    const dLng = (lng - coverageArea.center[1]) * Math.PI / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(coverageArea.center[0] * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const dist = R * c;
+    if (coverageZones) {
+      const result = isPointInAnyCoverageZone(lat, lng, coverageZones);
+      if (!result.inside) {
+        const city = result.zone?.city_name ?? 'la zona activa';
+        return {
+          inside: false,
+          msg: `⚠️ Esta ubicación está fuera de la cobertura de RayoExpress para ${city}.`,
+        };
+      }
+      return { inside: true };
+    }
 
-    if (dist > coverageArea.radius_km) {
+    if (!coverageArea) return { inside: true };
+
+    const result = isPointInAnyCoverageZone(lat, lng, {
+      version: 2,
+      active_city_id: 'legacy',
+      cities: [{
+        id: 'legacy',
+        city_name: coverageArea.city_name,
+        center: coverageArea.center,
+        radius_km: coverageArea.radius_km,
+        is_active: true,
+      }],
+    });
+
+    if (!result.inside) {
       return {
         inside: false,
-        msg: `⚠️ Esta ubicación está a ${dist.toFixed(1)} km, fuera de la zona de cobertura de RayoExpress (${coverageArea.radius_km} km de rango en ${coverageArea.city_name}).`,
+        msg: `⚠️ Esta ubicación está fuera de la zona de cobertura de RayoExpress (${coverageArea.radius_km} km de rango en ${coverageArea.city_name}).`,
       };
     }
     return { inside: true };
@@ -338,25 +378,12 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
 
           {showMap && (
             <div className="rounded-2xl overflow-hidden border border-border-light z-0" style={{ height: 280 }}>
-              <MapContainer center={mapCenter.current} zoom={coverageArea ? 13 : 15} className="h-full w-full" scrollWheelZoom={true}>
+              <MapContainer center={mapCenter.current} zoom={coverageArea || coverageZones ? 13 : 15} className="h-full w-full" scrollWheelZoom={true}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
                   url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 />
                 <LocationPicker onPick={handleMapPick} />
-                {coverageArea && (
-                  <Circle
-                    center={coverageArea.center}
-                    radius={coverageArea.radius_km * 1000}
-                    pathOptions={{
-                      color: 'var(--brand)',
-                      fillColor: 'var(--brand)',
-                      fillOpacity: 0.08,
-                      weight: 2,
-                      dashArray: '6 4',
-                    }}
-                  />
-                )}
                 {mapPickLat && mapPickLng && (
                   <Marker position={[mapPickLat, mapPickLng]} />
                 )}

@@ -67,13 +67,39 @@ export async function deleteUser(userId: string) {
   return data as { ok: boolean };
 }
 
+function normalizeJsonArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (value && typeof value === 'object') return Object.values(value) as T[];
+  return [];
+}
+
 // ── Users ──
-export async function searchUsers(search = '', role?: string): Promise<AdminUser[]> {
-  if (!isSupabaseReady) return mockUsers.filter(u => (role ? u.role === role : true) && (search ? u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()) : true));
+export async function searchUsers(search = '', role?: string, limit = 50, offset = 0): Promise<AdminUser[]> {
+  if (!isSupabaseReady) {
+    return mockUsers.filter(u => (role ? u.role === role : true) && (search ? u.full_name?.toLowerCase().includes(search.toLowerCase()) || u.email?.toLowerCase().includes(search.toLowerCase()) : true));
+  }
   const supabase = getSupabase();
-  const { data, error } = await supabase.rpc('admin_search_users', { p_search: search, p_role: role ?? null });
-  if (error) throw error;
-  return (data ?? []) as AdminUser[];
+  const { data, error } = await supabase.rpc('admin_search_users', { p_search: search, p_role: role ?? null, p_limit: limit, p_offset: offset });
+  if (!error && Array.isArray(data)) {
+    return data as AdminUser[];
+  }
+
+  const query = supabase
+    .from('profiles')
+    .select('id, full_name, email, phone, role, is_suspended, created_at, last_sign_in')
+    .order('created_at', { ascending: false });
+
+  if (search.trim()) {
+    query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
+  }
+
+  if (role) {
+    query.eq('role', role);
+  }
+
+  const { data: fallbackData, error: fallbackError } = await query.range(offset, offset + limit - 1);
+  if (fallbackError) throw (error ?? fallbackError);
+  return (fallbackData ?? []) as AdminUser[];
 }
 
 export async function toggleSuspend(userId: string, suspended: boolean) {
@@ -88,9 +114,9 @@ export async function toggleSuspend(userId: string, suspended: boolean) {
 export async function getAllStores(): Promise<AdminStore[]> {
   if (!isSupabaseReady) return mockStores;
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('admin_store_stats').select('*').order('store_name');
+  const { data, error } = await supabase.rpc('get_admin_store_stats');
   if (error) throw error;
-  return (data ?? []) as AdminStore[];
+  return normalizeJsonArray<AdminStore>(data);
 }
 
 export async function getStoreDetail(storeId: string): Promise<StoreDetail | null> {
@@ -113,9 +139,9 @@ export async function toggleStoreStatus(storeId: string, isOpen: boolean) {
 export async function getAllDrivers(): Promise<AdminDriver[]> {
   if (!isSupabaseReady) return mockDrivers;
   const supabase = getSupabase();
-  const { data, error } = await supabase.from('admin_driver_stats').select('*').order('full_name');
+  const { data, error } = await supabase.rpc('get_admin_driver_stats');
   if (error) throw error;
-  return (data ?? []) as AdminDriver[];
+  return normalizeJsonArray<AdminDriver>(data);
 }
 
 export async function getDriverDetail(driverId: string): Promise<DriverDetail | null> {

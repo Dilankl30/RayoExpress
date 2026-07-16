@@ -1,32 +1,37 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect, type ReactNode } from 'react';
 import {
   TrendingUp, DollarSign, ShoppingCart, Users, Store, Bike,
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
-  UserCheck, UserX, ToggleLeft, ToggleRight, Trash2,
-  Locate, CheckCircle, AlertTriangle, Plus, Minus,
+  UserCheck, UserX, Trash2,
+  CheckCircle, AlertTriangle, MapPinned,
 } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
 import { getSupabase } from '../../../integrations/supabase/client';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import {
-  getAdminKPIs, getMonthlySales, getDailyOrders,
-  getCategoryDistribution, getRecentOrders, getUserCountsByRole, getRecentUsers,
-} from '../../../modules/admin/application/admin-analytics.service';
+import { getAdminDashboardSummary } from '../../../modules/admin/application/admin-analytics.service';
 import {
   searchUsers, toggleSuspend, deleteUser, getAllStores, toggleStoreStatus,
   getAllDrivers, getRecentActivity,
   type AdminUser, type AdminStore, type AdminDriver, type ActivityItem,
 } from '../../../modules/admin/application/admin.service';
 import { AdminApplications } from '../../../modules/admin/ui/AdminApplications';
-import type { RecentOrder, RecentUser, DailyOrders } from '../../../modules/admin/application/admin-analytics.service';
-import { parseCoverageAreaConfig } from '../../../shared/utils/coverage-area';
+import type { AdminDashboardSummary, RecentOrder, RecentUser, DailyOrders } from '../../../modules/admin/application/admin-analytics.service';
+import { CoverageMapEditor, type CoverageCityDraft, type CoverageStorePoint } from './CoverageMapEditor';
+import {
+  buildCoverageZonesConfig,
+  coverageZonesToLegacyArea,
+  getActiveCoverageZone,
+  getCoverageZoneForCity,
+  isPointInAnyCoverageZone,
+  isPointInCoverageZone,
+  parseCoverageAreaConfig,
+  parseCoverageZonesConfig,
+  type CoverageZonesConfig,
+} from '../../../shared/utils/coverage-area';
 
 const PIE_COLORS = ['var(--brand)', '#22C55E', '#F59E0B', '#3B82F6', '#EF4444'];
 const STATUS_STYLES: Record<string, string> = {
@@ -46,55 +51,23 @@ const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente', driver: 'Repartidor', store: 'Tienda', admin: 'Admin',
 };
 
-// Fix Leaflet default marker icon paths for Vite
-if (typeof L !== 'undefined' && L.Icon && L.Icon.Default) {
-  delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
-  L.Icon.Default.mergeOptions({
-    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  });
-}
-
 type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage';
 
-const TABS: { key: Tab; label: string; icon: string }[] = [
-  { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'orders', label: 'Pedidos', icon: '📋' },
-  { key: 'stores', label: 'Tiendas', icon: '🏪' },
-  { key: 'drivers', label: 'Repartidores', icon: '🚴' },
-  { key: 'users', label: 'Usuarios', icon: '👥' },
-  { key: 'applications', label: 'Solicitudes', icon: '📝' },
-  { key: 'reports', label: 'Reportes', icon: '📈' },
-  { key: 'coverage', label: 'Cobertura', icon: '🗺️' },
+const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
+  { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} /> },
+  { key: 'orders', label: 'Pedidos', icon: <ShoppingCart size={16} /> },
+  { key: 'stores', label: 'Tiendas', icon: <Store size={16} /> },
+  { key: 'drivers', label: 'Repartidores', icon: <Bike size={16} /> },
+  { key: 'users', label: 'Usuarios', icon: <Users size={16} /> },
+  { key: 'applications', label: 'Solicitudes', icon: <UserCheck size={16} /> },
+  { key: 'reports', label: 'Reportes', icon: <TrendingUp size={16} /> },
+  { key: 'coverage', label: 'Cobertura', icon: <MapPinned size={16} /> },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+const USER_PAGE_SIZE = 50;
 
 function formatCurrency(n: number) { return n.toLocaleString('es-EC', { style: 'currency', currency: 'USD' }); }
-
-function getDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth radius in km
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function MapControllerHelper({ setMap, center }: { setMap: (map: L.Map) => void; center: [number, number] }) {
-  const map = useMap();
-  useEffect(() => {
-    setMap(map);
-  }, [map, setMap]);
-  useEffect(() => {
-    map.panTo(center);
-  }, [map, center]);
-  return null;
-}
 
 function StatusBadge({ status }: { status: string }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_STYLES[status] || 'bg-surface text-text-secondary'}`}>{STATUS_LABELS[status] || status}</span>;
@@ -130,20 +103,29 @@ export function AdminDashboard() {
   const [userRoleFilter, setUserRoleFilter] = useState<string>('');
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [usersPage, setUsersPage] = useState(0);
+  const [usersHasMore, setUsersHasMore] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
 
   // activity
   const [activity, setActivity] = useState<ActivityItem[]>([]);
 
   // coverage tab
-  interface CoverageStore { id: string; name: string; emoji: string; latitude: number | null; longitude: number | null; city: string | null; is_open: boolean; }
-  const [coverageCenter, setCoverageCenter] = useState<[number, number]>([-0.4632, -76.9892]); // El Coca
-  const [coverageRadius, setCoverageRadius] = useState<number>(5); // km
-  const [coverageCity, setCoverageCity] = useState<string>('Puerto Francisco de Orellana (El Coca)');
+  const [coverageZones, setCoverageZones] = useState<CoverageZonesConfig>(buildCoverageZonesConfig([
+    { id: 'coca', city_name: 'Puerto Francisco de Orellana (El Coca)', center: [-0.4632, -76.9892], radius_km: 5, is_active: true, shape: 'circle', boundary: [] },
+  ]));
+  const [coverageDraft, setCoverageDraft] = useState<CoverageCityDraft[]>(
+    coverageZones.cities.map((city) => ({
+      ...city,
+      center: [city.center[0], city.center[1]] as [number, number],
+      boundary: city.boundary?.map((point) => [point[0], point[1]] as [number, number]) ?? [],
+      shape: city.shape ?? (city.boundary && city.boundary.length >= 3 ? 'polygon' : 'circle'),
+    })),
+  );
+  const [selectedCoverageCityId, setSelectedCoverageCityId] = useState<string>(coverageZones.active_city_id ?? coverageZones.cities[0]?.id ?? '');
   const [coverageLoading, setCoverageLoading] = useState(false);
   const [savingCoverage, setSavingCoverage] = useState(false);
-  const [adminMap, setAdminMap] = useState<L.Map | null>(null);
-  const [coverageStores, setCoverageStores] = useState<CoverageStore[]>([]);
+  const [coverageStores, setCoverageStores] = useState<CoverageStorePoint[]>([]);
 
   // ---- Load Coverage and Stores ----
   useEffect(() => {
@@ -156,16 +138,24 @@ export function AdminDashboard() {
 
         const [storesRes, configRes] = await Promise.all([
           supabase.from('stores').select('id, name, emoji, latitude, longitude, city, is_open'),
-          supabase.from('app_config').select('*').eq('key', 'coverage_area').maybeSingle(),
+          supabase.from('app_config').select('*').eq('key', 'coverage_zones').maybeSingle(),
         ]);
 
-        if (storesRes.data) setCoverageStores(storesRes.data as CoverageStore[]);
+        if (storesRes.data) setCoverageStores(storesRes.data as CoverageStorePoint[]);
 
-        const val = parseCoverageAreaConfig(configRes.data?.value);
-        if (val) {
-          setCoverageCenter(val.center);
-          setCoverageRadius(val.radius_km);
-          setCoverageCity(val.city_name);
+        const parsedZones = parseCoverageZonesConfig(configRes.data?.value);
+        const legacy = parseCoverageAreaConfig(configRes.data?.value);
+        const zones = parsedZones ?? (legacy ? buildCoverageZonesConfig([{ id: 'default', city_name: legacy.city_name, center: legacy.center, radius_km: legacy.radius_km, is_active: true, shape: 'circle', boundary: [] }]) : null);
+
+        if (zones) {
+          setCoverageZones(zones);
+          setCoverageDraft(zones.cities.map((city) => ({
+            ...city,
+            center: [city.center[0], city.center[1]] as [number, number],
+            boundary: city.boundary?.map((point) => [point[0], point[1]] as [number, number]) ?? [],
+            shape: city.shape ?? (city.boundary && city.boundary.length >= 3 ? 'polygon' : 'circle'),
+          })));
+          setSelectedCoverageCityId(zones.active_city_id ?? zones.cities[0]?.id ?? '');
         }
       } catch (e) {
         console.error('Error loading coverage config:', e);
@@ -182,21 +172,33 @@ export function AdminDashboard() {
     const load = async () => {
       setLoading(true);
       try {
-        const [k, ms, dO, cD, rO, uR, rU] = await Promise.all([
-          getAdminKPIs(), getMonthlySales(), getDailyOrders(),
-          getCategoryDistribution(), getRecentOrders(), getUserCountsByRole(), getRecentUsers(),
-        ]);
+        const summary: AdminDashboardSummary = await getAdminDashboardSummary(period);
+        const activeOrders = summary.kpis.activeOrders;
+        const totalDrivers = summary.user_counts.drivers;
+        const totalUsers = summary.user_counts.customers + summary.user_counts.stores + summary.user_counts.drivers + summary.user_counts.admins;
+        const pendingOrders = summary.recent_orders.filter((order) => ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'].includes(order.status)).length;
         setKpis({
-          totalSales: k.salesToday, totalOrders: k.activeOrders, activeStores: k.activeStores,
-          activeDrivers: k.onlineDrivers, totalDrivers: k.onlineDrivers, totalUsers: k.activeCustomers,
-          avgOrderValue: k.activeOrders > 0 ? k.salesToday / k.activeOrders : 0, conversionRate: 0, pendingOrders: 0,
+          totalSales: summary.kpis.salesToday,
+          totalOrders: activeOrders,
+          activeStores: summary.kpis.activeStores,
+          activeDrivers: summary.kpis.onlineDrivers,
+          totalDrivers,
+          totalUsers,
+          avgOrderValue: activeOrders > 0 ? summary.kpis.salesToday / activeOrders : 0,
+          conversionRate: 0,
+          pendingOrders,
         });
-        setMonthlySales(ms);
-        setDailyOrders(dO.map((o: DailyOrders) => ({ date: o.day, orders: o.orders })));
-        setCategoryDist(cD);
-        setRecentOrders(rO);
-        setUsersByRole([{ role: 'customer', count: uR.customers }, { role: 'store', count: uR.stores }, { role: 'driver', count: uR.drivers }, { role: 'admin', count: uR.admins }]);
-        setRecentUsers(rU);
+        setMonthlySales(summary.monthly_sales);
+        setDailyOrders(summary.daily_orders.map((o: DailyOrders) => ({ date: o.day, orders: o.orders })));
+        setCategoryDist(summary.category_distribution);
+        setRecentOrders(summary.recent_orders);
+        setUsersByRole([
+          { role: 'customer', count: summary.user_counts.customers },
+          { role: 'store', count: summary.user_counts.stores },
+          { role: 'driver', count: summary.user_counts.drivers },
+          { role: 'admin', count: summary.user_counts.admins },
+        ]);
+        setRecentUsers(summary.recent_users);
       } catch { /* noop */ } finally { setLoading(false); }
     };
     load();
@@ -220,11 +222,44 @@ export function AdminDashboard() {
   useEffect(() => {
     if (activeTab !== 'users') return;
     const t = setTimeout(() => {
+      setUsersPage(0);
+      setUsersHasMore(true);
       setUsersLoading(true);
-      searchUsers(userSearch, userRoleFilter || undefined).then(setUsers).catch(() => {}).finally(() => setUsersLoading(false));
+      searchUsers(userSearch, userRoleFilter || undefined, USER_PAGE_SIZE, 0)
+        .then((result) => {
+          setUsers(result);
+          setUsersHasMore(result.length === USER_PAGE_SIZE);
+        })
+        .catch(() => {})
+        .finally(() => setUsersLoading(false));
     }, 300);
     return () => clearTimeout(t);
   }, [activeTab, userSearch, userRoleFilter]);
+
+  const loadMoreUsers = async () => {
+    const nextPage = usersPage + 1;
+    setUsersLoading(true);
+    try {
+      const result = await searchUsers(userSearch, userRoleFilter || undefined, USER_PAGE_SIZE, nextPage * USER_PAGE_SIZE);
+      setUsers((prev) => {
+        const seen = new Set(prev.map((user) => user.id));
+        const merged = [...prev];
+        result.forEach((user) => {
+          if (!seen.has(user.id)) {
+            merged.push(user);
+            seen.add(user.id);
+          }
+        });
+        return merged;
+      });
+      setUsersPage(nextPage);
+      setUsersHasMore(result.length === USER_PAGE_SIZE);
+    } catch {
+      // noop
+    } finally {
+      setUsersLoading(false);
+    }
+  };
 
   // ---- Load Reports (activity) ----
   useEffect(() => {
@@ -255,7 +290,7 @@ export function AdminDashboard() {
     } catch { /* noop */ }
   };
 
-  // ──────────────────── RENDER: Tab content ────────────────────
+  // RENDER: Tab content
 
   const renderDashboard = () => (
     <div className="space-y-4">
@@ -264,7 +299,7 @@ export function AdminDashboard() {
           { label: 'Ventas totales', value: formatCurrency(kpis.totalSales), icon: DollarSign, change: '+12.5%', color: '#22C55E', bg: '#F0FDF4' },
           { label: 'Pedidos totales', value: String(kpis.totalOrders), icon: ShoppingCart, change: '+8.2%', color: 'var(--brand)', bg: '#EDE9FE' },
           { label: 'Tiendas activas', value: String(kpis.activeStores), icon: Store, change: '+3.1%', color: '#F59E0B', bg: '#FFFBEB' },
-          { label: 'Repartidores', value: `${kpis.activeDrivers}/${kpis.totalDrivers}`, icon: Users, change: kpis.activeDrivers > 0 ? `${Math.round(kpis.activeDrivers / Math.max(kpis.totalDrivers, 1) * 100)}% activos` : '—', color: '#3B82F6', bg: '#EFF6FF' },
+          { label: 'Repartidores', value: `${kpis.activeDrivers}/${kpis.totalDrivers}`, icon: Users, change: kpis.activeDrivers > 0 ? `${Math.round(kpis.activeDrivers / Math.max(kpis.totalDrivers, 1) * 100)}% activos` : 'Sin actividad', color: '#3B82F6', bg: '#EFF6FF' },
         ].map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -366,7 +401,9 @@ export function AdminDashboard() {
             <div className="space-y-2">
               {recentOrders.slice(0, 10).map((order) => (
                 <div key={order.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F9FAFB', fontSize: 16 }}>📦</div>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 bg-surface-hover text-xs font-bold text-text-secondary">
+                    {order.store?.charAt(0)?.toUpperCase() || 'R'}
+                  </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex justify-between items-start">
                       <p className="text-sm text-text-primary truncate">{order.store || order.id.slice(0, 8)}</p>
@@ -393,12 +430,12 @@ export function AdminDashboard() {
                 <div key={u.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
                     style={{ backgroundColor: PIE_COLORS[['customer', 'store_owner', 'driver', 'admin'].indexOf(u.role) >= 0 ? ['customer', 'store_owner', 'driver', 'admin'].indexOf(u.role) : 0] }}>
-                    {u.full_name?.charAt(0)?.toUpperCase() || '?'}
+                    {u.full_name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm text-text-primary truncate">{u.full_name || 'Usuario'}</p>
+                <p className="text-text-primary font-medium">{u.full_name || 'Sin nombre'}</p>
                     <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-text-secondary">—</span>
+                      <span className="text-xs text-text-secondary">·</span>
                       <RoleBadge role={u.role} />
                     </div>
                   </div>
@@ -438,7 +475,7 @@ export function AdminDashboard() {
       ) : stores.length > 0 ? stores.map((s) => (
         <div key={s.store_id} className="bg-card rounded-2xl p-4 shadow-sm">
           <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl" style={{ backgroundColor: '#FFFBEB' }}>{s.emoji || '🏪'}</div>
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 text-xl" style={{ backgroundColor: '#FFFBEB' }}>{s.emoji || '🏬'}</div>
             <div className="flex-1 min-w-0">
               <div className="flex justify-between items-start">
                 <div>
@@ -446,10 +483,10 @@ export function AdminDashboard() {
                   <p className="text-xs text-text-secondary">{s.owner_name} · {s.owner_email}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => handleToggleStore(s.store_id, !s.is_open)}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium ${s.is_open ? 'bg-success-light text-success' : 'bg-surface-hover text-text-secondary'}`}
+                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold ${s.is_open ? 'bg-green-100 text-green-700' : 'bg-surface text-text-secondary'}`}
                 >
-                  {s.is_open ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                   {s.is_open ? 'Abierto' : 'Cerrado'}
                 </button>
               </div>
@@ -457,7 +494,6 @@ export function AdminDashboard() {
                 <span className="flex items-center gap-1"><ShoppingCart size={12} />{s.total_orders} pedidos</span>
                 <span className="flex items-center gap-1"><DollarSign size={12} />{formatCurrency(s.total_revenue)}</span>
                 <span className="flex items-center gap-1"><Store size={12} />{s.product_count} productos</span>
-                <span className="flex items-center gap-1">{s.is_open ? '🟢' : '🔴'} {s.is_open ? 'Abierto' : 'Cerrado'}</span>
               </div>
             </div>
             <ChevronRight size={16} className="text-text-secondary flex-shrink-0 mt-2" />
@@ -494,7 +530,7 @@ export function AdminDashboard() {
                 <span className="flex items-center gap-1"><Star size={12} />{d.avg_rating.toFixed(1)}</span>
                 <span className="flex items-center gap-1"><ShoppingCart size={12} />{d.total_deliveries} entregas</span>
                 <span className="flex items-center gap-1"><DollarSign size={12} />{formatCurrency(d.total_earned)}</span>
-                <span className="flex items-center gap-1"><Phone size={12} />{d.phone || '—'}</span>
+                <span className="flex items-center gap-1"><Phone size={12} />{d.phone || 'Sin teléfono'}</span>
               </div>
             </div>
           </div>
@@ -533,12 +569,12 @@ export function AdminDashboard() {
             <div key={u.id} className="flex items-center gap-3 bg-card rounded-2xl p-4 shadow-sm">
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
                 style={{ backgroundColor: PIE_COLORS[['customer', 'driver', 'store', 'admin'].indexOf(u.role) >= 0 ? ['customer', 'driver', 'store', 'admin'].indexOf(u.role) : 0] }}>
-                {u.full_name?.charAt(0)?.toUpperCase() || '?'}
+                {u.full_name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-text-primary font-medium">{u.full_name || '—'}</p>
+                <p className="text-text-primary font-medium">{u.full_name || 'Sin nombre'}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-text-secondary">{u.email || '—'}</span>
+                  <span className="text-xs text-text-secondary">Usuario</span>
                   <span className="text-xs text-text-secondary">·</span>
                   <RoleBadge role={u.role} />
                   {u.is_suspended && <span className="text-xs px-1.5 py-0.5 rounded-full bg-danger-light text-danger">Suspendido</span>}
@@ -562,6 +598,16 @@ export function AdminDashboard() {
               </div>
             </div>
           ))}
+          {usersHasMore && (
+            <button
+              type="button"
+              onClick={() => void loadMoreUsers()}
+              className="w-full mt-2 rounded-2xl border border-border-light bg-card px-4 py-3 text-sm font-medium text-text-primary shadow-sm hover:bg-surface"
+              disabled={usersLoading}
+            >
+              {usersLoading ? 'Cargando...' : 'Cargar mas usuarios'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-card rounded-2xl p-10 text-center shadow-sm">
@@ -577,9 +623,9 @@ export function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
         {[
           { label: 'Total usuarios', value: usersByRole.reduce((a, r) => a + r.count, 0), color: '#6D28D9' },
-          { label: 'Clientes', value: (usersByRole.find(r => r.role === 'customer')?.count ?? 0), color: '#22C55E' },
-          { label: 'Repartidores', value: (usersByRole.find(r => r.role === 'driver')?.count ?? 0), color: '#3B82F6' },
-          { label: 'Tiendas', value: (usersByRole.find(r => r.role === 'store')?.count ?? 0), color: '#F59E0B' },
+          { label: 'Clientes', value: usersByRole.find(r => r.role === 'customer')?.count ?? 0, color: '#22C55E' },
+          { label: 'Repartidores', value: usersByRole.find(r => r.role === 'driver')?.count ?? 0, color: '#3B82F6' },
+          { label: 'Tiendas', value: usersByRole.find(r => r.role === 'store')?.count ?? 0, color: '#F59E0B' },
           { label: 'Ventas totales', value: formatCurrency(kpis.totalSales), color: '#22C55E' },
           { label: 'Valor promedio', value: formatCurrency(kpis.avgOrderValue), color: '#6D28D9' },
         ].map((s) => (
@@ -622,97 +668,207 @@ export function AdminDashboard() {
     return 'Error desconocido';
   };
 
+  const getCoverageCityDraft = (cityId: string | null | undefined) =>
+    coverageDraft.find((city) => city.id === cityId)
+    ?? coverageDraft.find((city) => city.is_active)
+    ?? coverageDraft[0]
+    ?? null;
+
+  const handleAddCoverageCity = () => {
+    const baseCity = coverageDraft.find((city) => city.is_active) ?? coverageDraft[0] ?? null;
+    const id = `city-${Date.now()}`;
+    const newCity: CoverageCityDraft = {
+      id,
+      city_name: 'Nueva ciudad',
+      center: baseCity ? [baseCity.center[0], baseCity.center[1]] : [-0.4632, -76.9892],
+      radius_km: baseCity?.radius_km ?? 5,
+      is_active: coverageDraft.length === 0,
+      shape: baseCity?.shape ?? 'circle',
+      boundary: baseCity?.boundary ? baseCity.boundary.map((point) => [point[0], point[1]] as [number, number]) : [],
+    };
+
+    setCoverageDraft((prev) => [...prev.map((city) => ({ ...city, is_active: prev.length === 0 ? false : city.is_active })), newCity]);
+    setSelectedCoverageCityId(id);
+  };
+
+  const handleUpdateCoverageCity = (
+    cityId: string,
+    patch: Partial<CoverageCityDraft>,
+  ) => {
+    setCoverageDraft((prev) => prev.map((city) => (city.id === cityId ? { ...city, ...patch } : city)));
+    if (patch.is_active) setSelectedCoverageCityId(cityId);
+  };
+
+  const handleRemoveCoverageCity = (cityId: string) => {
+    setCoverageDraft((prev) => {
+      const next = prev.filter((city) => city.id !== cityId);
+      if (next.length === 0) {
+        setSelectedCoverageCityId('coca');
+        return [
+          {
+            id: 'coca',
+            city_name: 'Puerto Francisco de Orellana (El Coca)',
+            center: [-0.4632, -76.9892],
+            radius_km: 5,
+            is_active: true,
+            shape: 'circle',
+            boundary: [],
+          },
+        ];
+      }
+
+      const activeId = next.find((city) => city.id !== cityId && city.is_active)?.id ?? next[0].id;
+      setSelectedCoverageCityId(activeId);
+      return next.map((city) => ({ ...city, is_active: city.id === activeId }));
+    });
+  };
+
   const handleSaveCoverage = async () => {
     setSavingCoverage(true);
     try {
+      const activeId = selectedCoverageCityId || coverageDraft.find((city) => city.is_active)?.id || null;
+      const nextZones = buildCoverageZonesConfig(
+        coverageDraft.map((city) => ({
+          ...city,
+          city_name: city.city_name.trim() || 'Ciudad sin nombre',
+          center: [city.center[0], city.center[1]] as [number, number],
+          radius_km: Number.isFinite(city.radius_km) && city.radius_km > 0 ? city.radius_km : 5,
+          is_active: Boolean(city.is_active),
+          shape: city.shape === 'polygon' ? 'polygon' : 'circle',
+          boundary: (city.boundary ?? []).map((point) => [point[0], point[1]] as [number, number]),
+        })),
+        activeId,
+      );
+
+      const legacyArea = coverageZonesToLegacyArea(nextZones);
       const supabase = getSupabase();
-      const { error } = await supabase.from('app_config').upsert({
-        key: 'coverage_area',
-        value: {
-          center: coverageCenter,
-          radius_km: coverageRadius,
-          city_name: coverageCity,
-        },
-        updated_at: new Date().toISOString(),
-      });
-      if (error) throw error;
-      alert('✅ Área de cobertura guardada correctamente en Supabase.');
+      const updatedAt = new Date().toISOString();
+
+      const results = await Promise.all([
+        supabase.from('app_config').upsert({
+          key: 'coverage_zones',
+          value: nextZones,
+          updated_at: updatedAt,
+        }),
+        supabase.from('app_config').upsert({
+          key: 'coverage_area',
+          value: legacyArea,
+          updated_at: updatedAt,
+        }),
+      ]);
+
+      const failure = results.find((result) => result.error);
+      if (failure?.error) throw failure.error;
+
+      setCoverageZones(nextZones);
+      setCoverageDraft(nextZones.cities.map((city) => ({
+        id: city.id,
+        city_name: city.city_name,
+        center: [city.center[0], city.center[1]] as [number, number],
+        radius_km: city.radius_km,
+        is_active: city.is_active,
+        shape: city.shape ?? 'circle',
+        boundary: city.boundary?.map((point) => [point[0], point[1]] as [number, number]) ?? [],
+      })));
+      setSelectedCoverageCityId(nextZones.active_city_id ?? nextZones.cities[0]?.id ?? '');
+      alert('Cobertura guardada correctamente.');
     } catch (e) {
-      console.error('Error saving coverage area:', e);
-      alert(`❌ Error al guardar cobertura: ${getErrorMessage(e)}`);
+      console.error('Error saving coverage zones:', e);
+      alert(`Error al guardar cobertura: ${getErrorMessage(e)}`);
     } finally {
       setSavingCoverage(false);
     }
   };
 
   const renderCoverage = () => {
-    const activeStores = coverageStores.filter(s => s.latitude && s.longitude);
+    const activeZone = getActiveCoverageZone(coverageZones);
+    const selectedCity = getCoverageCityDraft(selectedCoverageCityId);
+    const activeStores = coverageStores.map((store) => {
+      const cityZone = getCoverageZoneForCity(store.city, coverageZones);
+      const zone = cityZone ?? activeZone;
+      const coords = typeof store.latitude === 'number' && typeof store.longitude === 'number'
+        ? [store.latitude, store.longitude] as [number, number]
+        : null;
+      const coverageMatch = coords ? isPointInAnyCoverageZone(coords[0], coords[1], coverageZones) : null;
+      const inside = coords && zone ? isPointInCoverageZone(coords[0], coords[1], zone) : false;
+      const distanceLabel = coords && coverageMatch && coverageMatch.distanceKm !== null
+        ? `${coverageMatch.distanceKm.toFixed(2)} km`
+        : 'Sin coordenadas';
+
+      return {
+        ...store,
+        zone,
+        inside,
+        distanceLabel,
+      };
+    });
 
     return (
       <div className="space-y-4">
         <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
-          <h2 className="text-base font-bold text-text-primary mb-1">Zona de Cobertura y Operación</h2>
+          <h2 className="text-base font-bold text-text-primary mb-1">Cobertura por ciudad</h2>
           <p className="text-xs text-text-secondary">
-            Configura el rango geográfico de operación de RayoExpress en tu ciudad. Arrastra el marcador central 🎯 para ubicar el centro de operaciones y ajusta el radio de entrega.
+            La cobertura se configura manualmente por ciudad. Puedes dibujar radios o polígonos y mantener una ciudad activa por zona.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          {/* Configuración Panel */}
-          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light space-y-4 flex flex-col justify-between">
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold text-text-primary border-b pb-2">Ajustes de Cobertura</h3>
-              
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+          <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light space-y-4">
+            <div className="flex items-center justify-between gap-3">
               <div>
-                <label className="text-xs font-semibold text-text-secondary block mb-1">Ciudad de Operación</label>
-                <input
-                  type="text"
-                  value={coverageCity}
-                  onChange={(e) => setCoverageCity(e.target.value)}
-                  className="w-full bg-surface rounded-xl px-3 py-2 text-sm outline-none border border-border-light focus:border-purple-500"
-                  placeholder="Ej. El Coca"
-                />
+                <h3 className="text-sm font-semibold text-text-primary">Ciudades</h3>
+                <p className="text-[11px] text-text-secondary">
+                  {coverageDraft.length} configuradas, {coverageDraft.filter((city) => city.is_active).length} activas
+                </p>
               </div>
+              <button
+                type="button"
+                onClick={handleAddCoverageCity}
+                className="px-3 py-2 rounded-xl text-xs font-semibold text-white shadow-sm"
+                style={{ backgroundColor: 'var(--brand)' }}
+              >
+                + Ciudad
+              </button>
+            </div>
 
-              <div>
-                <label className="text-xs font-semibold text-text-secondary block mb-1">Radio de Cobertura ({coverageRadius} km)</label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="range"
-                    min="1"
-                    max="50"
-                    step="0.5"
-                    value={coverageRadius}
-                    onChange={(e) => setCoverageRadius(Number(e.target.value))}
-                    className="flex-1 accent-purple-600 cursor-pointer"
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    max="100"
-                    value={coverageRadius}
-                    onChange={(e) => setCoverageRadius(Number(e.target.value))}
-                    className="w-16 bg-surface rounded-xl px-2 py-1 text-center text-sm outline-none border border-border-light"
-                  />
-                </div>
-              </div>
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
+              {coverageDraft.map((city, index) => (
+                <button
+                  key={city.id}
+                  type="button"
+                  onClick={() => setSelectedCoverageCityId(city.id)}
+                  className={`w-full rounded-2xl border p-3 text-left transition ${selectedCoverageCityId === city.id ? 'border-purple-500 bg-purple-50' : 'border-border-light bg-surface hover:bg-surface-hover'}`}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <div>
+                      <p className="text-xs font-semibold text-text-secondary">Ciudad {index + 1}</p>
+                      <p className="text-sm font-semibold text-text-primary mt-0.5">{city.city_name || 'Ciudad sin nombre'}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${city.is_active ? 'bg-green-100 text-green-700' : 'bg-surface text-text-secondary'}`}>
+                        {city.is_active ? 'Activa' : 'Inactiva'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleRemoveCoverageCity(city.id); }}
+                        className="text-xs font-semibold text-red-500"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs bg-surface p-3 rounded-xl border border-border-light">
-                <div>
-                  <span className="text-text-secondary block">Latitud Centro</span>
-                  <span className="font-mono font-medium text-text-primary">{coverageCenter[0].toFixed(6)}</span>
-                </div>
-                <div>
-                  <span className="text-text-secondary block">Longitud Centro</span>
-                  <span className="font-mono font-medium text-text-primary">{coverageCenter[1].toFixed(6)}</span>
-                </div>
-              </div>
+                  <div className="text-xs text-text-secondary">
+                    {city.shape === 'polygon' ? `${city.boundary.length} puntos dibujados` : `${city.radius_km} km de radio`}
+                  </div>
+                </button>
+              ))}
             </div>
 
             <button
               onClick={handleSaveCoverage}
               disabled={savingCoverage}
-              className="w-full py-3 mt-4 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-transform disabled:opacity-50"
+              className="w-full py-3 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-transform disabled:opacity-50"
               style={{ backgroundColor: 'var(--brand)' }}
             >
               {savingCoverage ? (
@@ -720,198 +876,182 @@ export function AdminDashboard() {
               ) : (
                 <>
                   <CheckCircle size={16} />
-                  Guardar Cobertura
+                  Guardar cobertura
                 </>
               )}
             </button>
           </div>
 
-          {/* Mapa de Cobertura */}
-          <div className="lg:col-span-2 bg-card rounded-2xl overflow-hidden border border-border-light shadow-sm h-[400px] relative">
-            {coverageLoading ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-50">
-                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+          <div className="xl:col-span-2 space-y-4">
+            <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary">Editor de cobertura</h3>
+                  <p className="text-xs text-text-secondary">
+                    {selectedCity ? `Editando ${selectedCity.city_name || 'ciudad sin nombre'}` : 'Selecciona una ciudad para dibujar su cobertura'}
+                  </p>
+                </div>
+                <select
+                  className="rounded-xl border border-border-light bg-white px-3 py-2 text-sm"
+                  value={selectedCoverageCityId}
+                  onChange={(e) => setSelectedCoverageCityId(e.target.value)}
+                >
+                  {coverageDraft.map((city) => (
+                    <option key={city.id} value={city.id}>{city.city_name || 'Ciudad sin nombre'}</option>
+                  ))}
+                </select>
               </div>
-            ) : null}
 
-            <MapContainer center={coverageCenter} zoom={13} className="h-full w-full" zoomControl={false}>
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-              />
-              
-              <MapControllerHelper setMap={setAdminMap} center={coverageCenter} />
-
-              <Circle
-                center={coverageCenter}
-                radius={coverageRadius * 1000}
-                pathOptions={{
-                  color: 'var(--brand)',
-                  fillColor: 'var(--brand)',
-                  fillOpacity: 0.12,
-                  weight: 2,
+              <CoverageMapEditor
+                city={selectedCity}
+                stores={activeStores.map((store) => ({
+                  id: store.id,
+                  name: store.name,
+                  emoji: store.emoji,
+                  latitude: store.latitude,
+                  longitude: store.longitude,
+                  city: store.city,
+                  is_open: store.is_open,
+                  inside: store.inside,
+                  distanceLabel: store.distanceLabel,
+                  zoneRadiusKm: store.zone?.radius_km ?? null,
+                }))}
+                onChange={(patch) => {
+                  if (!selectedCity) return;
+                  handleUpdateCoverageCity(selectedCity.id, patch);
                 }}
               />
+            </div>
 
-              {/* Pin central de operaciones */}
-              <Marker
-                position={coverageCenter}
-                draggable={true}
-                eventHandlers={{
-                  dragend: (e) => {
-                    const marker = e.target;
-                    const position = marker.getLatLng();
-                    setCoverageCenter([position.lat, position.lng]);
-                  },
-                }}
-                icon={L.divIcon({
-                  className: '',
-                  html: `<div class="flex items-center justify-center w-9 h-9 rounded-full border-2 border-white shadow-xl bg-purple-700 text-white transition-transform hover:scale-105 active:scale-95 cursor-grab">
-                    🎯
-                  </div>`,
-                  iconSize: [36, 36],
-                  iconAnchor: [18, 18],
-                })}
-              >
-                <Popup>
-                  <div className="text-center font-sans p-1">
-                    <p className="font-bold text-xs text-text-primary">Centro de Operaciones</p>
-                    <p className="text-[10px] text-text-secondary mt-0.5">Arrastra este pin para mover la cobertura</p>
-                  </div>
-                </Popup>
-              </Marker>
+            <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+              <div className="flex items-center justify-between border-b pb-2 mb-3">
+                <h3 className="text-sm font-semibold text-text-primary">Datos de la ciudad seleccionada</h3>
+                      <span className="text-xs text-text-secondary">Usuario</span>
+              </div>
 
-              {/* Pines numerados de las tiendas */}
-              {activeStores.map((store, index) => {
-                const dist = getDistanceKm(coverageCenter[0], coverageCenter[1], store.latitude!, store.longitude!);
-                const isInside = dist <= coverageRadius;
-
-                return (
-                  <Marker
-                    key={store.id}
-                    position={[store.latitude!, store.longitude!]}
-                    icon={L.divIcon({
-                      className: '',
-                      html: `<div class="relative flex items-center justify-center w-8 h-8 rounded-full border-2 border-white shadow-lg text-white font-bold text-xs" style="background: ${isInside ? 'var(--brand)' : '#EF4444'}">
-                        ${index + 1}
-                      </div>`,
-                      iconSize: [32, 32],
-                      iconAnchor: [16, 16],
-                    })}
+              {selectedCity ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    value={selectedCity.city_name}
+                    onChange={(e) => handleUpdateCoverageCity(selectedCity.id, { city_name: e.target.value })}
+                    className="w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm outline-none focus:border-purple-500"
+                    placeholder="Nombre de ciudad"
+                  />
+                  <select
+                    value={selectedCity.shape}
+                    onChange={(e) => handleUpdateCoverageCity(selectedCity.id, { shape: e.target.value === 'polygon' ? 'polygon' : 'circle' })}
+                    className="w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm outline-none focus:border-purple-500"
                   >
-                    <Popup>
-                      <div className="text-center p-1.5 min-w-[130px] font-sans">
-                        <p className="font-bold text-xs text-text-primary leading-tight">#{index + 1} {store.name}</p>
-                        <p className="text-[10px] text-text-secondary mt-1">Distancia: {dist.toFixed(2)} km</p>
-                        <span className={`text-[9px] px-2 py-0.5 mt-1 inline-block rounded-full font-semibold ${isInside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          {isInside ? 'En rango' : 'Fuera de rango'}
-                        </span>
-                      </div>
-                    </Popup>
-                  </Marker>
-                );
-              })}
-            </MapContainer>
-
-            {/* Controles flotantes */}
-            <div className="absolute right-3 top-3 z-[1000] flex flex-col gap-1.5 bg-white/80 backdrop-blur-md p-1.5 rounded-2xl shadow-xl border border-border-light/40">
-              <button
-                onClick={() => adminMap?.zoomIn()}
-                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
-                title="Acercar"
-              >
-                <Plus size={14} />
-              </button>
-              <button
-                onClick={() => adminMap?.zoomOut()}
-                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
-                title="Alejar"
-              >
-                <Minus size={14} />
-              </button>
-              <div className="h-[1px] bg-border-light my-0.5" />
-              <button
-                onClick={() => {
-                  if (adminMap) adminMap.panTo(coverageCenter);
-                }}
-                className="w-8 h-8 rounded-xl bg-white shadow-sm flex items-center justify-center text-text-primary hover:bg-surface-hover active:scale-95 transition-transform"
-                title="Centrar en Cobertura"
-              >
-                <Locate size={14} />
-              </button>
+                    <option value="circle">Radio circular</option>
+                    <option value="polygon">Polígono</option>
+                  </select>
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={selectedCity.center[0]}
+                    onChange={(e) => handleUpdateCoverageCity(selectedCity.id, { center: [Number(e.target.value), selectedCity.center[1]] })}
+                    className="w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm outline-none focus:border-purple-500"
+                    placeholder="Latitud"
+                  />
+                  <input
+                    type="number"
+                    step="0.000001"
+                    value={selectedCity.center[1]}
+                    onChange={(e) => handleUpdateCoverageCity(selectedCity.id, { center: [selectedCity.center[0], Number(e.target.value)] })}
+                    className="w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm outline-none focus:border-purple-500"
+                    placeholder="Longitud"
+                  />
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    value={selectedCity.radius_km}
+                    onChange={(e) => handleUpdateCoverageCity(selectedCity.id, { radius_km: Number(e.target.value) })}
+                    className="w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm outline-none focus:border-purple-500"
+                    placeholder="Radio km"
+                  />
+                  <label className="inline-flex items-center gap-2 rounded-xl border border-border-light bg-surface px-3 py-2 text-sm font-medium text-text-primary">
+                    <input
+                      type="radio"
+                      checked={selectedCity.is_active}
+                      onChange={() => {
+                        setCoverageDraft((prev) => prev.map((city) => ({ ...city, is_active: city.id === selectedCity.id })));
+                        setSelectedCoverageCityId(selectedCity.id);
+                      }}
+                    />
+                    Ciudad activa
+                  </label>
+                </div>
+              ) : (
+                <p className="text-sm text-text-secondary">Agrega o selecciona una ciudad para editar sus datos.</p>
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Listado mapeado de tiendas */}
-        <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
-          <div className="flex items-center justify-between border-b pb-2 mb-3">
-            <h3 className="text-sm font-semibold text-text-primary">Mapeo de Tiendas Cercanas</h3>
-            <span className="text-xs text-text-secondary">{activeStores.length} tiendas geolocalizadas</span>
-          </div>
+            <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+              <div className="flex items-center justify-between border-b pb-2 mb-3">
+                <h3 className="text-sm font-semibold text-text-primary">Tiendas y cobertura</h3>
+                <span className="text-xs text-text-secondary">{activeStores.length} tiendas registradas</span>
+              </div>
 
-          {coverageLoading ? (
-            <div className="flex justify-center py-6"><div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" /></div>
-          ) : activeStores.length === 0 ? (
-            <p className="text-xs text-text-secondary text-center py-6">No hay tiendas con coordenadas registradas</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="text-text-secondary border-b border-border-light">
-                    <th className="py-2 font-medium">#</th>
-                    <th className="py-2 font-medium">Tienda</th>
-                    <th className="py-2 font-medium">Ubicación</th>
-                    <th className="py-2 font-medium">Distancia</th>
-                    <th className="py-2 font-medium">Estado</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border-light">
-                  {activeStores.map((store, index) => {
-                    const dist = getDistanceKm(coverageCenter[0], coverageCenter[1], store.latitude!, store.longitude!);
-                    const isInside = dist <= coverageRadius;
-
-                    return (
-                      <tr key={store.id} className="hover:bg-surface/30">
-                        <td className="py-3">
-                          <span className="w-6 h-6 rounded-full flex items-center justify-center text-white font-bold text-[10px] shadow-sm" style={{ backgroundColor: isInside ? 'var(--brand)' : '#EF4444' }}>
-                            {index + 1}
-                          </span>
-                        </td>
-                        <td className="py-3 font-medium text-text-primary">
-                          <span className="mr-1">{store.emoji || '🏪'}</span>
-                          {store.name}
-                        </td>
-                        <td className="py-3 text-text-secondary">
-                          {store.city || 'Desconocida'}
-                          <span className="block font-mono text-[9px] mt-0.5">({store.latitude?.toFixed(4)}, {store.longitude?.toFixed(4)})</span>
-                        </td>
-                        <td className="py-3 font-mono text-text-primary font-medium">
-                          {dist.toFixed(2)} km
-                        </td>
-                        <td className="py-3">
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${isInside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {isInside ? (
-                              <CheckCircle size={10} />
-                            ) : (
-                              <AlertTriangle size={10} />
-                            )}
-                            {isInside ? 'En rango' : 'Fuera de rango'}
-                          </span>
-                        </td>
+              {coverageLoading ? (
+                <div className="flex justify-center py-6">
+                  <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : activeStores.length === 0 ? (
+                <p className="text-xs text-text-secondary text-center py-6">No hay tiendas registradas para evaluar cobertura.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="text-text-secondary border-b border-border-light">
+                        <th className="py-2 font-medium">Tienda</th>
+                        <th className="py-2 font-medium">Ciudad</th>
+                        <th className="py-2 font-medium">Estado</th>
+                        <th className="py-2 font-medium">Cobertura</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody className="divide-y divide-border-light">
+                      {activeStores.map((store) => (
+                        <tr key={store.id} className="hover:bg-surface/30">
+                          <td className="py-3 font-medium text-text-primary">
+                            <span className="mr-1">{store.emoji || '??'}</span>
+                            {store.name}
+                          </td>
+                          <td className="py-3 text-text-secondary">
+                            {store.city || 'Sin ciudad'}
+                            <span className="block font-mono text-[9px] mt-0.5">
+                              ({store.latitude?.toFixed(4)}, {store.longitude?.toFixed(4)})
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            {store.zone ? (
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${store.inside ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                {store.inside ? <CheckCircle size={10} /> : <AlertTriangle size={10} />}
+                                {store.inside ? 'Dentro de cobertura' : 'Fuera de cobertura'}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-surface text-text-secondary">
+                                Sin zona asignada
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 text-text-secondary">
+                            {store.zone ? `${store.zone.radius_km} km` : 'N/A'}
+                            <span className="block text-[10px] mt-0.5">{store.distanceLabel}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     );
   };
-
-  // ──────────────────── MAIN RENDER ────────────────────
 
   if (activeTab === 'applications') {
     return (
@@ -1024,3 +1164,4 @@ export function AdminDashboard() {
     </div>
   );
 }
+

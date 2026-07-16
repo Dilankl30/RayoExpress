@@ -18,7 +18,12 @@ import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { resolvePreferredLocation } from '../../../modules/client/application/client-service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
 import type { Address, Database } from '../../../shared/types';
-import { parseCoverageAreaConfig, type CoverageAreaConfig } from '../../../shared/utils/coverage-area';
+import {
+  getActiveCoverageZone,
+  parseCoverageAreaConfig,
+  parseCoverageZonesConfig,
+  type CoverageAreaConfig,
+} from '../../../shared/utils/coverage-area';
 import { ADDRESS_UPDATED_EVENT, LocationDialog } from './LocationDialog';
 
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
@@ -100,6 +105,22 @@ export function HomeScreen() {
     const loadCoverage = async () => {
       try {
         const supabase = getSupabase();
+        const { data: zonesData } = await supabase
+          .from('app_config')
+          .select('*')
+          .eq('key', 'coverage_zones')
+          .maybeSingle();
+        const zones = parseCoverageZonesConfig(zonesData?.value);
+        const activeZone = getActiveCoverageZone(zones);
+        if (activeZone) {
+          setCoverageArea({
+            center: [activeZone.center[0], activeZone.center[1]],
+            radius_km: activeZone.radius_km,
+            city_name: activeZone.city_name,
+          });
+          return;
+        }
+
         const { data } = await supabase
           .from('app_config')
           .select('*')
