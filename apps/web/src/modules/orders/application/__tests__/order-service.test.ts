@@ -35,11 +35,12 @@ describe('createOrder', () => {
   });
 
   it('throws when deliveryAddress is empty', async () => {
-    await expect(createOrder({ ...valid, deliveryAddress: '' })).rejects.toThrow('Dirección de entrega requerida');
+    await expect(createOrder({ ...valid, deliveryAddress: '' })).rejects.toThrow('Direccion de entrega requerida');
   });
 
   it('throws when payment method is invalid', async () => {
-    await expect(createOrder({ ...valid, paymentMethod: 'bitcoin' as any })).rejects.toThrow('Método de pago inválido');
+    const invalidPaymentMethod = 'bitcoin' as never;
+    await expect(createOrder({ ...valid, paymentMethod: invalidPaymentMethod })).rejects.toThrow('Metodo de pago invalido');
   });
 
   it('throws when productIds is empty', async () => {
@@ -47,11 +48,11 @@ describe('createOrder', () => {
   });
 
   it('throws when quantities mismatch productIds', async () => {
-    await expect(createOrder({ ...valid, quantities: [1] })).rejects.toThrow('Cantidades inválidas');
+    await expect(createOrder({ ...valid, quantities: [1] })).rejects.toThrow('Cantidades invalidas');
   });
 
   it('throws when quantity exceeds 100', async () => {
-    await expect(createOrder({ ...valid, quantities: [1, 101] })).rejects.toThrow('Cantidad máxima excedida');
+    await expect(createOrder({ ...valid, quantities: [1, 101] })).rejects.toThrow('Cantidad maxima excedida');
   });
 
   it('creates order with mock data when validation passes', async () => {

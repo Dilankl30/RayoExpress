@@ -203,5 +203,23 @@ begin
 end;
 $$;
 
-revoke all on function public.create_order from public, anon;
-grant execute on function public.create_order to authenticated;
+revoke all on function public.create_order(
+  uuid,
+  uuid[],
+  integer[],
+  text,
+  text,
+  text,
+  text,
+  numeric
+) from public, anon;
+grant execute on function public.create_order(
+  uuid,
+  uuid[],
+  integer[],
+  text,
+  text,
+  text,
+  text,
+  numeric
+) to authenticated;

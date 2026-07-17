@@ -5,7 +5,7 @@ import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
 import { useTheme } from '../../shared/theme/ThemeContext';
 import type { Role, Screen } from '../../shared/types';
-import { screenPathMap } from '../router';
+import { screenPathMap } from '../router/screenPathMap';
 
 type SidebarItem = { id: Screen; label: string; icon: ReactNode };
 

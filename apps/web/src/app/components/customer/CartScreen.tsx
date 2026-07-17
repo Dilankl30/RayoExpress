@@ -1,14 +1,15 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   ArrowLeft, Plus, Minus, Trash2, Tag,
-  Banknote, Smartphone, Zap, CheckCircle, Upload, FileText, MapPin, Bike,
+  Banknote, Smartphone, Zap, FileText, MapPin, Bike, CheckCircle,
 } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { createOrder } from '../../../modules/orders/application/order-service';
-import { uploadReceipt, savePaymentReceipt } from '../../../modules/payments/application/payment.service';
+import { savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 import { getAddresses } from '../../../modules/client/application/client-service';
+import { applyCoupon as validateCoupon, type CouponValidation } from '../../../modules/client/application/promotions-service';
 import type { Address } from '../../../shared/types';
 import { LocationDialog } from './LocationDialog';
 
@@ -21,7 +22,8 @@ export function CartScreen() {
   const { navigate, user } = useAuth();
   const { cart, cartCount, cartTotal, updateQuantity, removeFromCart, clearCart } = useCart();
   const [coupon, setCoupon] = useState('');
-  const [couponApplied, setCouponApplied] = useState(false);
+  const [couponResult, setCouponResult] = useState<CouponValidation | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
   const [tip, setTip] = useState<number>(0);
   const [payMethod, setPayMethod] = useState('cash');
   const [note, setNote] = useState('');
@@ -33,16 +35,13 @@ export function CartScreen() {
   const [replacement, setReplacement] = useState('Elegir reemplazos');
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
-  const receiptRef = useRef<HTMLInputElement>(null);
-
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const delivery = cartTotal > 0 ? 1.50 : 0;
-  const discount = couponApplied ? cartTotal * 0.15 : 0;
-  const tax = (cartTotal - discount) * 0.12;
-  const total = cartTotal + delivery + tax - discount + tip;
+  const discount = couponResult?.valid ? couponResult.discount : 0;
+  const taxableSubtotal = Math.max(cartTotal - discount, 0);
+  const tax = taxableSubtotal * 0.12;
+  const total = Math.max(cartTotal + delivery + tax - discount + tip, 0);
 
   useEffect(() => {
     if (!user) return;
@@ -69,9 +68,21 @@ export function CartScreen() {
     }
   };
 
-  const applyCoupon = () => {
-    if (coupon.toUpperCase() === 'RAYO15' || coupon.toUpperCase() === 'RAYO1') {
-      setCouponApplied(true);
+  const applyCoupon = async () => {
+    const code = coupon.trim();
+    if (!code || !user) {
+      setCouponResult({ valid: false, discount: 0, message: 'Ingresa un codigo valido' });
+      return;
+    }
+
+    setCouponChecking(true);
+    try {
+      const result = await validateCoupon(code, cartTotal, user.id, cart[0]?.storeId);
+      setCouponResult(result);
+    } catch {
+      setCouponResult({ valid: false, discount: 0, message: 'No pudimos validar el cupon' });
+    } finally {
+      setCouponChecking(false);
     }
   };
 
@@ -79,10 +90,6 @@ export function CartScreen() {
     if (cart.length === 0) return;
     if (!address.trim()) {
       setError('Ingresa una dirección de entrega');
-      return;
-    }
-    if (payMethod === 'transfer' && !receiptFile) {
-      setError('Sube el comprobante de pago');
       return;
     }
     setError('');
@@ -94,18 +101,13 @@ export function CartScreen() {
         quantities: cart.map((i) => i.quantity),
         deliveryAddress: address,
         paymentMethod: payMethod as 'cash' | 'transfer',
-        couponCode: couponApplied ? coupon : undefined,
+        couponCode: couponResult?.valid ? (couponResult.code ?? coupon.trim().toUpperCase()) : undefined,
         notes: [note, replacement ? `Agotados: ${replacement}` : '', billingName ? `Factura: ${billingName} ${billingId}` : '', cashAmount ? `Cambio para ${cashAmount}` : ''].filter(Boolean).join(' | ') || undefined,
         tip,
         deliveryLat: addressCoords?.lat ?? undefined,
         deliveryLng: addressCoords?.lng ?? undefined,
       });
-      if (payMethod === 'transfer' && receiptFile) {
-        const receiptUrl = await uploadReceipt(result.order_id, receiptFile);
-        await savePaymentReceipt(result.order_id, 'transfer', result.total, receiptUrl);
-      } else {
-        await savePaymentReceipt(result.order_id, payMethod, result.total, null);
-      }
+      await savePaymentReceipt(result.order_id, payMethod, result.total, null);
       clearCart();
       navigate('tracking');
     } catch (err: unknown) {
@@ -314,31 +316,40 @@ export function CartScreen() {
             </div>
 
             <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
-              {couponApplied ? (
+              {couponResult?.valid ? (
                 <div className="flex items-center gap-2" style={{ color: 'var(--success)' }}>
                   <CheckCircle size={18} />
-                  <p className="text-sm font-medium">Cupón aplicado · 15% descuento</p>
+                  <p className="text-sm font-medium">{couponResult.message}</p>
                 </div>
               ) : (
-                <div className="flex gap-2">
-                  <div className="flex-1 bg-surface rounded-xl flex items-center gap-2 px-3 py-2.5">
-                    <Tag size={15} className="text-text-secondary" />
-                    <input
-                      aria-label="Codigo de descuento"
-                      value={coupon}
-                      onChange={(e) => setCoupon(e.target.value)}
-                      placeholder="Código de descuento"
-                      className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder:text-text-secondary"
-                    />
+                <>
+                  <div className="flex gap-2">
+                    <div className="flex-1 bg-surface rounded-xl flex items-center gap-2 px-3 py-2.5">
+                      <Tag size={15} className="text-text-secondary" />
+                      <input
+                        aria-label="Codigo de descuento"
+                        value={coupon}
+                        onChange={(e) => {
+                          setCoupon(e.target.value);
+                          setCouponResult(null);
+                        }}
+                        placeholder="Código de descuento"
+                        className="flex-1 bg-transparent text-text-primary text-sm outline-none placeholder:text-text-secondary"
+                      />
+                    </div>
+                    <button
+                      onClick={applyCoupon}
+                      disabled={couponChecking}
+                      className="px-4 rounded-xl text-white text-sm disabled:opacity-60"
+                      style={{ backgroundColor: 'var(--brand)' }}
+                    >
+                      {couponChecking ? 'Validando...' : 'Aplicar'}
+                    </button>
                   </div>
-                  <button
-                    onClick={applyCoupon}
-                    className="px-4 rounded-xl text-white text-sm"
-                    style={{ backgroundColor: 'var(--brand)' }}
-                  >
-                    Aplicar
-                  </button>
-                </div>
+                  {couponResult && !couponResult.valid && (
+                    <p className="mt-2 text-xs text-red-500">{couponResult.message}</p>
+                  )}
+                </>
               )}
             </div>
 
@@ -389,38 +400,8 @@ export function CartScreen() {
               </div>
 
               {payMethod === 'transfer' && (
-                <div className="mt-3">
-                  {receiptPreview ? (
-                    <div className="space-y-2">
-                      <div className="relative bg-surface rounded-xl overflow-hidden">
-                        <img src={receiptPreview} alt="Comprobante" className="w-full h-32 object-contain" />
-                        <button onClick={() => { setReceiptFile(null); setReceiptPreview(null); }} className="absolute top-1 right-1 w-6 h-6 bg-card rounded-full shadow flex items-center justify-center">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-                        </button>
-                      </div>
-                      <div className="flex items-center gap-2 text-success text-xs">
-                        <CheckCircle size={14} /> {receiptFile?.name}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => receiptRef.current?.click()}
-                      className="w-full py-4 rounded-xl border-2 border-dashed border-border flex flex-col items-center gap-1 hover:border-purple-300 transition-colors"
-                    >
-                      <Upload size={18} className="text-text-secondary" />
-                      <span className="text-xs text-text-secondary">Subir comprobante</span>
-                    </button>
-                  )}
-                  <input
-                    ref={receiptRef}
-                    type="file"
-                    accept="image/*,application/pdf"
-                    className="hidden"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0];
-                      if (f) { setReceiptFile(f); setReceiptPreview(URL.createObjectURL(f)); }
-                    }}
-                  />
+                <div className="mt-3 rounded-xl bg-surface p-3 text-xs text-text-secondary leading-relaxed">
+                  Haras la transferencia al recibir el pedido. El repartidor confirmara el pago y subira la foto del comprobante antes de cerrar la entrega.
                 </div>
               )}
               {payMethod === 'cash' && (

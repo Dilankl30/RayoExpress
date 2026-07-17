@@ -22,11 +22,36 @@ function ensureMockChat(orderId: string, customerId: string, storeId: string) {
 }
 
 export async function getOrCreateChat(orderId: string, customerId: string, storeId: string): Promise<Chat> {
-  if (!isSupabaseReady) return ensureMockChat(orderId, customerId, storeId);
+  return getOrCreateOrderChat(orderId, customerId, storeId);
+}
+
+export async function getOrCreateOrderChat(orderId: string, fallbackUserId: string, fallbackStoreId?: string): Promise<Chat> {
+  if (!isSupabaseReady) return ensureMockChat(orderId, fallbackUserId, fallbackStoreId ?? 'mock-store');
   const supabase = getSupabase();
   const { data: existing } = await supabase.from('chats').select('*').eq('order_id', orderId).maybeSingle();
   if (existing) return existing as Chat;
-  const { data, error } = await supabase.from('chats').insert({ order_id: orderId, customer_id: customerId, store_id: storeId }).select().single();
+
+  const { data: order, error: orderError } = await supabase
+    .from('orders')
+    .select('customer_id, store_id, driver_id')
+    .eq('id', orderId)
+    .maybeSingle();
+  if (orderError) throw orderError;
+
+  const customerId = (order?.customer_id as string | undefined) ?? fallbackUserId;
+  const storeId = (order?.store_id as string | undefined) ?? fallbackStoreId;
+  if (!storeId) throw new Error('No se pudo identificar la tienda del pedido');
+
+  const { data, error } = await supabase
+    .from('chats')
+    .insert({
+      order_id: orderId,
+      customer_id: customerId,
+      store_id: storeId,
+      driver_id: (order?.driver_id as string | null | undefined) ?? null,
+    })
+    .select()
+    .single();
   if (error) throw error;
   return data as Chat;
 }

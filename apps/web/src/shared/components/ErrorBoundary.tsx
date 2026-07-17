@@ -34,10 +34,10 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <div className="min-h-screen flex items-center justify-center bg-surface p-4">
           <div className="bg-card rounded-2xl p-8 shadow-sm text-center max-w-sm">
-            <p style={{ fontSize: 48 }}>⚠️</p>
-            <p className="text-text-primary font-bold mt-4 text-lg">Algo sali&oacute; mal</p>
+            <p style={{ fontSize: 48 }}>!</p>
+            <p className="text-text-primary font-bold mt-4 text-lg">Algo salio mal</p>
             <p className="text-sm text-text-secondary mt-2">
-              Ocurri&oacute; un error inesperado. Por favor, intenta de nuevo.
+              Ocurrio un error inesperado. Por favor, intenta de nuevo.
             </p>
             <button
               onClick={this.handleReset}

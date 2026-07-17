@@ -19,10 +19,18 @@ export interface DriverWorkOrder {
   store_name: string;
   store_emoji: string;
   customer_name: string;
+  customer_phone?: string | null;
+  payment_method?: string;
   store_lat?: number;
   store_lng?: number;
   delivery_lat?: number;
   delivery_lng?: number;
+}
+
+function numericCoord(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 }
 
 export interface AvailableDriverOrder extends DriverWorkOrder {
@@ -70,24 +78,32 @@ export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkO
     }];
     return source
       .filter((order) => !['delivered', 'cancelled', 'refunded'].includes(order.status))
-      .map((order) => ({
-        id: order.id,
-        total: order.total,
-        status: order.status,
-        delivery_address: order.delivery_address,
-        notes: order.notes ?? null,
-        created_at: order.created_at,
-        store_id: order.store_id,
-        store_name: order.store?.name ?? 'Tienda',
-        store_emoji: order.store?.emoji ?? 'RE',
-        customer_name: order.customer?.full_name ?? 'Cliente',
-      }));
+      .map((order) => {
+        const orderRecord = order as typeof order & {
+          payment_method?: string | null;
+          customer?: { full_name?: string | null; phone?: string | null };
+        };
+        return {
+          id: orderRecord.id,
+          total: orderRecord.total,
+          status: orderRecord.status,
+          delivery_address: orderRecord.delivery_address,
+          notes: orderRecord.notes ?? null,
+          created_at: orderRecord.created_at,
+          store_id: orderRecord.store_id,
+          store_name: orderRecord.store?.name ?? 'Tienda',
+          store_emoji: orderRecord.store?.emoji ?? 'RE',
+          customer_name: orderRecord.customer?.full_name ?? 'Cliente',
+          customer_phone: orderRecord.customer?.phone ?? null,
+          payment_method: orderRecord.payment_method ?? 'cash',
+        };
+      });
   }
 
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, status, delivery_address, notes, created_at, store_id, delivery_lat, delivery_lng, store:stores(name, emoji, lat, lng), customer:profiles!customer_id(full_name)')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, payment_method, delivery_lat, delivery_lng, store:stores(name, emoji, latitude, longitude), customer:profiles!customer_id(full_name, phone)')
     .eq('driver_id', driverId)
     .in('status', ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'])
     .order('created_at', { ascending: false });
@@ -106,10 +122,12 @@ export async function getDriverWorkOrders(driverId: string): Promise<DriverWorkO
       store_name: (store?.name as string) ?? 'Tienda',
       store_emoji: (store?.emoji as string) ?? 'RE',
       customer_name: (customer?.full_name as string) ?? 'Cliente',
-      store_lat: store?.lat ? Number(store.lat) : undefined,
-      store_lng: store?.lng ? Number(store.lng) : undefined,
-      delivery_lat: order.delivery_lat ? Number(order.delivery_lat) : undefined,
-      delivery_lng: order.delivery_lng ? Number(order.delivery_lng) : undefined,
+      customer_phone: (customer?.phone as string | null) ?? null,
+      payment_method: (order.payment_method as string | null) ?? 'cash',
+      store_lat: numericCoord(store?.latitude),
+      store_lng: numericCoord(store?.longitude),
+      delivery_lat: numericCoord(order.delivery_lat),
+      delivery_lng: numericCoord(order.delivery_lng),
     };
   });
 }
@@ -127,6 +145,8 @@ export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]
       store_name: 'Rayo Demo Market',
       store_emoji: 'RE',
       customer_name: 'Cliente Demo',
+      customer_phone: '0999999999',
+      payment_method: 'cash',
       distance_label: '1.8 km',
     }];
   }
@@ -134,7 +154,7 @@ export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('id, total, status, delivery_address, notes, created_at, store_id, delivery_lat, delivery_lng, store:stores(name, emoji, lat, lng), customer:profiles!customer_id(full_name)')
+    .select('id, total, status, delivery_address, notes, created_at, store_id, payment_method, delivery_lat, delivery_lng, store:stores(name, emoji, latitude, longitude), customer:profiles!customer_id(full_name, phone)')
     .is('driver_id', null)
     .in('status', ['accepted', 'preparing'])
     .order('created_at', { ascending: true })
@@ -155,11 +175,13 @@ export async function getAvailableDriverOrders(): Promise<AvailableDriverOrder[]
       store_name: (store?.name as string) ?? 'Tienda',
       store_emoji: (store?.emoji as string) ?? 'RE',
       customer_name: (customer?.full_name as string) ?? 'Cliente',
+      customer_phone: (customer?.phone as string | null) ?? null,
+      payment_method: (order.payment_method as string | null) ?? 'cash',
       distance_label: 'Cerca de ti',
-      store_lat: store?.lat ? Number(store.lat) : undefined,
-      store_lng: store?.lng ? Number(store.lng) : undefined,
-      delivery_lat: order.delivery_lat ? Number(order.delivery_lat) : undefined,
-      delivery_lng: order.delivery_lng ? Number(order.delivery_lng) : undefined,
+      store_lat: numericCoord(store?.latitude),
+      store_lng: numericCoord(store?.longitude),
+      delivery_lat: numericCoord(order.delivery_lat),
+      delivery_lng: numericCoord(order.delivery_lng),
     };
   });
 }
@@ -177,6 +199,8 @@ export async function claimDriverOrder(orderId: string, driverId: string): Promi
       store_name: 'Rayo Demo Market',
       store_emoji: 'RE',
       customer_name: 'Cliente Demo',
+      customer_phone: '0999999999',
+      payment_method: 'cash',
     };
   }
 
@@ -201,10 +225,12 @@ export async function claimDriverOrder(orderId: string, driverId: string): Promi
     store_name: (store?.name as string) ?? 'Tienda',
     store_emoji: (store?.emoji as string) ?? 'RE',
     customer_name: (customer?.full_name as string) ?? 'Cliente',
-    store_lat: store?.lat ? Number(store.lat) : undefined,
-    store_lng: store?.lng ? Number(store.lng) : undefined,
-    delivery_lat: claimed.delivery_lat ? Number(claimed.delivery_lat) : undefined,
-    delivery_lng: claimed.delivery_lng ? Number(claimed.delivery_lng) : undefined,
+    customer_phone: (customer?.phone as string | null) ?? null,
+    payment_method: (claimed.payment_method as string | null) ?? 'cash',
+    store_lat: numericCoord(store?.latitude ?? store?.lat),
+    store_lng: numericCoord(store?.longitude ?? store?.lng),
+    delivery_lat: numericCoord(claimed.delivery_lat),
+    delivery_lng: numericCoord(claimed.delivery_lng),
   };
 }
 

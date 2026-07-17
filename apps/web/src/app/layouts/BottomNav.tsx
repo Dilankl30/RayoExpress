@@ -2,7 +2,7 @@ import { useLocation, useNavigate } from 'react-router';
 import { Home, User, ClipboardList, Compass, Heart } from 'lucide-react';
 import { useAuth } from '../../modules/auth/context/AuthContext';
 import { useCart } from '../../modules/cart/context/CartContext';
-import { screenPathMap } from '../router';
+import { screenPathMap } from '../router/screenPathMap';
 
 interface NavItem {
   id: string;
@@ -47,7 +47,7 @@ export function BottomNav() {
       case 'favorites':
         return path === '/favorites';
       case 'profile':
-        return path === '/profile' || path === '/personal-info' || path === '/addresses' || path === '/notification-settings' || path === '/wallet';
+        return path === '/profile' || path === '/personal-info' || path === '/addresses' || path === '/notification-settings';
       default:
         return path === (screenPathMap[item.screen] || `/${item.screen}`);
     }

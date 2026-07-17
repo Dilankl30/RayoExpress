@@ -1,10 +1,10 @@
-﻿import { useState, useEffect, type ReactNode } from 'react';
+﻿import { Suspense, lazy, useState, useEffect, type ReactNode } from 'react';
 import {
   TrendingUp, DollarSign, ShoppingCart, Users, Store, Bike,
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, Trash2,
-  CheckCircle, AlertTriangle, MapPinned,
+  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X,
 } from 'lucide-react';
 import { getSupabase } from '../../../integrations/supabase/client';
 import {
@@ -12,15 +12,15 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
+import { getDriverHiringEnabled, setDriverHiringEnabled } from '../../../modules/app/application/app-config.service';
 import { getAdminDashboardSummary } from '../../../modules/admin/application/admin-analytics.service';
 import {
-  searchUsers, toggleSuspend, deleteUser, getAllStores, toggleStoreStatus,
+  searchUsers, toggleSuspend, deleteUser, getAllStores, toggleStoreStatus, getUserDetail,
   getAllDrivers, getRecentActivity,
-  type AdminUser, type AdminStore, type AdminDriver, type ActivityItem,
+  type AdminUser, type AdminStore, type AdminDriver, type ActivityItem, type UserDetail,
 } from '../../../modules/admin/application/admin.service';
-import { AdminApplications } from '../../../modules/admin/ui/AdminApplications';
 import type { AdminDashboardSummary, RecentOrder, RecentUser, DailyOrders } from '../../../modules/admin/application/admin-analytics.service';
-import { CoverageMapEditor, type CoverageCityDraft, type CoverageStorePoint } from './CoverageMapEditor';
+import type { CoverageCityDraft, CoverageStorePoint } from './CoverageMapEditor';
 import {
   buildCoverageZonesConfig,
   coverageZonesToLegacyArea,
@@ -32,6 +32,7 @@ import {
   parseCoverageZonesConfig,
   type CoverageZonesConfig,
 } from '../../../shared/utils/coverage-area';
+import { ErrorBoundary } from '../../../shared/components/ErrorBoundary';
 
 const PIE_COLORS = ['var(--brand)', '#22C55E', '#F59E0B', '#3B82F6', '#EF4444'];
 const STATUS_STYLES: Record<string, string> = {
@@ -50,6 +51,60 @@ const ROLE_STYLES: Record<string, string> = {
 const ROLE_LABELS: Record<string, string> = {
   customer: 'Cliente', driver: 'Repartidor', store: 'Tienda', admin: 'Admin',
 };
+
+const AdminApplications = lazy(() =>
+  import('../../../modules/admin/ui/AdminApplications').then((module) => ({
+    default: module.AdminApplications,
+  })),
+);
+
+const CoverageMapEditor = lazy(() =>
+  import('./CoverageMapEditor').then((module) => ({
+    default: module.CoverageMapEditor,
+  })),
+);
+
+function CoverageSectionFallback({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+        <p className="font-semibold">Cobertura no pudo cargar</p>
+        <p className="mt-1">
+          Se detectó un error al abrir el editor de cobertura. Puedes reintentar sin salir del panel.
+        </p>
+        <p className="mt-2 font-mono text-[11px] text-red-600 break-words">{error.message}</p>
+      </div>
+      <button
+        type="button"
+        onClick={reset}
+        className="inline-flex items-center justify-center rounded-xl px-4 py-2 text-sm font-semibold text-white"
+        style={{ backgroundColor: 'var(--brand)' }}
+      >
+        Reintentar cobertura
+      </button>
+    </div>
+  );
+}
+
+function CoverageMapErrorBoundary({ children }: { children: ReactNode }) {
+  return (
+    <ErrorBoundary fallback={CoverageSectionFallback}>
+      {children}
+    </ErrorBoundary>
+  );
+}
+
+function getRoleColor(role: string) {
+  const roles = ['customer', 'store', 'driver', 'admin'];
+  const index = roles.indexOf(role);
+  return PIE_COLORS[index >= 0 ? index : 0];
+}
 
 type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage';
 
@@ -77,6 +132,99 @@ function RoleBadge({ role }: { role: string }) {
   return <span className={`text-xs px-2 py-0.5 rounded-full ${ROLE_STYLES[role] || 'bg-surface text-text-secondary'}`}>{ROLE_LABELS[role] || role}</span>;
 }
 
+const DEFAULT_COVERAGE_CENTER: [number, number] = [-0.4632, -76.9892];
+
+function isValidNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+function normalizeCoveragePoint(value: unknown, fallback: [number, number]): [number, number] {
+  if (Array.isArray(value) && value.length === 2 && isValidNumber(value[0]) && isValidNumber(value[1])) {
+    return [value[0], value[1]];
+  }
+
+  return [fallback[0], fallback[1]];
+}
+
+function normalizeCoverageBoundary(value: unknown): [number, number][] {
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .filter((point): point is [number, number] => Array.isArray(point) && point.length === 2 && isValidNumber(point[0]) && isValidNumber(point[1]))
+    .map((point) => [point[0], point[1]] as [number, number]);
+}
+
+function createCoverageCityDraft(
+  city: Partial<CoverageCityDraft> & Pick<CoverageCityDraft, 'id'>,
+  fallbackCenter: [number, number] = DEFAULT_COVERAGE_CENTER,
+): CoverageCityDraft {
+  const shape = city.shape === 'polygon' ? 'polygon' : 'circle';
+  const center = normalizeCoveragePoint(city.center, fallbackCenter);
+  const boundary = normalizeCoverageBoundary(city.boundary);
+
+  return {
+    id: city.id,
+    city_name: typeof city.city_name === 'string' && city.city_name.trim() ? city.city_name.trim() : 'Ciudad sin nombre',
+    center,
+    radius_km: isValidNumber(city.radius_km) && city.radius_km > 0 ? city.radius_km : 5,
+    is_active: city.is_active !== false,
+    shape,
+    boundary: shape === 'polygon' ? boundary : [],
+  };
+}
+
+function updateCoverageDraftCity(
+  city: CoverageCityDraft,
+  patch: Partial<CoverageCityDraft>,
+): CoverageCityDraft {
+  const nextShape = patch.shape ?? city.shape;
+  const nextCenter = patch.center ? normalizeCoveragePoint(patch.center, city.center) : city.center;
+  const nextBoundary = patch.boundary ? normalizeCoverageBoundary(patch.boundary) : city.boundary;
+
+  return createCoverageCityDraft(
+    {
+      ...city,
+      ...patch,
+      city_name: typeof patch.city_name === 'string' ? patch.city_name : city.city_name,
+      center: nextCenter,
+      radius_km: isValidNumber(patch.radius_km) ? patch.radius_km : city.radius_km,
+      is_active: typeof patch.is_active === 'boolean' ? patch.is_active : city.is_active,
+      shape: nextShape,
+      boundary: nextShape === 'polygon' ? nextBoundary : [],
+    },
+    city.center,
+  );
+}
+
+function normalizeCoverageCoordinate(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+function normalizeCoverageStorePoint(store: Partial<CoverageStorePoint> & { id: string; name: string; emoji?: string | null }): CoverageStorePoint {
+  return {
+    id: store.id,
+    name: store.name,
+    emoji: store.emoji ?? '🏬',
+    latitude: normalizeCoverageCoordinate(store.latitude),
+    longitude: normalizeCoverageCoordinate(store.longitude),
+    city: typeof store.city === 'string' ? store.city : null,
+    is_open: Boolean(store.is_open),
+    inside: typeof store.inside === 'boolean' ? store.inside : undefined,
+    distanceLabel: typeof store.distanceLabel === 'string' ? store.distanceLabel : undefined,
+    zoneRadiusKm: normalizeCoverageCoordinate(store.zoneRadiusKm),
+  };
+}
+
+function formatCoverageCoordinate(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '--';
+  return value.toFixed(4);
+}
+
 export function AdminDashboard() {
   const { logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -89,6 +237,7 @@ export function AdminDashboard() {
   const [usersByRole, setUsersByRole] = useState<{ role: string; count: number }[]>([]);
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [driverHiringEnabled, setDriverHiringEnabledState] = useState(true);
 
   // stores tab
   const [stores, setStores] = useState<AdminStore[]>([]);
@@ -106,6 +255,10 @@ export function AdminDashboard() {
   const [usersPage, setUsersPage] = useState(0);
   const [usersHasMore, setUsersHasMore] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<AdminUser | null>(null);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [selectedUserDetail, setSelectedUserDetail] = useState<UserDetail | null>(null);
+  const [selectedUserLoading, setSelectedUserLoading] = useState(false);
+  const [selectedUserError, setSelectedUserError] = useState<string | null>(null);
 
   // activity
   const [activity, setActivity] = useState<ActivityItem[]>([]);
@@ -115,7 +268,7 @@ export function AdminDashboard() {
     { id: 'coca', city_name: 'Puerto Francisco de Orellana (El Coca)', center: [-0.4632, -76.9892], radius_km: 5, is_active: true, shape: 'circle', boundary: [] },
   ]));
   const [coverageDraft, setCoverageDraft] = useState<CoverageCityDraft[]>(
-    coverageZones.cities.map((city) => ({
+    coverageZones.cities.map((city) => createCoverageCityDraft({
       ...city,
       center: [city.center[0], city.center[1]] as [number, number],
       boundary: city.boundary?.map((point) => [point[0], point[1]] as [number, number]) ?? [],
@@ -141,7 +294,12 @@ export function AdminDashboard() {
           supabase.from('app_config').select('*').eq('key', 'coverage_zones').maybeSingle(),
         ]);
 
-        if (storesRes.data) setCoverageStores(storesRes.data as CoverageStorePoint[]);
+        if (storesRes.data) {
+          setCoverageStores((storesRes.data as Array<Partial<CoverageStorePoint> & { id: string; name: string }>).map((store) => normalizeCoverageStorePoint({
+            ...store,
+            emoji: typeof store.emoji === 'string' ? store.emoji : undefined,
+          })));
+        }
 
         const parsedZones = parseCoverageZonesConfig(configRes.data?.value);
         const legacy = parseCoverageAreaConfig(configRes.data?.value);
@@ -149,7 +307,7 @@ export function AdminDashboard() {
 
         if (zones) {
           setCoverageZones(zones);
-          setCoverageDraft(zones.cities.map((city) => ({
+          setCoverageDraft(zones.cities.map((city) => createCoverageCityDraft({
             ...city,
             center: [city.center[0], city.center[1]] as [number, number],
             boundary: city.boundary?.map((point) => [point[0], point[1]] as [number, number]) ?? [],
@@ -203,6 +361,22 @@ export function AdminDashboard() {
     };
     load();
   }, [period]);
+
+  useEffect(() => {
+    getDriverHiringEnabled()
+      .then(setDriverHiringEnabledState)
+      .catch(() => setDriverHiringEnabledState(true));
+  }, []);
+
+  const handleToggleDriverHiring = async () => {
+    const next = !driverHiringEnabled;
+    setDriverHiringEnabledState(next);
+    try {
+      await setDriverHiringEnabled(next);
+    } catch {
+      setDriverHiringEnabledState(!next);
+    }
+  };
 
   // ---- Load Stores ----
   useEffect(() => {
@@ -276,6 +450,30 @@ export function AdminDashboard() {
     } catch { /* noop */ }
   };
 
+  const handleOpenUserDetail = async (user: AdminUser) => {
+    setSelectedUser(user);
+    setSelectedUserDetail(null);
+    setSelectedUserError(null);
+    setSelectedUserLoading(true);
+
+    try {
+      const detail = await getUserDetail(user.id);
+      setSelectedUserDetail(detail);
+      if (!detail) setSelectedUserError('No se encontraron detalles para este usuario.');
+    } catch (e) {
+      setSelectedUserError(getErrorMessage(e));
+    } finally {
+      setSelectedUserLoading(false);
+    }
+  };
+
+  const handleCloseUserDetail = () => {
+    setSelectedUser(null);
+    setSelectedUserDetail(null);
+    setSelectedUserError(null);
+    setSelectedUserLoading(false);
+  };
+
   const handleToggleSuspend = async (userId: string, suspended: boolean) => {
     try {
       await toggleSuspend(userId, suspended);
@@ -313,6 +511,29 @@ export function AdminDashboard() {
             </div>
           );
         })}
+      </div>
+
+      <div className="bg-card rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-purple-100 text-brand flex items-center justify-center">
+            <Bike size={20} />
+          </div>
+          <div>
+            <p className="font-bold text-text-primary">Contratacion de repartidores</p>
+            <p className="text-sm text-text-secondary">
+              Controla si los clientes ven la opcion Trabajar con nosotros.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggleDriverHiring}
+          className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+            driverHiringEnabled ? 'bg-green-100 text-green-700' : 'bg-surface-hover text-text-secondary'
+          }`}
+        >
+          {driverHiringEnabled ? 'Visible' : 'Oculto'}
+        </button>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">
@@ -429,7 +650,7 @@ export function AdminDashboard() {
               {recentUsers.slice(0, 10).map((u) => (
                 <div key={u.id} className="flex items-center gap-3 py-2 border-b border-border-light last:border-0">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center text-white text-xs font-medium"
-                    style={{ backgroundColor: PIE_COLORS[['customer', 'store_owner', 'driver', 'admin'].indexOf(u.role) >= 0 ? ['customer', 'store_owner', 'driver', 'admin'].indexOf(u.role) : 0] }}>
+                    style={{ backgroundColor: getRoleColor(u.role) }}>
                     {u.full_name?.charAt(0)?.toUpperCase() || 'U'}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -566,15 +787,26 @@ export function AdminDashboard() {
       ) : users.length > 0 ? (
         <div className="space-y-2">
           {users.map((u) => (
-            <div key={u.id} className="flex items-center gap-3 bg-card rounded-2xl p-4 shadow-sm">
+            <div
+              key={u.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => void handleOpenUserDetail(u)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  void handleOpenUserDetail(u);
+                }
+              }}
+              className="flex items-center gap-3 bg-card rounded-2xl p-4 shadow-sm cursor-pointer transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-brand/30"
+            >
               <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-sm font-medium flex-shrink-0"
-                style={{ backgroundColor: PIE_COLORS[['customer', 'driver', 'store', 'admin'].indexOf(u.role) >= 0 ? ['customer', 'driver', 'store', 'admin'].indexOf(u.role) : 0] }}>
+                style={{ backgroundColor: getRoleColor(u.role) }}>
                 {u.full_name?.charAt(0)?.toUpperCase() || 'U'}
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-text-primary font-medium">{u.full_name || 'Sin nombre'}</p>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className="text-xs text-text-secondary">Usuario</span>
                   <span className="text-xs text-text-secondary">·</span>
                   <RoleBadge role={u.role} />
                   {u.is_suspended && <span className="text-xs px-1.5 py-0.5 rounded-full bg-danger-light text-danger">Suspendido</span>}
@@ -582,14 +814,20 @@ export function AdminDashboard() {
               </div>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => handleToggleSuspend(u.id, !u.is_suspended)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void handleToggleSuspend(u.id, !u.is_suspended);
+                  }}
                   className={`p-2 rounded-lg ${u.is_suspended ? 'bg-success-light text-success hover:bg-green-100' : 'bg-danger-light text-danger hover:bg-red-100'}`}
                   title={u.is_suspended ? 'Reactivar' : 'Suspender'}
                 >
                   {u.is_suspended ? <UserCheck size={16} /> : <UserX size={16} />}
                 </button>
                 <button
-                  onClick={() => setDeleteTarget(u)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setDeleteTarget(u);
+                  }}
                   className="p-2 rounded-lg bg-surface-hover text-text-secondary hover:bg-red-100 hover:text-danger"
                   title="Eliminar cuenta"
                 >
@@ -659,6 +897,210 @@ export function AdminDashboard() {
     </div>
   );
 
+  const renderUserDetailModal = () => {
+    if (!selectedUser) return null;
+    const profile = selectedUserDetail?.profile ?? { ...selectedUser, avatar_url: null };
+    const totalOrders = selectedUserDetail?.stats.total_orders ?? 0;
+    const totalSpent = selectedUserDetail?.stats.total_spent ?? 0;
+    const defaultAddresses = selectedUserDetail?.stats.default_addresses ?? 0;
+    const lastOrderAt = selectedUserDetail?.stats.last_order_at ?? null;
+
+    return (
+      <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={handleCloseUserDetail}>
+        <div
+          className="w-full max-w-3xl bg-card rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="flex items-start justify-between gap-4 p-5 border-b border-border-light">
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-wide text-text-secondary">Detalle de usuario</p>
+              <h3 className="text-xl font-bold text-text-primary truncate">{profile.full_name || 'Sin nombre'}</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <RoleBadge role={profile.role} />
+                {profile.is_suspended && <span className="text-xs px-2 py-0.5 rounded-full bg-danger-light text-danger">Suspendido</span>}
+                {!profile.is_suspended && <span className="text-xs px-2 py-0.5 rounded-full bg-success-light text-success">Activo</span>}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseUserDetail}
+              className="p-2 rounded-full bg-surface-hover text-text-secondary hover:bg-surface"
+              aria-label="Cerrar detalle"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-5 space-y-5">
+            {selectedUserLoading ? (
+              <div className="flex items-center justify-center py-16">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : selectedUserError ? (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                {selectedUserError}
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {[
+                    { label: 'Pedidos', value: totalOrders },
+                    { label: 'Gastado', value: formatCurrency(totalSpent) },
+                    { label: 'Direcciones', value: selectedUserDetail?.addresses.length ?? 0 },
+                    { label: 'Principales', value: defaultAddresses },
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-2xl bg-surface p-4 border border-border-light">
+                      <p className="text-xs text-text-secondary">{item.label}</p>
+                      <p className="text-lg font-bold text-text-primary mt-1">{item.value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="rounded-2xl border border-border-light p-4">
+                    <p className="text-sm font-semibold text-text-primary mb-3">Datos de contacto</p>
+                    <div className="space-y-3 text-sm">
+                      <div className="flex items-start gap-3">
+                        <Mail size={16} className="mt-0.5 text-text-secondary" />
+                        <div>
+                          <p className="text-text-secondary">Correo</p>
+                          <p className="text-text-primary font-medium break-all">{profile.email || 'Sin correo'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Phone size={16} className="mt-0.5 text-text-secondary" />
+                        <div>
+                          <p className="text-text-secondary">Teléfono</p>
+                          <p className="text-text-primary font-medium">{profile.phone || 'Sin teléfono'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <CalendarDays size={16} className="mt-0.5 text-text-secondary" />
+                        <div>
+                          <p className="text-text-secondary">Registro</p>
+                          <p className="text-text-primary font-medium">
+                            {profile.created_at ? new Date(profile.created_at).toLocaleString('es-EC', TZ_OPTS) : 'Sin fecha'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3">
+                        <Clock size={16} className="mt-0.5 text-text-secondary" />
+                        <div>
+                          <p className="text-text-secondary">Último acceso</p>
+                          <p className="text-text-primary font-medium">
+                            {profile.last_sign_in ? new Date(profile.last_sign_in).toLocaleString('es-EC', TZ_OPTS) : 'Sin registro'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-border-light p-4">
+                    <p className="text-sm font-semibold text-text-primary mb-3">Acciones rápidas</p>
+                    <div className="flex flex-col gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const nextState = !profile.is_suspended;
+                          void handleToggleSuspend(profile.id, nextState);
+                          setSelectedUser((prev) => (prev ? { ...prev, is_suspended: nextState } : prev));
+                          setSelectedUserDetail((prev) => (prev ? { ...prev, profile: { ...prev.profile, is_suspended: nextState } } : prev));
+                        }}
+                        className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium ${
+                          profile.is_suspended ? 'bg-success text-white' : 'bg-danger text-white'
+                        }`}
+                      >
+                        {profile.is_suspended ? <UserCheck size={16} /> : <UserX size={16} />}
+                        {profile.is_suspended ? 'Reactivar usuario' : 'Suspender usuario'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeleteTarget(selectedUser);
+                          handleCloseUserDetail();
+                        }}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium bg-surface-hover text-danger"
+                      >
+                        <Trash2 size={16} />
+                        Eliminar cuenta
+                      </button>
+                    </div>
+                    {lastOrderAt && (
+                      <p className="mt-3 text-xs text-text-secondary">
+                        Último pedido: {new Date(lastOrderAt).toLocaleString('es-EC', TZ_OPTS)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-text-primary">Direcciones</p>
+                    <span className="text-xs text-text-secondary">{selectedUserDetail?.addresses.length ?? 0} registradas</span>
+                  </div>
+                  {selectedUserDetail?.addresses.length ? (
+                    <div className="space-y-2">
+                      {selectedUserDetail.addresses.map((address) => (
+                        <div key={address.id} className="rounded-2xl border border-border-light p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-text-primary">{address.title}</p>
+                                {address.is_default && <span className="text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">Principal</span>}
+                              </div>
+                              <p className="text-sm text-text-secondary mt-1">{address.line1}</p>
+                              {address.details && <p className="text-xs text-text-secondary mt-1">{address.details}</p>}
+                            </div>
+                            <MapPinned size={18} className="text-text-secondary flex-shrink-0" />
+                          </div>
+                          {(address.lat !== null || address.lng !== null) && (
+                            <p className="text-xs text-text-secondary mt-3">
+                              {address.lat !== null ? address.lat.toFixed(5) : '--'} · {address.lng !== null ? address.lng.toFixed(5) : '--'}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-secondary">No hay direcciones registradas.</p>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold text-text-primary">Pedidos recientes</p>
+                  {selectedUserDetail?.recent_orders.length ? (
+                    <div className="space-y-2">
+                      {selectedUserDetail.recent_orders.map((order) => (
+                        <div key={order.id} className="rounded-2xl border border-border-light p-4 flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{order.store_emoji || '🧾'}</span>
+                              <p className="font-medium text-text-primary truncate">{order.store_name || 'Pedido sin tienda'}</p>
+                            </div>
+                            <p className="text-xs text-text-secondary mt-1">{order.delivery_address}</p>
+                            <p className="text-xs text-text-secondary mt-1">
+                              {new Date(order.created_at).toLocaleString('es-EC', TZ_OPTS)} · {order.items_count} items
+                            </p>
+                          </div>
+                          <div className="text-right flex-shrink-0">
+                            <StatusBadge status={order.status} />
+                            <p className="font-bold text-text-primary mt-2">{formatCurrency(order.total)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-text-secondary">No hay pedidos recientes.</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const getErrorMessage = (e: unknown): string => {
     if (e instanceof Error && e.message) return e.message;
     if (typeof e === 'object' && e !== null && 'message' in e) {
@@ -675,19 +1117,25 @@ export function AdminDashboard() {
     ?? null;
 
   const handleAddCoverageCity = () => {
-    const baseCity = coverageDraft.find((city) => city.is_active) ?? coverageDraft[0] ?? null;
+    const baseCity = coverageDraft.find((city) => city.id === selectedCoverageCityId)
+      ?? coverageDraft.find((city) => city.is_active)
+      ?? coverageDraft[0]
+      ?? null;
     const id = `city-${Date.now()}`;
-    const newCity: CoverageCityDraft = {
+    const newCity = createCoverageCityDraft({
       id,
-      city_name: 'Nueva ciudad',
-      center: baseCity ? [baseCity.center[0], baseCity.center[1]] : [-0.4632, -76.9892],
+      city_name: `Nueva ciudad ${coverageDraft.length + 1}`,
+      center: baseCity?.center ?? DEFAULT_COVERAGE_CENTER,
       radius_km: baseCity?.radius_km ?? 5,
       is_active: coverageDraft.length === 0,
       shape: baseCity?.shape ?? 'circle',
-      boundary: baseCity?.boundary ? baseCity.boundary.map((point) => [point[0], point[1]] as [number, number]) : [],
-    };
+      boundary: baseCity?.boundary ?? [],
+    }, baseCity?.center ?? DEFAULT_COVERAGE_CENTER);
 
-    setCoverageDraft((prev) => [...prev.map((city) => ({ ...city, is_active: prev.length === 0 ? false : city.is_active })), newCity]);
+    setCoverageDraft((prev) => [
+      ...prev.map((city) => ({ ...city, is_active: prev.length === 0 ? false : city.is_active })),
+      newCity,
+    ]);
     setSelectedCoverageCityId(id);
   };
 
@@ -695,7 +1143,7 @@ export function AdminDashboard() {
     cityId: string,
     patch: Partial<CoverageCityDraft>,
   ) => {
-    setCoverageDraft((prev) => prev.map((city) => (city.id === cityId ? { ...city, ...patch } : city)));
+    setCoverageDraft((prev) => prev.map((city) => (city.id === cityId ? updateCoverageDraftCity(city, patch) : city)));
     if (patch.is_active) setSelectedCoverageCityId(cityId);
   };
 
@@ -728,15 +1176,7 @@ export function AdminDashboard() {
     try {
       const activeId = selectedCoverageCityId || coverageDraft.find((city) => city.is_active)?.id || null;
       const nextZones = buildCoverageZonesConfig(
-        coverageDraft.map((city) => ({
-          ...city,
-          city_name: city.city_name.trim() || 'Ciudad sin nombre',
-          center: [city.center[0], city.center[1]] as [number, number],
-          radius_km: Number.isFinite(city.radius_km) && city.radius_km > 0 ? city.radius_km : 5,
-          is_active: Boolean(city.is_active),
-          shape: city.shape === 'polygon' ? 'polygon' : 'circle',
-          boundary: (city.boundary ?? []).map((point) => [point[0], point[1]] as [number, number]),
-        })),
+        coverageDraft.map((city) => createCoverageCityDraft(city)),
         activeId,
       );
 
@@ -761,7 +1201,7 @@ export function AdminDashboard() {
       if (failure?.error) throw failure.error;
 
       setCoverageZones(nextZones);
-      setCoverageDraft(nextZones.cities.map((city) => ({
+      setCoverageDraft(nextZones.cities.map((city) => createCoverageCityDraft({
         id: city.id,
         city_name: city.city_name,
         center: [city.center[0], city.center[1]] as [number, number],
@@ -781,15 +1221,24 @@ export function AdminDashboard() {
   };
 
   const renderCoverage = () => {
-    const activeZone = getActiveCoverageZone(coverageZones);
     const selectedCity = getCoverageCityDraft(selectedCoverageCityId);
+    if (coverageDraft.length > 0 && !selectedCity) {
+      throw new Error('No se pudo resolver la ciudad seleccionada para cobertura.');
+    }
+
+    const draftCoverageZones = buildCoverageZonesConfig(
+      coverageDraft.map((city) => createCoverageCityDraft(city)),
+      selectedCoverageCityId || coverageDraft.find((city) => city.is_active)?.id || null,
+    );
+    const activeZone = getActiveCoverageZone(draftCoverageZones);
+
     const activeStores = coverageStores.map((store) => {
-      const cityZone = getCoverageZoneForCity(store.city, coverageZones);
+      const cityZone = getCoverageZoneForCity(store.city, draftCoverageZones);
       const zone = cityZone ?? activeZone;
       const coords = typeof store.latitude === 'number' && typeof store.longitude === 'number'
         ? [store.latitude, store.longitude] as [number, number]
         : null;
-      const coverageMatch = coords ? isPointInAnyCoverageZone(coords[0], coords[1], coverageZones) : null;
+      const coverageMatch = coords ? isPointInAnyCoverageZone(coords[0], coords[1], draftCoverageZones) : null;
       const inside = coords && zone ? isPointInCoverageZone(coords[0], coords[1], zone) : false;
       const distanceLabel = coords && coverageMatch && coverageMatch.distanceKm !== null
         ? `${coverageMatch.distanceKm.toFixed(2)} km`
@@ -833,11 +1282,15 @@ export function AdminDashboard() {
 
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
               {coverageDraft.map((city, index) => (
-                <button
+                <div
                   key={city.id}
-                  type="button"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => setSelectedCoverageCityId(city.id)}
-                  className={`w-full rounded-2xl border p-3 text-left transition ${selectedCoverageCityId === city.id ? 'border-purple-500 bg-purple-50' : 'border-border-light bg-surface hover:bg-surface-hover'}`}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') setSelectedCoverageCityId(city.id);
+                  }}
+                  className={`w-full rounded-2xl border p-3 text-left transition cursor-pointer ${selectedCoverageCityId === city.id ? 'border-purple-500 bg-purple-50' : 'border-border-light bg-surface hover:bg-surface-hover'}`}
                 >
                   <div className="flex items-start justify-between gap-2 mb-3">
                     <div>
@@ -861,7 +1314,7 @@ export function AdminDashboard() {
                   <div className="text-xs text-text-secondary">
                     {city.shape === 'polygon' ? `${city.boundary.length} puntos dibujados` : `${city.radius_km} km de radio`}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
 
@@ -902,31 +1355,41 @@ export function AdminDashboard() {
                 </select>
               </div>
 
-              <CoverageMapEditor
-                city={selectedCity}
-                stores={activeStores.map((store) => ({
-                  id: store.id,
-                  name: store.name,
-                  emoji: store.emoji,
-                  latitude: store.latitude,
-                  longitude: store.longitude,
-                  city: store.city,
-                  is_open: store.is_open,
-                  inside: store.inside,
-                  distanceLabel: store.distanceLabel,
-                  zoneRadiusKm: store.zone?.radius_km ?? null,
-                }))}
-                onChange={(patch) => {
-                  if (!selectedCity) return;
-                  handleUpdateCoverageCity(selectedCity.id, patch);
-                }}
-              />
+              <CoverageMapErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center rounded-2xl border border-border-light bg-surface py-16">
+                      <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                    </div>
+                  }
+                >
+                  <CoverageMapEditor
+                    key={selectedCity?.id || 'coverage-map'}
+                    city={selectedCity}
+                    stores={activeStores.map((store) => ({
+                      id: store.id,
+                      name: store.name,
+                      emoji: store.emoji,
+                      latitude: store.latitude,
+                      longitude: store.longitude,
+                      city: store.city,
+                      is_open: store.is_open,
+                      inside: store.inside,
+                      distanceLabel: store.distanceLabel,
+                      zoneRadiusKm: store.zone?.radius_km ?? null,
+                    }))}
+                    onChange={(patch) => {
+                      if (!selectedCity) return;
+                      handleUpdateCoverageCity(selectedCity.id, patch);
+                    }}
+                  />
+                </Suspense>
+              </CoverageMapErrorBoundary>
             </div>
 
             <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
               <div className="flex items-center justify-between border-b pb-2 mb-3">
                 <h3 className="text-sm font-semibold text-text-primary">Datos de la ciudad seleccionada</h3>
-                      <span className="text-xs text-text-secondary">Usuario</span>
               </div>
 
               {selectedCity ? (
@@ -1015,13 +1478,13 @@ export function AdminDashboard() {
                       {activeStores.map((store) => (
                         <tr key={store.id} className="hover:bg-surface/30">
                           <td className="py-3 font-medium text-text-primary">
-                            <span className="mr-1">{store.emoji || '??'}</span>
+                            <span className="mr-1">{store.emoji || '🏬'}</span>
                             {store.name}
                           </td>
                           <td className="py-3 text-text-secondary">
                             {store.city || 'Sin ciudad'}
                             <span className="block font-mono text-[9px] mt-0.5">
-                              ({store.latitude?.toFixed(4)}, {store.longitude?.toFixed(4)})
+                              ({formatCoverageCoordinate(store.latitude)}, {formatCoverageCoordinate(store.longitude)})
                             </span>
                           </td>
                           <td className="py-3">
@@ -1074,7 +1537,17 @@ export function AdminDashboard() {
             </button>
           ))}
         </div>
-        <div className="flex-1 overflow-y-auto p-4"><AdminApplications /></div>
+        <div className="flex-1 overflow-y-auto p-4">
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <AdminApplications />
+          </Suspense>
+        </div>
       </div>
     );
   }
@@ -1161,6 +1634,7 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
+      {renderUserDetailModal()}
     </div>
   );
 }

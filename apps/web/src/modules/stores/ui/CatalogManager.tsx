@@ -26,9 +26,12 @@ export function CatalogManager({ storeId }: Props) {
 
   const [resolvedImages, setResolvedImages] = useState<Map<string, string | null>>(new Map());
 
-  const getErrorMessage = (e: any): string => {
+  const getErrorMessage = (e: unknown): string => {
     if (e instanceof Error && e.message) return e.message;
-    if (typeof e === 'object' && e !== null && 'message' in e && typeof e.message === 'string') return e.message;
+    if (typeof e === 'object' && e !== null && 'message' in e) {
+      const message = (e as { message?: unknown }).message;
+      if (typeof message === 'string') return message;
+    }
     return 'Error desconocido';
   };
 

@@ -97,13 +97,13 @@ function buildMockSummary(): AdminDashboardSummary {
       { name: 'Otros', value: 15, color: '#E5E7EB' },
     ],
     recent_orders: [
-      { id: 'ORD-2849', client: 'Juan Perez', store: 'Burger King', amount: 12.5, status: 'delivered', created_at: new Date().toISOString() },
-      { id: 'ORD-2848', client: 'Ana Garcia', store: 'KFC', amount: 28, status: 'on_the_way', created_at: new Date().toISOString() },
+      { id: 'ORD-2849', client: 'Juan Pérez', store: 'Burger King', amount: 12.5, status: 'delivered', created_at: new Date().toISOString() },
+      { id: 'ORD-2848', client: 'Ana García', store: 'KFC', amount: 28, status: 'on_the_way', created_at: new Date().toISOString() },
       { id: 'ORD-2847', client: 'Luis Mora', store: 'Subway', amount: 15.99, status: 'preparing', created_at: new Date().toISOString() },
     ],
     user_counts: { customers: 8247, stores: 234, drivers: 89, admins: 5 },
     recent_users: [
-      { id: '1', full_name: 'Maria Garcia', role: 'customer', is_suspended: false, created_at: new Date().toISOString() },
+      { id: '1', full_name: 'María García', role: 'customer', is_suspended: false, created_at: new Date().toISOString() },
       { id: '2', full_name: 'Carlos Andrade', role: 'driver', is_suspended: false, created_at: new Date().toISOString() },
       { id: '3', full_name: 'Burger King Q', role: 'store', is_suspended: false, created_at: new Date().toISOString() },
     ],

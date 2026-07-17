@@ -13,7 +13,6 @@ export const screenPathMap: Record<string, string> = {
   addresses: '/addresses',
   'personal-info': '/personal-info',
   'notification-settings': '/notification-settings',
-  wallet: '/wallet',
   driver: '/driver',
   'store-admin': '/store-admin',
   admin: '/admin',

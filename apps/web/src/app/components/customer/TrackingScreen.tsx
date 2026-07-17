@@ -9,6 +9,7 @@ import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { getSupabase } from '../../../integrations/supabase/client';
 import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
+import { getPendingChangeForOrder, respondToOrderChangeRequest, type OrderChangeRequest } from '../../../modules/orders/application/order-change.service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex } from '../../../modules/orders/domain/order-status.machine';
 import { formatCoordinates, toCoordinatePair } from '../../../shared/utils/coordinates';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
@@ -24,7 +25,7 @@ L.Icon.Default.mergeOptions({
 
 type Order = Database['public']['Tables']['orders']['Row'] & {
   order_items?: Array<{ product_name?: string; quantity?: number; unit_price?: number }>;
-  store?: { name?: string; emoji?: string; lat?: number; lng?: number };
+  store?: { name?: string; emoji?: string; lat?: number; lng?: number; latitude?: number | null; longitude?: number | null };
   delivery_lat?: number | null;
   delivery_lng?: number | null;
 };
@@ -142,6 +143,9 @@ export function TrackingScreen() {
   const [showChat, setShowChat] = useState(false);
   const [map, setMap] = useState<L.Map | null>(null);
   const [followDriver, setFollowDriver] = useState(true);
+  const [pendingChange, setPendingChange] = useState<OrderChangeRequest | null>(null);
+  const [changeBusy, setChangeBusy] = useState(false);
+  const [changeError, setChangeError] = useState('');
   const driverMarkerRef = useRef<L.Marker | null>(null);
 
   const activeOrder = useMemo(() => {
@@ -156,7 +160,9 @@ export function TrackingScreen() {
   const eta = estimateEta(activeStatus);
 
   // Derive coordinates from order data or use mock
-  const storeCoords = toCoordinatePair(activeOrder?.store?.lat, activeOrder?.store?.lng) ?? MOCK_STORE_COORDS;
+  const storeCoords = toCoordinatePair(activeOrder?.store?.lat, activeOrder?.store?.lng)
+    ?? toCoordinatePair(activeOrder?.store?.latitude, activeOrder?.store?.longitude)
+    ?? MOCK_STORE_COORDS;
   const destCoords = toCoordinatePair(activeOrder?.delivery_lat, activeOrder?.delivery_lng) ?? MOCK_DEST_COORDS;
   const driverCoords: [number, number] | null = driverLocation
     ? [driverLocation.lat, driverLocation.lng]
@@ -213,6 +219,47 @@ export function TrackingScreen() {
   useEffect(() => {
     if (isDelivered) setShowRating(true);
   }, [isDelivered]);
+
+  useEffect(() => {
+    if (!activeOrder?.id) {
+      setPendingChange(null);
+      return;
+    }
+    let cancelled = false;
+    const loadChange = async () => {
+      try {
+        const change = await getPendingChangeForOrder(activeOrder.id);
+        if (!cancelled) setPendingChange(change);
+      } catch {
+        if (!cancelled) setPendingChange(null);
+      }
+    };
+    void loadChange();
+    const supabase = getSupabase();
+    const channel = supabase
+      .channel(`order-change-${activeOrder.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'order_change_requests', filter: `order_id=eq.${activeOrder.id}` }, () => void loadChange())
+      .subscribe();
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [activeOrder?.id]);
+
+  const respondToChange = async (status: 'accepted' | 'rejected') => {
+    if (!pendingChange || !user?.id) return;
+    setChangeBusy(true);
+    setChangeError('');
+    try {
+      await respondToOrderChangeRequest(pendingChange.id, status, user.id);
+      setPendingChange(null);
+      await loadOrders(false);
+    } catch (error) {
+      setChangeError(error instanceof Error ? error.message : 'No se pudo responder la propuesta.');
+    } finally {
+      setChangeBusy(false);
+    }
+  };
 
   // Update driver marker position smoothly
   useEffect(() => {
@@ -440,6 +487,52 @@ export function TrackingScreen() {
                 ))}
               </div>
             </div>
+
+            {pendingChange && (
+              <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm border border-amber-200 lg:w-80">
+                <p className="text-text-primary font-bold text-sm">La tienda propone un cambio</p>
+                <p className="text-xs text-text-secondary mt-1">{pendingChange.reason}</p>
+                <div className="mt-3 space-y-2">
+                  {pendingChange.proposed_items.map((item, index) => (
+                    <div key={`${item.productName}-${index}`} className="rounded-xl bg-surface p-3 text-xs">
+                      <p className="font-semibold text-text-primary">{item.productName}</p>
+                      <p className="text-text-secondary">
+                        {item.action === 'replace'
+                          ? `Reemplazar por ${item.replacementName || 'otro producto'}`
+                          : 'Quitar de la orden'}
+                      </p>
+                      {typeof item.replacementPrice === 'number' && (
+                        <p className="text-text-secondary">Nuevo precio: ${item.replacementPrice.toFixed(2)}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {pendingChange.new_total !== null && (
+                  <div className="flex justify-between text-sm font-bold mt-3">
+                    <span>Nuevo total</span>
+                    <span style={{ color: 'var(--brand)' }}>${Number(pendingChange.new_total).toFixed(2)}</span>
+                  </div>
+                )}
+                {changeError && <p className="text-xs text-danger mt-2">{changeError}</p>}
+                <div className="grid grid-cols-2 gap-2 mt-3">
+                  <button
+                    onClick={() => void respondToChange('rejected')}
+                    disabled={changeBusy}
+                    className="py-2 rounded-xl bg-surface-hover text-text-secondary text-sm font-semibold disabled:opacity-60"
+                  >
+                    Rechazar
+                  </button>
+                  <button
+                    onClick={() => void respondToChange('accepted')}
+                    disabled={changeBusy}
+                    className="py-2 rounded-xl text-white text-sm font-semibold disabled:opacity-60"
+                    style={{ backgroundColor: 'var(--brand)' }}
+                  >
+                    Aceptar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {activeOrder && (
               <div className="mx-4 lg:mx-0 mt-4 lg:mt-0 bg-card rounded-2xl p-4 shadow-sm lg:w-80">

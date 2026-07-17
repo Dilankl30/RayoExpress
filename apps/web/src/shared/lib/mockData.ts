@@ -1,4 +1,4 @@
-import type { Role } from '../types';
+import type { Address, FavoriteItem, Promotion, Role, UserProfile, Database } from '../types';
 
 export const isMockMode = import.meta.env.VITE_MOCK_MODE === 'true';
 
@@ -21,7 +21,7 @@ export const mockUser = (email: string) => {
     phone: null,
     avatar_url: null,
     is_suspended: false,
-  };
+  } satisfies UserProfile & { email: string };
 };
 
 export const mockStores = [
@@ -29,7 +29,7 @@ export const mockStores = [
     id: 'store-1',
     owner_id: 'mock-store',
     name: 'Rayo Demo Market',
-    emoji: 'RE',
+    emoji: '🏬',
     cover_color: '#4514D8',
     is_open: true,
     min_order: 3.99,
@@ -45,13 +45,55 @@ export const mockCategories = [
   {
     id: 'cat-1',
     name: 'Ejemplo',
-    emoji: '*',
+    emoji: '✨',
     bg_color: '#F4F0FF',
     created_at: '2026-01-01',
   },
 ];
 
-export const mockProducts: Record<string, any[]> = {
+type MockProduct = Database['public']['Tables']['products']['Row'];
+type MockOrderStatus = 'pending' | 'accepted' | 'preparing' | 'picked_up' | 'on_the_way' | 'arrived' | 'delivered' | 'cancelled' | 'refunded';
+type MockOrderItem = {
+  id: string;
+  order_id: string;
+  product_id: string;
+  product_name: string;
+  quantity: number;
+  unit_price: number;
+};
+type MockOrder = {
+  id: string;
+  customer_id: string;
+  store_id: string;
+  driver_id: string | null;
+  status: MockOrderStatus;
+  payment_method: 'cash' | 'transfer' | 'card';
+  subtotal: number;
+  delivery_fee: number;
+  discount: number;
+  tax: number;
+  tip: number;
+  total: number;
+  delivery_address: string;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  order_items: MockOrderItem[];
+  store: { name: string; emoji: string };
+  customer: { full_name: string | null };
+};
+type CreateMockOrderParams = {
+  storeId: string;
+  productIds: string[];
+  quantities: number[];
+  paymentMethod: 'cash' | 'transfer' | 'card';
+  deliveryAddress: string;
+  couponCode?: string;
+  tip?: number;
+  notes?: string;
+};
+
+export const mockProducts: Record<string, MockProduct[]> = {
   'store-1': [
     {
       id: 'prod-1',
@@ -77,9 +119,9 @@ export function getMockProductsByCategory(categoryId: string) {
   return Object.values(mockProducts).flat().filter((product) => product.category_id === categoryId);
 }
 
-export const mockOrders: Record<string, any[]> = {};
+export const mockOrders: Record<string, MockOrder[]> = {};
 
-export function createMockOrder(params: any, userId: string) {
+export function createMockOrder(params: CreateMockOrderParams, userId: string) {
   const allProducts = Object.values(mockProducts).flat();
   const subtotal = params.productIds.reduce((sum: number, productId: string, index: number) => {
     const product = allProducts.find((item) => item.id === productId);
@@ -92,7 +134,7 @@ export function createMockOrder(params: any, userId: string) {
   const total = subtotal + deliveryFee - discount + tax + tip;
   const orderId = `order-${Date.now()}`;
 
-  const order = {
+  const order: MockOrder = {
     id: orderId,
     customer_id: userId,
     store_id: params.storeId,
@@ -120,7 +162,8 @@ export function createMockOrder(params: any, userId: string) {
         unit_price: product?.price || 0,
       };
     }),
-    store: { name: 'Rayo Demo Market', emoji: 'RE' },
+    store: { name: 'Rayo Demo Market', emoji: '🏬' },
+    customer: { full_name: 'Cliente Demo' },
   };
 
   if (!mockOrders[userId]) mockOrders[userId] = [];
@@ -152,7 +195,7 @@ export function assignDriverToMockOrder(orderId: string, driverId: string) {
   }
 }
 
-export const mockPromotions = [
+export const mockPromotions: Promotion[] = [
   {
     id: 'promo-1',
     title: 'Promo demo',
@@ -162,7 +205,7 @@ export const mockPromotions = [
     code: 'RAYO10',
     store_id: 'store-1',
     store_name: 'Rayo Demo Market',
-    store_emoji: 'RE',
+    store_emoji: '🏬',
     bg_color: '#4514D8',
     text_color: '#FFFFFF',
     emoji: '%',
@@ -181,7 +224,7 @@ export function getMockPromotionsByType(type: string) {
   return mockPromotions.filter((promotion) => promotion.type === type);
 }
 
-export const mockAddresses: Record<string, any[]> = {
+export const mockAddresses: Record<string, Address[]> = {
   'mock-customer': [
     {
       id: 'addr-1',
@@ -197,7 +240,7 @@ export function getMockAddresses(userId: string) {
   return mockAddresses[userId] || [];
 }
 
-export function addMockAddress(userId: string, address: any) {
+export function addMockAddress(userId: string, address: Omit<Address, 'id'>) {
   if (!mockAddresses[userId]) mockAddresses[userId] = [];
   if (address.is_default) {
     mockAddresses[userId] = mockAddresses[userId].map((item) => ({ ...item, is_default: false }));
@@ -206,7 +249,7 @@ export function addMockAddress(userId: string, address: any) {
   return mockAddresses[userId];
 }
 
-export function updateMockAddress(userId: string, addressId: string, updates: any) {
+export function updateMockAddress(userId: string, addressId: string, updates: Partial<Address>) {
   if (!mockAddresses[userId]) return [];
   mockAddresses[userId] = mockAddresses[userId].map((address) =>
     address.id === addressId ? { ...address, ...updates } : address,
@@ -229,14 +272,14 @@ export function setDefaultMockAddress(userId: string, addressId: string) {
   return mockAddresses[userId];
 }
 
-export const mockFavorites: Record<string, any[]> = {
+export const mockFavorites: Record<string, FavoriteItem[]> = {
   'mock-customer': [
     {
       id: 'store-1',
       kind: 'store',
       name: 'Rayo Demo Market',
       subtitle: 'Tienda de ejemplo',
-      emoji: 'RE',
+      emoji: '🏬',
     },
   ],
 };
@@ -245,7 +288,7 @@ export function getMockFavorites(userId: string) {
   return mockFavorites[userId] || [];
 }
 
-export function toggleMockFavorite(userId: string, item: any) {
+export function toggleMockFavorite(userId: string, item: FavoriteItem) {
   if (!mockFavorites[userId]) mockFavorites[userId] = [];
   const exists = mockFavorites[userId].some((favorite) => favorite.id === item.id && favorite.kind === item.kind);
   if (exists) {
@@ -262,13 +305,23 @@ export function isMockFavorite(userId: string, id: string, kind: string) {
   return (mockFavorites[userId] || []).some((favorite) => favorite.id === id && favorite.kind === kind);
 }
 
-export const mockNotifications: Record<string, any[]> = {
+export type MockNotification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+  data?: Record<string, unknown> | null;
+};
+
+export const mockNotifications: Record<string, MockNotification[]> = {
   'mock-customer': [
     {
       id: 'notif-1',
       user_id: 'mock-customer',
-      title: 'Notificacion demo',
-      body: 'Este es el unico ejemplo local.',
+      title: 'Notificación demo',
+      body: 'Este es el único ejemplo local.',
       read_at: null,
       created_at: new Date().toISOString(),
     },

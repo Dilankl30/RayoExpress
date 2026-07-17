@@ -2,7 +2,7 @@ import type { Role, Screen } from '../types';
 
 export const PUBLIC_PATHS = ['/', '/login', '/register-store', '/register-driver'] as const;
 
-export const CUSTOMER_HOME_PATHS = ['/home', '/explore', '/super', '/cart', '/tracking', '/orders', '/promotions', '/favorites', '/addresses', '/personal-info', '/notification-settings', '/wallet', '/profile'] as const;
+export const CUSTOMER_HOME_PATHS = ['/home', '/explore', '/super', '/cart', '/tracking', '/orders', '/promotions', '/favorites', '/addresses', '/personal-info', '/notification-settings', '/profile'] as const;
 
 export const ROLE_HOME_PATHS: Record<Role, string> = {
   customer: '/home',

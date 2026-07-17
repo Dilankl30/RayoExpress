@@ -20,7 +20,6 @@ const FavoritesScreen = lazy(() => import('../components/customer/FavoritesScree
 const AddressesScreen = lazy(() => import('../components/customer/AddressesScreen').then(m => ({ default: m.AddressesScreen })));
 const PersonalInfoScreen = lazy(() => import('../components/customer/PersonalInfoScreen').then(m => ({ default: m.PersonalInfoScreen })));
 const NotificationSettingsScreen = lazy(() => import('../components/customer/NotificationSettingsScreen').then(m => ({ default: m.NotificationSettingsScreen })));
-const WalletScreen = lazy(() => import('../components/customer/WalletScreen').then(m => ({ default: m.WalletScreen })));
 const DriverDashboard = lazy(() => import('../components/driver/DriverDashboard').then(m => ({ default: m.DriverDashboard })));
 const StoreDashboard = lazy(() => import('../components/store/StoreDashboard').then(m => ({ default: m.StoreDashboard })));
 const AdminDashboard = lazy(() => import('../components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
@@ -60,7 +59,7 @@ export function ProtectedRoute({ element, allowedRoles }: { element: React.React
 }
 
 const roleRoutes: Record<Role, string[]> = {
-  customer: ['home', 'explore', 'super', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'wallet', 'profile'],
+  customer: ['home', 'explore', 'super', 'store-detail', 'cart', 'tracking', 'orders', 'promotions', 'favorites', 'addresses', 'personal-info', 'notification-settings', 'profile'],
   driver: ['driver', 'profile'],
   store: ['store-admin', 'profile'],
   admin: ['admin', 'profile'],
@@ -121,10 +120,6 @@ export const screenRoutes: RouteObject[] = [
   {
     path: '/notification-settings',
     element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<NotificationSettingsScreen />} /></Lazy>,
-  },
-  {
-    path: '/wallet',
-    element: <Lazy><ProtectedRoute allowedRoles={['customer']} element={<WalletScreen />} /></Lazy>,
   },
   {
     path: '/driver',

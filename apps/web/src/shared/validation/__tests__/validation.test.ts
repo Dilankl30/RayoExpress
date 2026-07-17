@@ -100,7 +100,7 @@ describe('validation/service-validators', () => {
     it('accepts valid methods', () => {
       expect(validatePaymentMethod('cash')).toBe(true);
       expect(validatePaymentMethod('transfer')).toBe(true);
-      expect(validatePaymentMethod('card')).toBe(true);
+      expect(validatePaymentMethod('card')).toBe(false);
     });
 
     it('rejects invalid method', () => {

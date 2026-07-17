@@ -8,7 +8,16 @@ vi.mock('../../../../integrations/supabase/client', () => ({
   getSupabase: mockGetSupabase,
 }));
 
-const mockNotificationsData: Record<string, any[]> = {
+type MockNotification = {
+  id: string;
+  user_id: string;
+  title: string;
+  body: string;
+  read_at: string | null;
+  created_at: string;
+};
+
+const mockNotificationsData: Record<string, MockNotification[]> = {
   'user-1': [
     { id: 'n1', user_id: 'user-1', title: 'Notificación 1', body: 'Cuerpo 1', read_at: null, created_at: '2026-01-01T00:00:00Z' },
   ],

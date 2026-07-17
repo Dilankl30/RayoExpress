@@ -6,6 +6,7 @@ import { mockCredentials, mockUser } from '../../../shared/lib/mockData';
 import type { Screen, Role, UserProfile } from '../../../shared/types';
 import { screenPathMap } from '../../../app/router/screenPathMap';
 import { getFallbackPathForRole, getRoleHomeScreen, isPublicPath } from '../../../shared/security/access-policy';
+import { isPasswordRecoveryUrl } from '../../../shared/auth/auth-redirect';
 
 interface AuthContextType {
   user: UserProfile | null;
@@ -95,6 +96,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
+      if (isPasswordRecoveryUrl()) {
+        setLoading(false);
+        return;
+      }
+
       const { data } = await supabase.auth.getSession();
       const session = data.session;
       if (!session?.user) {
@@ -126,7 +132,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!isSupabaseReady || !supabase) return;
 
-    const { data: listener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || isPasswordRecoveryUrl()) {
+        setLoading(false);
+        return;
+      }
+
       if (!session?.user) {
         setUser(null);
         return;
@@ -155,6 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (loading) return;
+    if (isPasswordRecoveryUrl(location.pathname + location.search + location.hash)) return;
     if (user && isPublicPath(location.pathname)) {
       navigate(roleToScreen(user.role));
     }

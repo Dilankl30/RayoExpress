@@ -105,11 +105,12 @@ export async function getInventory(storeId: string): Promise<InventoryItem[]> {
 export async function updateInventory(inventoryId: string, quantity?: number, lowStockThreshold?: number) {
   if (!isSupabaseReady) return;
   const supabase = getSupabase();
-  const updates: any = {};
+  const updates: { quantity?: number; low_stock_threshold?: number; updated_at: string } = {
+    updated_at: new Date().toISOString(),
+  };
   if (quantity !== undefined) updates.quantity = quantity;
   if (lowStockThreshold !== undefined) updates.low_stock_threshold = lowStockThreshold;
-  updates.updated_at = new Date().toISOString();
-  
+
   const { error } = await supabase.from('inventory').update(updates).eq('id', inventoryId);
   if (error) throw error;
 }

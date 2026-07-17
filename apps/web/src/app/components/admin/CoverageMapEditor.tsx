@@ -1,5 +1,5 @@
-import { useEffect, useMemo } from 'react';
-import { Circle, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useMemo, useState } from 'react';
+import { Circle, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { CircleDashed, MapPinned, PencilLine, Trash2, Undo2 } from 'lucide-react';
@@ -46,39 +46,80 @@ function getCenterForPolygon(points: [number, number][]): [number, number] {
   return [sum[0] / points.length, sum[1] / points.length];
 }
 
+function isValidLatLng(point: [number, number]): boolean {
+  return Number.isFinite(point[0])
+    && Number.isFinite(point[1])
+    && point[0] >= -90
+    && point[0] <= 90
+    && point[1] >= -180
+    && point[1] <= 180;
+}
+
 function getCircleBounds(city: CoverageCityDraft) {
-  return L.circle(city.center, { radius: Math.max(city.radius_km, 0.5) * 1000 }).getBounds();
+  const radiusKm = Math.max(city.radius_km, 0.5);
+  const latRadius = radiusKm / 111.32;
+  const lngRadius = radiusKm / (111.32 * Math.max(Math.cos((city.center[0] * Math.PI) / 180), 0.2));
+
+  return L.latLngBounds([
+    [city.center[0] - latRadius, city.center[1] - lngRadius],
+    [city.center[0] + latRadius, city.center[1] + lngRadius],
+  ]);
 }
 
 function ZoneViewport({ city, stores }: { city: CoverageCityDraft; stores: CoverageStorePoint[] }) {
   const map = useMap();
 
   useEffect(() => {
-    const storePoints = stores
-      .filter((store) => typeof store.latitude === 'number' && typeof store.longitude === 'number')
-      .map((store) => [store.latitude as number, store.longitude as number] as [number, number]);
+    let cancelled = false;
+    let frameId: number | null = null;
 
-    if (storePoints.length > 0) {
-      const bounds = L.latLngBounds(storePoints);
+    const updateViewport = () => {
+      frameId = window.requestAnimationFrame(() => {
+        if (cancelled) return;
 
-      if (city.shape === 'polygon' && city.boundary.length >= 2) {
-        bounds.extend(city.boundary as [number, number][]);
-      } else {
-        bounds.extend(getCircleBounds(city));
-      }
+        map.invalidateSize(false);
 
-      map.fitBounds(bounds.pad(0.22), { animate: false });
-      return;
-    }
+        const storePoints = stores
+          .filter((store) => typeof store.latitude === 'number' && typeof store.longitude === 'number')
+          .map((store) => [store.latitude as number, store.longitude as number] as [number, number])
+          .filter(isValidLatLng);
 
-    if (city.shape === 'polygon' && city.boundary.length >= 2) {
-      const bounds = L.latLngBounds(city.boundary.map((point) => [point[0], point[1]] as [number, number]));
-      map.fitBounds(bounds.pad(0.25), { animate: false });
-      return;
-    }
+        if (storePoints.length > 0) {
+          const bounds = L.latLngBounds(storePoints);
 
-    map.setView(city.center, city.boundary.length > 0 ? 13 : 12, { animate: false });
-  }, [city, map]);
+          if (city.shape === 'polygon' && city.boundary.length >= 2) {
+            city.boundary.filter(isValidLatLng).forEach((point) => bounds.extend(point));
+          } else {
+            bounds.extend(getCircleBounds(city));
+          }
+
+          if (bounds.isValid()) {
+            map.fitBounds(bounds.pad(0.22), { animate: false });
+          }
+          return;
+        }
+
+        if (city.shape === 'polygon' && city.boundary.length >= 2) {
+          const bounds = L.latLngBounds(city.boundary.filter(isValidLatLng));
+          if (bounds.isValid()) {
+            map.fitBounds(bounds.pad(0.25), { animate: false });
+          }
+          return;
+        }
+
+        if (isValidLatLng(city.center)) {
+          map.setView(city.center, city.boundary.length > 0 ? 13 : 12, { animate: false });
+        }
+      });
+    };
+
+    map.whenReady(updateViewport);
+
+    return () => {
+      cancelled = true;
+      if (frameId !== null) window.cancelAnimationFrame(frameId);
+    };
+  }, [city, map, stores]);
 
   return null;
 }
@@ -113,21 +154,32 @@ function createStoreIcon(store: CoverageStorePoint) {
 
 function MapClickLayer({
   city,
+  enabled,
   onChange,
 }: {
   city: CoverageCityDraft;
+  enabled: boolean;
   onChange: (patch: Partial<CoverageCityDraft>) => void;
 }) {
-  useMapEvents({
-    click(e) {
-      const nextPoint: [number, number] = [e.latlng.lat, e.latlng.lng];
+  const map = useMap();
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleClick = (event: L.LeafletMouseEvent) => {
+      const nextPoint: [number, number] = [event.latlng.lat, event.latlng.lng];
       if (city.shape === 'polygon') {
         onChange({ boundary: [...city.boundary, nextPoint] });
         return;
       }
       onChange({ center: nextPoint });
-    },
-  });
+    };
+
+    map.on('click', handleClick);
+    return () => {
+      map.off('click', handleClick);
+    };
+  }, [city.boundary, city.shape, enabled, map, onChange]);
 
   return null;
 }
@@ -141,11 +193,17 @@ export function CoverageMapEditor({
   onChange: (patch: Partial<CoverageCityDraft>) => void;
   stores?: CoverageStorePoint[];
 }) {
+  const [mapReady, setMapReady] = useState(false);
+
   const center = useMemo(() => {
     if (!city) return DEFAULT_CENTER;
     if (city.shape === 'polygon' && city.boundary.length > 0) return getCenterForPolygon(city.boundary);
     return city.center;
   }, [city]);
+
+  useEffect(() => {
+    setMapReady(false);
+  }, [city?.id]);
 
   if (!city) {
     return (
@@ -176,20 +234,22 @@ export function CoverageMapEditor({
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border ${city.shape === 'polygon' ? 'border-brand bg-brand text-white' : 'border-border-light bg-surface text-text-secondary'}`}
         >
           <PencilLine size={14} />
-          Poligono
+          Polígono
         </button>
         <button
           type="button"
           onClick={() => onChange({ boundary: city.boundary.slice(0, -1) })}
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-border-light bg-surface text-text-secondary"
+          disabled={city.shape !== 'polygon' || city.boundary.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-border-light bg-surface text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Undo2 size={14} />
-          Deshacer punto
+          Deshacer
         </button>
         <button
           type="button"
           onClick={() => onChange({ boundary: [] })}
-          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-border-light bg-surface text-text-secondary"
+          disabled={city.shape !== 'polygon' && city.boundary.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-border-light bg-surface text-text-secondary disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Trash2 size={14} />
           Limpiar
@@ -218,13 +278,20 @@ export function CoverageMapEditor({
 
       <div className="rounded-2xl overflow-hidden border border-border-light bg-surface">
         <div className="h-[380px] w-full">
-          <MapContainer center={center} zoom={12} className="h-full w-full" scrollWheelZoom>
+          <MapContainer
+            key={city.id}
+            center={center}
+            zoom={12}
+            className="h-full w-full"
+            scrollWheelZoom
+            whenReady={() => setMapReady(true)}
+          >
             <TileLayer
               attribution="&copy; OpenStreetMap contributors"
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             <ZoneViewport city={city} stores={stores} />
-            <MapClickLayer city={city} onChange={onChange} />
+            <MapClickLayer city={city} enabled={mapReady} onChange={onChange} />
 
             {city.shape === 'circle' && (
               <>
@@ -287,7 +354,7 @@ export function CoverageMapEditor({
       </div>
 
       <p className="text-xs text-text-secondary">
-        Haz clic sobre el mapa para mover el centro o agregar puntos al poligono. La cobertura se guarda por ciudad y se mantiene compatible con el modo anterior.
+        Haz clic sobre el mapa para mover el centro o agregar puntos al polígono. La cobertura se guarda por ciudad y se mantiene compatible con el modo anterior.
       </p>
     </div>
   );

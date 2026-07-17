@@ -4,10 +4,12 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
 import { CatalogManager } from '../../../modules/stores/ui/CatalogManager';
+import { PromotionManager } from '../../../modules/stores/ui/PromotionManager';
 import { StoreSettings } from '../../../modules/stores/ui/StoreSettings';
 import { toggleStoreOpen } from '../../../modules/stores/application/store-settings.service';
 import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { getStoreOrders, updateOrderStatus, getOrderById } from '../../../modules/orders/application/order-service';
+import { createOrderChangeRequest } from '../../../modules/orders/application/order-change.service';
 import { getSupabase } from '../../../integrations/supabase/client';
 import type { OrderSummary, StoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { STATUS_LABELS, STATUS_ICONS, getAvailableTransitions } from '../../../modules/orders/domain/order-status.machine';
@@ -16,11 +18,12 @@ import { PaymentVerification } from '../../../modules/payments/ui/PaymentVerific
 import { FinancialReport } from '../../../modules/payments/ui/FinancialReport';
 import { Package, X, ChevronRight, RefreshCw, MessageCircle } from 'lucide-react';
 
-type Tab = 'dashboard' | 'orders' | 'catalog' | 'payments' | 'reports' | 'settings';
+type Tab = 'dashboard' | 'orders' | 'catalog' | 'promotions' | 'payments' | 'reports' | 'settings';
 type OrderFilter = 'all' | 'active' | 'delivered' | 'cancelled';
+type ChangeAction = 'replace' | 'remove';
 type DashboardOrder = OrderSummary & { driver_name?: string | null };
 
-const TAB_ICONS: Record<Tab, string> = { dashboard: '📊', orders: '📋', catalog: '📦', payments: '💳', reports: '📈', settings: '⚙️' };
+const TAB_ICONS: Record<Tab, string> = { dashboard: '📊', orders: '📋', catalog: '📦', promotions: '🎟️', payments: '💳', reports: '📈', settings: '⚙️' };
 const ACTIVE_STATUSES = ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'];
 
 const ACTION_LABELS: Record<string, string> = {
@@ -56,6 +59,14 @@ export function StoreDashboard() {
   const [detailOrder, setDetailOrder] = useState<Record<string, unknown> | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [changeReason, setChangeReason] = useState('');
+  const [changeProductName, setChangeProductName] = useState('');
+  const [changeAction, setChangeAction] = useState<ChangeAction>('replace');
+  const [replacementName, setReplacementName] = useState('');
+  const [replacementPrice, setReplacementPrice] = useState('');
+  const [priceDelta, setPriceDelta] = useState('0');
+  const [changeSubmitting, setChangeSubmitting] = useState(false);
+  const [changeMessage, setChangeMessage] = useState<string | null>(null);
 
   // Load store info and stats
   useEffect(() => {
@@ -85,7 +96,11 @@ export function StoreDashboard() {
         id: o.id as string,
         status: o.status as string,
         total: typeof o.total === 'number' ? o.total : 0,
-        customer_name: typeof o.customer_name === 'string' ? o.customer_name : null,
+        customer_name: typeof o.customer_name === 'string'
+          ? o.customer_name
+          : typeof o.customer === 'object' && o.customer !== null && 'full_name' in o.customer
+            ? ((o.customer as { full_name?: string | null }).full_name ?? null)
+            : null,
         driver_name: typeof o.driver === 'object' && o.driver !== null && 'full_name' in o.driver && typeof (o.driver as { full_name?: unknown }).full_name === 'string'
           ? (o.driver as { full_name?: string }).full_name ?? null
           : null,
@@ -133,10 +148,63 @@ export function StoreDashboard() {
 
   const openDetail = async (orderId: string) => {
     setDetailLoading(true);
+    setChangeReason('');
+    setChangeProductName('');
+    setChangeAction('replace');
+    setReplacementName('');
+    setReplacementPrice('');
+    setPriceDelta('0');
+    setChangeMessage(null);
     try {
       const full = await getOrderById(orderId);
       setDetailOrder(full as Record<string, unknown>);
     } catch { /* noop */ } finally { setDetailLoading(false); }
+  };
+
+  const handleCreateChangeRequest = async () => {
+    if (!detailOrder || !storeId || !user?.id) return;
+    const affectedProduct = changeProductName.trim();
+    const reason = changeReason.trim();
+    if (!affectedProduct || !reason) {
+      setChangeMessage('Indica el producto afectado y la razon del cambio.');
+      return;
+    }
+    if (changeAction === 'replace' && !replacementName.trim()) {
+      setChangeMessage('Indica el producto de reemplazo.');
+      return;
+    }
+
+    setChangeSubmitting(true);
+    setChangeMessage(null);
+    try {
+      const parsedDelta = Number(priceDelta || 0);
+      const currentTotal = Number(detailOrder.total ?? 0);
+      await createOrderChangeRequest({
+        orderId: detailOrder.id as string,
+        storeId,
+        userId: user.id,
+        reason,
+        priceDelta: Number.isFinite(parsedDelta) ? parsedDelta : 0,
+        newTotal: currentTotal + (Number.isFinite(parsedDelta) ? parsedDelta : 0),
+        proposedItems: [{
+          productName: affectedProduct,
+          action: changeAction,
+          replacementName: changeAction === 'replace' ? replacementName.trim() : undefined,
+          replacementPrice: changeAction === 'replace' && replacementPrice ? Number(replacementPrice) : undefined,
+          notes: reason,
+        }],
+      });
+      setChangeMessage('Propuesta enviada al cliente. Espera su confirmacion para continuar.');
+      setChangeReason('');
+      setChangeProductName('');
+      setReplacementName('');
+      setReplacementPrice('');
+      setPriceDelta('0');
+    } catch (e) {
+      setChangeMessage(e instanceof Error ? e.message : 'No se pudo enviar la propuesta.');
+    } finally {
+      setChangeSubmitting(false);
+    }
   };
 
   const filteredOrders = allOrders.filter(o => {
@@ -181,11 +249,11 @@ export function StoreDashboard() {
 
       {/* Tabs */}
       <div className="flex gap-1 px-4 py-3 bg-card border-b border-border-light overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
-        {(['dashboard', 'orders', 'catalog', 'payments', 'reports', 'settings'] as const).map((tab) => (
+        {(['dashboard', 'orders', 'catalog', 'promotions', 'payments', 'reports', 'settings'] as const).map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             className={`px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all ${activeTab === tab ? 'text-white shadow-md' : 'text-text-secondary bg-surface-hover'}`}
             style={activeTab === tab ? { backgroundColor: 'var(--brand)' } : {}}>
-            {TAB_ICONS[tab]} {tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Pedidos' : tab === 'catalog' ? 'Catálogo' : tab === 'payments' ? 'Pagos' : tab === 'reports' ? 'Reportes' : 'Config'}
+            {TAB_ICONS[tab]} {tab === 'dashboard' ? 'Dashboard' : tab === 'orders' ? 'Pedidos' : tab === 'catalog' ? 'Catalogo' : tab === 'promotions' ? 'Promos' : tab === 'payments' ? 'Pagos' : tab === 'reports' ? 'Reportes' : 'Config'}
           </button>
         ))}
       </div>
@@ -340,6 +408,7 @@ export function StoreDashboard() {
         )}
 
         {activeTab === 'catalog' && storeId && <CatalogManager storeId={storeId} />}
+        {activeTab === 'promotions' && storeId && <PromotionManager storeId={storeId} />}
         {activeTab === 'payments' && storeId && user && (
           <div className="px-4 pt-4">
             <h3 className="text-text-primary font-semibold mb-3">Verificación de pagos</h3>
@@ -369,7 +438,16 @@ export function StoreDashboard() {
               <div className="space-y-4">
                 <div className="bg-surface rounded-2xl p-4">
                   <p className="text-xs text-text-secondary mb-1">Cliente</p>
-                  <p className="font-medium text-text-primary">{detailOrder.customer_name as string || '—'}</p>
+                  <p className="font-medium text-text-primary">
+                    {(detailOrder.customer_name as string)
+                      || ((detailOrder.customer as Record<string, unknown> | null)?.full_name as string | undefined)
+                      || 'Cliente'}
+                  </p>
+                  {((detailOrder.customer as Record<string, unknown> | null)?.phone as string | undefined) && (
+                    <p className="text-xs text-text-secondary mt-1">
+                      Tel: {((detailOrder.customer as Record<string, unknown> | null)?.phone as string)}
+                    </p>
+                  )}
                 </div>
                 <div className="bg-surface rounded-2xl p-4">
                   <p className="text-xs text-text-secondary mb-1">Estado</p>
@@ -412,15 +490,100 @@ export function StoreDashboard() {
                   </div>
                 )}
 
-                {/* Chat button for active orders */}
-                {(detailOrder.status as string) !== 'pending' && !['delivered', 'cancelled', 'refunded'].includes(detailOrder.status as string) && (
-                  <button
-                    onClick={() => setShowChat(true)}
-                    className="w-full mt-4 bg-purple-100 text-purple-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-200 transition-colors"
-                  >
-                    <MessageCircle size={20} />
-                    Chatear con el cliente
-                  </button>
+                {!['delivered', 'cancelled', 'refunded'].includes(detailOrder.status as string) && (
+                  <>
+                    <div className="bg-surface rounded-2xl p-4 space-y-3 border border-border-light">
+                      <div>
+                        <p className="text-sm font-bold text-text-primary">Proponer cambio al cliente</p>
+                        <p className="text-xs text-text-secondary mt-1">
+                          Usalo cuando un producto no este disponible. El cliente debe aceptar antes de continuar.
+                        </p>
+                      </div>
+
+                      <input
+                        value={changeProductName}
+                        onChange={(event) => setChangeProductName(event.target.value)}
+                        placeholder="Producto afectado"
+                        className="w-full bg-card rounded-xl px-3 py-2 text-sm outline-none border border-border-light"
+                      />
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setChangeAction('replace')}
+                          className={`py-2 rounded-xl text-sm font-medium ${changeAction === 'replace' ? 'text-white' : 'bg-card text-text-secondary'}`}
+                          style={changeAction === 'replace' ? { backgroundColor: 'var(--brand)' } : {}}
+                        >
+                          Reemplazar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setChangeAction('remove')}
+                          className={`py-2 rounded-xl text-sm font-medium ${changeAction === 'remove' ? 'text-white' : 'bg-card text-text-secondary'}`}
+                          style={changeAction === 'remove' ? { backgroundColor: 'var(--brand)' } : {}}
+                        >
+                          Quitar
+                        </button>
+                      </div>
+
+                      {changeAction === 'replace' && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <input
+                            value={replacementName}
+                            onChange={(event) => setReplacementName(event.target.value)}
+                            placeholder="Producto de reemplazo"
+                            className="w-full bg-card rounded-xl px-3 py-2 text-sm outline-none border border-border-light"
+                          />
+                          <input
+                            type="number"
+                            value={replacementPrice}
+                            onChange={(event) => setReplacementPrice(event.target.value)}
+                            placeholder="Precio reemplazo"
+                            className="w-full bg-card rounded-xl px-3 py-2 text-sm outline-none border border-border-light"
+                          />
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[1fr_120px] gap-2">
+                        <textarea
+                          value={changeReason}
+                          onChange={(event) => setChangeReason(event.target.value)}
+                          placeholder="Motivo para el cliente"
+                          rows={2}
+                          className="w-full bg-card rounded-xl px-3 py-2 text-sm outline-none resize-none border border-border-light"
+                        />
+                        <input
+                          type="number"
+                          value={priceDelta}
+                          onChange={(event) => setPriceDelta(event.target.value)}
+                          placeholder="+/- total"
+                          className="w-full bg-card rounded-xl px-3 py-2 text-sm outline-none border border-border-light"
+                        />
+                      </div>
+
+                      {changeMessage && (
+                        <p className="text-xs text-text-secondary">{changeMessage}</p>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={handleCreateChangeRequest}
+                        disabled={changeSubmitting}
+                        className="w-full py-2.5 rounded-xl text-white text-sm font-bold disabled:opacity-60"
+                        style={{ backgroundColor: 'var(--brand)' }}
+                      >
+                        {changeSubmitting ? 'Enviando...' : 'Enviar propuesta'}
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => setShowChat(true)}
+                      className="w-full mt-4 bg-purple-100 text-purple-700 py-3 rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-purple-200 transition-colors"
+                    >
+                      <MessageCircle size={20} />
+                      Chatear con el cliente
+                    </button>
+                  </>
                 )}
               </div>
             )}

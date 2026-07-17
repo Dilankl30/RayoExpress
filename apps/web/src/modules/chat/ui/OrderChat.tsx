@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Send, MessageCircle, X } from 'lucide-react';
 import { useAuth } from '../../auth/context/AuthContext';
-import { getOrCreateChat, getMessages, sendMessage, markMessagesAsRead } from '../application/chat.service';
+import { getOrCreateOrderChat, getMessages, sendMessage, markMessagesAsRead } from '../application/chat.service';
 import { isSupabaseReady, getSupabase } from '../../../integrations/supabase/client';
 import type { Message } from '../domain/chat.types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
@@ -27,7 +27,7 @@ export function OrderChat({ orderId, storeId, storeName, storeEmoji, onClose }: 
     if (!user) return;
     const init = async () => {
       try {
-        const chat = await getOrCreateChat(orderId, user.id, storeId);
+        const chat = await getOrCreateOrderChat(orderId, user.id, storeId);
         setChatId(chat.id);
         const msgs = await getMessages(chat.id);
         setMessages(msgs);
@@ -116,7 +116,7 @@ export function OrderChat({ orderId, storeId, storeName, storeEmoji, onClose }: 
                     style={isMine ? { backgroundColor: 'var(--brand)' } : {}}
                   >
                     <p className="text-xs opacity-70 mb-0.5">
-                      {msg.sender_role === 'customer' ? 'Tú' : msg.sender_role === 'driver' ? 'Repartidor' : msg.sender_role === 'store' ? 'Tienda' : 'Admin'}
+                      {isMine ? 'Tú' : msg.sender_role === 'customer' ? 'Cliente' : msg.sender_role === 'driver' ? 'Repartidor' : msg.sender_role === 'store' ? 'Tienda' : 'Admin'}
                     </p>
                     <p className="text-sm">{msg.content}</p>
                     <p className={`text-[10px] mt-0.5 ${isMine ? 'text-white/60' : 'text-text-secondary'}`}>

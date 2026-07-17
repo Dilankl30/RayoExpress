@@ -20,7 +20,53 @@ export interface CategoryData {
   bg_color: string;
 }
 
+export interface StorePromotionData {
+  id?: string;
+  store_id: string;
+  title: string;
+  description: string | null;
+  code: string | null;
+  type: 'restaurant' | 'super' | 'shipping' | 'coupon';
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  min_order: number;
+  max_uses: number | null;
+  uses_count: number;
+  max_uses_per_customer: number;
+  starts_at: string | null;
+  ends_at: string | null;
+  active: boolean;
+  is_active: boolean;
+  bg_color: string;
+  text_color: string;
+  emoji: string;
+}
+
 const mockStoreProducts: Record<string, ProductData[]> = {};
+const mockStorePromotions: Record<string, StorePromotionData[]> = {};
+
+function formatPromotionDiscount(type: 'percentage' | 'fixed', value: number) {
+  return type === 'fixed' ? `$${value.toFixed(2)}` : `${value}% OFF`;
+}
+
+function normalizePromotionPayload(
+  storeId: string,
+  promotionData: Omit<StorePromotionData, 'id' | 'store_id' | 'uses_count'>,
+) {
+  const discountValue = Number(promotionData.discount_value || 0);
+
+  return {
+    ...promotionData,
+    store_id: storeId,
+    code: promotionData.code ? promotionData.code.trim().toUpperCase() : null,
+    description: promotionData.description || null,
+    discount: formatPromotionDiscount(promotionData.discount_type, discountValue),
+    uses_count: 0,
+    active: promotionData.active,
+    is_active: promotionData.active,
+    expires_at: promotionData.ends_at,
+  };
+}
 
 export async function getStoreProducts(storeId: string): Promise<ProductData[]> {
   if (!isSupabaseReady) return mockProducts[storeId] || mockStoreProducts[storeId] || [];
@@ -126,5 +172,100 @@ export async function deleteCategory(categoryId: string) {
   }
   const supabase = getSupabase();
   const { error } = await supabase.from('categories').delete().eq('id', categoryId);
+  if (error) throw error;
+}
+
+export async function getStorePromotions(storeId: string): Promise<StorePromotionData[]> {
+  if (!isSupabaseReady) return mockStorePromotions[storeId] || [];
+
+  const { data, error } = await getSupabase()
+    .from('promotions')
+    .select('*')
+    .eq('store_id', storeId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+  return (data ?? []) as StorePromotionData[];
+}
+
+export async function createStorePromotion(
+  storeId: string,
+  promotionData: Omit<StorePromotionData, 'id' | 'store_id' | 'uses_count'>,
+) {
+  if (!isSupabaseReady) {
+    const promotion: StorePromotionData = {
+      ...promotionData,
+      id: `mock-promo-${Date.now()}`,
+      store_id: storeId,
+      uses_count: 0,
+      code: promotionData.code ? promotionData.code.trim().toUpperCase() : null,
+      is_active: promotionData.active,
+    };
+    if (!mockStorePromotions[storeId]) mockStorePromotions[storeId] = [];
+    mockStorePromotions[storeId].unshift(promotion);
+    return promotion;
+  }
+
+  const payload = normalizePromotionPayload(storeId, promotionData);
+  const { data, error } = await getSupabase()
+    .from('promotions')
+    .insert(payload as never)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as StorePromotionData;
+}
+
+export async function updateStorePromotion(
+  promotionId: string,
+  updates: Partial<Omit<StorePromotionData, 'id' | 'store_id'>>,
+) {
+  const payload: Record<string, unknown> = { ...updates };
+  if (typeof payload.code === 'string') payload.code = payload.code.trim().toUpperCase();
+  if (payload.active !== undefined) payload.is_active = payload.active;
+  if (payload.ends_at !== undefined) payload.expires_at = payload.ends_at;
+  if (payload.discount_type && payload.discount_value !== undefined) {
+    payload.discount = formatPromotionDiscount(
+      payload.discount_type as 'percentage' | 'fixed',
+      Number(payload.discount_value),
+    );
+  }
+
+  if (!isSupabaseReady) {
+    for (const list of Object.values(mockStorePromotions)) {
+      const idx = list.findIndex((promotion) => promotion.id === promotionId);
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...payload } as StorePromotionData;
+        return list[idx];
+      }
+    }
+    return null;
+  }
+
+  const { data, error } = await getSupabase()
+    .from('promotions')
+    .update(payload as never)
+    .eq('id', promotionId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data as StorePromotionData;
+}
+
+export async function deleteStorePromotion(promotionId: string) {
+  if (!isSupabaseReady) {
+    for (const list of Object.values(mockStorePromotions)) {
+      const idx = list.findIndex((promotion) => promotion.id === promotionId);
+      if (idx !== -1) {
+        list.splice(idx, 1);
+        return;
+      }
+    }
+    return;
+  }
+
+  const { error } = await getSupabase().from('promotions').delete().eq('id', promotionId);
   if (error) throw error;
 }

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Save, Clock, Camera, X } from 'lucide-react';
+import { Save, Clock, Camera, X, LocateFixed } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -44,6 +44,8 @@ export function StoreSettings({ storeId }: Props) {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [locationLoading, setLocationLoading] = useState(false);
+  const [locationError, setLocationError] = useState('');
   const imageInputRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -73,6 +75,30 @@ export function StoreSettings({ storeId }: Props) {
   };
 
   useEffect(() => { load(); }, [storeId]);
+
+  const handleUseCurrentLocation = () => {
+    setLocationError('');
+    if (!navigator.geolocation) {
+      setLocationError('Tu navegador no permite obtener la ubicacion actual.');
+      return;
+    }
+
+    setLocationLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setInfo((prev) => prev
+          ? { ...prev, latitude: position.coords.latitude, longitude: position.coords.longitude }
+          : prev);
+        setShowMap(true);
+        setLocationLoading(false);
+      },
+      () => {
+        setLocationError('No se pudo obtener tu ubicacion. Revisa los permisos del navegador.');
+        setLocationLoading(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  };
 
   const handleSaveInfo = async () => {
     if (!info) return;
@@ -207,6 +233,16 @@ export function StoreSettings({ storeId }: Props) {
                 {showMap ? 'Cerrar mapa' : (info.latitude && info.longitude) ? 'Cambiar ubicación' : 'Seleccionar en mapa'}
               </button>
             </div>
+            <button
+              type="button"
+              onClick={handleUseCurrentLocation}
+              disabled={locationLoading}
+              className="mb-2 inline-flex items-center gap-2 rounded-full bg-surface-hover px-3 py-1.5 text-xs font-medium text-text-primary disabled:opacity-60"
+            >
+              <LocateFixed size={14} />
+              {locationLoading ? 'Obteniendo ubicacion...' : 'Usar mi ubicacion actual'}
+            </button>
+            {locationError && <p className="text-xs text-danger mb-2">{locationError}</p>}
             {info.latitude && info.longitude && !showMap && (
               <p className="text-xs text-text-secondary">{info.latitude.toFixed(4)}, {info.longitude.toFixed(4)}</p>
             )}

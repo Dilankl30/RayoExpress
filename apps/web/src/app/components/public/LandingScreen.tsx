@@ -9,6 +9,26 @@ import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { getStores, getCategories } from '../../../modules/stores/application/store-service';
 import logo from '../../../imports/image-1.png';
 
+interface LandingStore {
+  id?: string;
+  name: string;
+  emoji?: string | null;
+  cover_color?: string | null;
+  color?: string | null;
+  delivery_fee?: number | null;
+  rating?: number | null;
+  delivery?: string | null;
+  fee?: number | null;
+}
+
+interface LandingCategory {
+  id?: string;
+  name: string;
+  emoji?: string | null;
+  bg_color?: string | null;
+  color?: string | null;
+}
+
 const banners = [
   {
     id: '1',
@@ -40,7 +60,7 @@ const banners = [
   },
 ];
 
-const categories = [
+const categories: LandingCategory[] = [
   { name: 'Restaurantes', emoji: '🍽️', color: '#FF6B35' },
   { name: 'Farmácia', emoji: '💊', color: '#059669' },
   { name: 'Supermercado', emoji: '🛒', color: '#2563EB' },
@@ -61,7 +81,7 @@ const testimonials = [
   { name: 'Ana R.', text: 'El servicio al cliente es excelente. 10/10', rating: 4 },
 ];
 
-const featuredStores = [
+const featuredStores: LandingStore[] = [
   { name: 'McDonald\'s', emoji: '🍔', color: '#E8F5E9', delivery: '10-15 min', fee: 0, rating: 4.7 },
   { name: 'Burger King', emoji: '👑', color: '#FFF3E0', delivery: '15-20 min', fee: 1.5, rating: 4.5 },
   { name: 'KFC', emoji: '🍗', color: '#FFEBEE', delivery: '15-20 min', fee: 1.0, rating: 4.6 },
@@ -73,8 +93,8 @@ const featuredStores = [
 export function LandingScreen() {
   const { navigate } = useAuth();
   const [search, setSearch] = useState('');
-  const [stores, setStores] = useState<any[]>([]);
-  const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const [stores, setStores] = useState<LandingStore[]>([]);
+  const [dbCategories, setDbCategories] = useState<LandingCategory[]>([]);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   useEffect(() => {
@@ -87,8 +107,8 @@ export function LandingScreen() {
         getStores(),
         getCategories(),
       ]);
-      setStores(storesData);
-      setDbCategories(catsData);
+      setStores(storesData as LandingStore[]);
+      setDbCategories(catsData as LandingCategory[]);
     } catch {
       // public page, silence errors
     }

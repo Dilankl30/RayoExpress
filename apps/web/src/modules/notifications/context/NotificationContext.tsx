@@ -3,14 +3,14 @@ import { getNotifications, markAsRead, markAllAsRead } from '../application/noti
 import { isSupabaseReady, getSupabase } from '../../../integrations/supabase/client';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
-interface Notification {
+export interface Notification {
   id: string;
   user_id: string;
   title: string;
   body: string;
   read_at: string | null;
   created_at: string;
-  data?: any;
+  data?: Record<string, unknown> | null;
 }
 
 interface NotificationContextType {

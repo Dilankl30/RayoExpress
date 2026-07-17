@@ -10,7 +10,7 @@ export interface CreateOrderParams {
   productIds: string[];
   quantities: number[];
   deliveryAddress: string;
-  paymentMethod: 'cash' | 'transfer' | 'card';
+  paymentMethod: 'cash' | 'transfer';
   couponCode?: string;
   notes?: string;
   tip?: number;
@@ -27,6 +27,33 @@ export interface CreateOrderResult {
   tip: number;
   total: number;
   status: string;
+}
+
+async function recordCouponRedemption(couponCode: string | undefined, orderId: string) {
+  const normalizedCode = couponCode?.trim().toUpperCase();
+  if (!normalizedCode || !orderId) return;
+
+  const supabase = getSupabase();
+  const { data: userData } = await supabase.auth.getUser();
+  const userId = userData.user?.id;
+  if (!userId) return;
+
+  const { data: promotion } = await supabase
+    .from('promotions')
+    .select('id')
+    .eq('code', normalizedCode)
+    .maybeSingle();
+
+  const promotionId = (promotion as { id?: string } | null)?.id;
+  if (!promotionId) return;
+
+  await supabase
+    .from('promotion_redemptions' as never)
+    .insert({
+      promotion_id: promotionId,
+      user_id: userId,
+      order_id: orderId,
+    } as never);
 }
 
 export async function createOrder(params: CreateOrderParams): Promise<CreateOrderResult> {
@@ -67,7 +94,9 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
   });
 
   if (error) throw error;
-  return data as unknown as CreateOrderResult;
+  const result = data as unknown as CreateOrderResult;
+  await recordCouponRedemption(params.couponCode, result.order_id);
+  return result;
 }
 
 export async function getOrderById(orderId: string) {
@@ -79,7 +108,7 @@ export async function getOrderById(orderId: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('*, order_items(*), order_status_history(*), driver:profiles!driver_id(full_name, avatar_url), store:stores(name, emoji)')
+    .select('*, order_items(*), order_status_history(*), customer:profiles!customer_id(full_name, phone), driver:profiles!driver_id(full_name, avatar_url), store:stores(name, emoji, latitude, longitude)')
     .eq('id', orderId)
     .maybeSingle();
   if (error) throw error;
@@ -92,7 +121,7 @@ export async function getMyOrders(userId: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('*, order_items(*), store:stores(name, emoji)')
+    .select('*, order_items(*), store:stores(name, emoji, latitude, longitude)')
     .eq('customer_id', userId)
     .order('created_at', { ascending: false });
   if (error) throw error;
@@ -105,7 +134,7 @@ export async function getStoreOrders(storeId: string) {
   const supabase = getSupabase();
   const { data, error } = await supabase
     .from('orders')
-    .select('*, driver:profiles!driver_id(full_name)')
+    .select('*, order_items(*), customer:profiles!customer_id(full_name, phone), driver:profiles!driver_id(full_name)')
     .eq('store_id', storeId)
     .order('created_at', { ascending: false });
   if (error) throw error;

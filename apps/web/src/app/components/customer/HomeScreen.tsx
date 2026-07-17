@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
-  Truck, Flame, ChevronDown, Zap, Filter, TrendingUp, Clock, Store, Plus, Map,
+  Truck, Flame, ChevronDown, Filter, TrendingUp, Clock, Store, Plus, Map,
   Minus, Locate, Home, Star, X,
 } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents } from 'react-leaflet';
@@ -35,6 +35,7 @@ L.Icon.Default.mergeOptions({
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
+type Product = Database['public']['Tables']['products']['Row'];
 type StoreSummary = { name?: string | null; emoji?: string | null };
 type CustomerOrder = {
   id: string;
@@ -84,6 +85,7 @@ export function HomeScreen() {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [homeProducts, setHomeProducts] = useState<Product[]>([]);
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -193,6 +195,7 @@ export function HomeScreen() {
       if (storeIds.length > 0) {
         try {
           const allProducts = await getProductsByStores(storeIds);
+          setHomeProducts(allProducts.filter((product) => product.is_active !== false).slice(0, 24));
           for (const product of allProducts) {
             if (product.category_id && product.store_id) {
               if (!map[product.category_id]) map[product.category_id] = new Set();
@@ -200,8 +203,11 @@ export function HomeScreen() {
             }
           }
         } catch {
+          setHomeProducts([]);
           // Fallback o ignorar error
         }
+      } else {
+        setHomeProducts([]);
       }
       setCategoryStoreMap(map);
     } catch {
@@ -255,6 +261,24 @@ export function HomeScreen() {
     const matchCategory = !activeCategory || (categoryStoreMap[activeCategory]?.has(store.id) ?? false);
     return matchSearch && matchCategory;
   });
+
+  const storeById = useMemo(() => new globalThis.Map(stores.map((store) => [store.id, store])), [stores]);
+
+  const filteredProducts = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+    const visibleStoreIds = new Set(filteredStores.map((store) => store.id));
+
+    return homeProducts
+      .filter((product) => {
+        if (!visibleStoreIds.has(product.store_id)) return false;
+        if (activeCategory && product.category_id !== activeCategory) return false;
+        if (!normalizedSearch) return true;
+        const store = storeById.get(product.store_id);
+        return product.name.toLowerCase().includes(normalizedSearch) ||
+          (store?.name ?? '').toLowerCase().includes(normalizedSearch);
+      })
+      .slice(0, 12);
+  }, [activeCategory, filteredStores, homeProducts, search, storeById]);
 
   if (loading) {
     return (
@@ -361,21 +385,6 @@ export function HomeScreen() {
           </motion.div>
         )}
 
-        {!loadingOrder && !activeOrder && (
-          <div className="mt-4 rounded-2xl p-4 flex items-center justify-between" style={{ background: 'linear-gradient(135deg, #FFD400 0%, #FF8C00 100%)' }}>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <Zap size={16} fill="#4C1D95" style={{ color: '#4C1D95' }} />
-                <p className="font-bold text-text-primary">Rayo Pass</p>
-              </div>
-              <p className="text-sm text-text-primary mt-0.5">Envíos ilimitados todo el mes</p>
-            </div>
-            <button className="bg-card px-4 py-2 rounded-xl text-sm font-semibold flex-shrink-0" style={{ color: 'var(--brand)' }}>
-              $4.99/mes
-            </button>
-          </div>
-        )}
-
         <div className="mt-4">
           <div className="relative rounded-2xl overflow-hidden" style={{ height: 120 }}>
             <AnimatePresence mode="wait">
@@ -454,7 +463,43 @@ export function HomeScreen() {
           </div>
         )}
 
+        {filteredProducts.length > 0 && (
           <div className="mt-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-text-primary font-semibold">Productos disponibles</h3>
+              <span className="text-xs text-text-secondary">{filteredProducts.length} productos</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
+              {filteredProducts.map((product) => {
+                const store = storeById.get(product.store_id);
+                const image = product.image_url?.startsWith('http') ? product.image_url : null;
+
+                return (
+                  <button
+                    key={product.id}
+                    onClick={() => handleSelectStore(product.store_id)}
+                    className="bg-card rounded-2xl p-3 text-left shadow-sm border border-border-light"
+                  >
+                    <div className="aspect-square rounded-2xl bg-surface flex items-center justify-center overflow-hidden mb-2">
+                      {image ? (
+                        <img src={image} alt={product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-3xl">{product.emoji || '🛍️'}</span>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold text-text-primary line-clamp-2">{product.name}</p>
+                    <p className="text-xs text-text-secondary truncate mt-1">{store?.name || 'Tienda'}</p>
+                    <p className="text-sm font-black mt-1" style={{ color: 'var(--brand)' }}>
+                      ${Number(product.price).toFixed(2)}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-5">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-text-primary font-semibold flex items-center gap-2">
               {search ? (

@@ -46,13 +46,13 @@ export function DeliveryEvidenceModal({ onSubmit, onClose }: Props) {
         {done ? (
           <div className="py-8 text-center">
             <CheckCircle size={48} className="text-green-500 mx-auto mb-3" />
-            <p className="text-text-primary font-bold">Evidencia guardada</p>
-            <p className="text-sm text-text-secondary mt-1">Pedido marcado como entregado</p>
+            <p className="text-text-primary font-bold">Pago y entrega confirmados</p>
+            <p className="text-sm text-text-secondary mt-1">El pedido quedo marcado como entregado</p>
           </div>
         ) : (
           <>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-text-primary font-bold">Evidencia de entrega</p>
+              <p className="text-text-primary font-bold">Pago y evidencia de entrega</p>
               <button onClick={onClose} className="text-text-secondary"><X size={20} /></button>
             </div>
 
@@ -69,8 +69,8 @@ export function DeliveryEvidenceModal({ onSubmit, onClose }: Props) {
                 className="w-full py-10 rounded-2xl border-2 border-dashed border-border flex flex-col items-center gap-2 hover:border-purple-300 transition-colors mb-4"
               >
                 <Camera size={28} className="text-text-secondary" />
-                <span className="text-sm text-text-secondary">Foto de la entrega</span>
-                <span className="text-xs text-text-secondary">Toma una foto o sube una imagen</span>
+                <span className="text-sm text-text-secondary">Foto del recibo o comprobante</span>
+                <span className="text-xs text-text-secondary">Confirma el pago al entregar el pedido</span>
               </button>
             )}
 
@@ -88,7 +88,7 @@ export function DeliveryEvidenceModal({ onSubmit, onClose }: Props) {
               className="w-full py-3 rounded-xl text-white font-medium flex items-center justify-center gap-2 disabled:opacity-50"
               style={{ backgroundColor: 'var(--success)' }}
             >
-              {uploading ? 'Guardando...' : 'Confirmar entrega'}
+              {uploading ? 'Guardando...' : 'Confirmar pago y entrega'}
             </button>
           </>
         )}

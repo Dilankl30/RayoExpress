@@ -26,6 +26,26 @@ vi.mock('../../../../modules/stores/application/store-service', () => mocks);
 
 import { HomeScreen } from '../HomeScreen';
 
+interface StoreMock {
+  id: string;
+  name: string;
+  emoji?: string | null;
+  description?: string | null;
+  delivery_fee?: number | null;
+  cover_color?: string | null;
+  rating?: number | null;
+  delivery?: string | null;
+  fee?: number | null;
+}
+
+interface CategoryMock {
+  id: string;
+  name: string;
+  emoji?: string | null;
+  bg_color?: string | null;
+  color?: string | null;
+}
+
 function renderScreen() {
   return render(
     <MemoryRouter initialEntries={['/home']}>
@@ -55,12 +75,28 @@ describe('HomeScreen', () => {
   });
 
   it('renders stores and categories after loading', async () => {
-    mocks.getStores.mockResolvedValue([
-      { id: 's1', name: 'BK', emoji: '🍔', description: 'Burgers', delivery_fee: 0, cover_color: '#000' } as any,
-    ]);
-    mocks.getCategories.mockResolvedValue([
-      { id: 'c1', name: 'Comida', emoji: '🍕', bg_color: '#fff' } as any,
-    ]);
+    const store = {
+      id: 's1',
+      name: 'BK',
+      emoji: '🍔',
+      description: 'Burgers',
+      delivery_fee: 0,
+      cover_color: '#000',
+      rating: 4.6,
+      delivery: '15-35 min',
+      fee: 0,
+    } satisfies StoreMock;
+
+    const category = {
+      id: 'c1',
+      name: 'Comida',
+      emoji: '🍕',
+      bg_color: '#fff',
+      color: '#111',
+    } satisfies CategoryMock;
+
+    mocks.getStores.mockResolvedValue([store]);
+    mocks.getCategories.mockResolvedValue([category]);
     mocks.getProductsByStore.mockResolvedValue([]);
 
     renderScreen();

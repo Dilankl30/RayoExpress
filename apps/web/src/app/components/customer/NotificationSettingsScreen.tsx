@@ -3,11 +3,11 @@ import { ArrowLeft, Bell } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 
 const DEFAULT_SETTINGS: Record<string, boolean> = {
-  'Promociones': true,
-  'Cupones': true,
-  'Encuestas': true,
-  'Novedades': true,
-  'Desafíos': true,
+  Promociones: true,
+  Cupones: true,
+  Encuestas: true,
+  Novedades: true,
+  Desafíos: true,
   'Pedidos confirmados': false,
   'Estado del pedido': true,
   'Ofertas exclusivas': false,

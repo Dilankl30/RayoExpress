@@ -42,12 +42,16 @@ import {
 } from '../../../modules/delivery/application/driver.service';
 import { DeliveryEvidenceModal } from '../../../modules/delivery/ui/DeliveryEvidenceModal';
 import { updateOrderStatus } from '../../../modules/orders/application/order-service';
+import { savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 import { STATUS_LABELS, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import { toCoordinatePair } from '../../../shared/utils/coordinates';
 import logo from '../../../imports/image-1.png';
 import mascot from '../../../imports/image.png';
 
-delete (L.Icon.Default.prototype as any)._getIconUrl;
+const leafletIconPrototype = L.Icon.Default.prototype as typeof L.Icon.Default.prototype & {
+  _getIconUrl?: () => string;
+};
+delete leafletIconPrototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -134,6 +138,7 @@ export function DriverDashboard() {
   const [driverRating, setDriverRating] = useState(0);
   const [claimingOrder, setClaimingOrder] = useState<string | null>(null);
   const [showEvidence, setShowEvidence] = useState(false);
+  const [evidenceOrder, setEvidenceOrder] = useState<DriverWorkOrder | null>(null);
   const [showChat, setShowChat] = useState(false);
   const [chatOrder, setChatOrder] = useState<DriverWorkOrder | null>(null);
 
@@ -240,9 +245,22 @@ export function DriverDashboard() {
   };
 
   const handleDeliveryEvidence = async (file: File, notes: string) => {
-    if (!user || !activeOrder) return;
-    await uploadDeliveryEvidence(activeOrder.id, user.id, file, notes);
-    await updateOrderStatus(activeOrder.id, 'delivered', 'driver', user.id);
+    const targetOrder = evidenceOrder ?? activeOrder;
+    if (!user || !targetOrder) return;
+    const evidence = await uploadDeliveryEvidence(targetOrder.id, user.id, file, notes);
+    const receiptUrl =
+      (evidence as { image_url?: string | null; imageUrl?: string | null })?.image_url ??
+      (evidence as { imageUrl?: string | null })?.imageUrl ??
+      null;
+    await savePaymentReceipt(
+      targetOrder.id,
+      targetOrder.payment_method === 'transfer' ? 'transfer' : 'cash',
+      targetOrder.total,
+      receiptUrl,
+      user.id,
+    );
+    await updateOrderStatus(targetOrder.id, 'delivered', 'driver', user.id);
+    setEvidenceOrder(null);
     setShowEvidence(false);
     await loadDashboard(true);
   };
@@ -352,7 +370,10 @@ export function DriverDashboard() {
                       location={driverLocation}
                       locationError={locationError}
                       onAction={() => handleStatusAction(activeOrder)}
-                      onEvidence={() => setShowEvidence(true)}
+                      onEvidence={() => {
+                        setEvidenceOrder(activeOrder);
+                        setShowEvidence(true);
+                      }}
                       onChat={() => openChat(activeOrder)}
                     />
                   ) : (
@@ -467,7 +488,7 @@ export function DriverDashboard() {
                   busy={updatingStatus === order.id}
                   onAction={() => handleStatusAction(order)}
                   onEvidence={() => {
-                    setChatOrder(order);
+                    setEvidenceOrder(order);
                     setShowEvidence(true);
                   }}
                   onChat={() => openChat(order)}
@@ -581,7 +602,10 @@ export function DriverDashboard() {
         {showEvidence && (
           <DeliveryEvidenceModal
             onSubmit={handleDeliveryEvidence}
-            onClose={() => setShowEvidence(false)}
+            onClose={() => {
+              setEvidenceOrder(null);
+              setShowEvidence(false);
+            }}
           />
         )}
         {showChat && chatOrder && (
@@ -759,6 +783,16 @@ function DriverOrderCard({ order, primary = false, busy, location, locationError
         {order.notes && (
           <p className="text-xs text-text-secondary bg-card rounded-xl px-3 py-2 border border-border-light">{order.notes}</p>
         )}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="bg-card rounded-xl px-3 py-2 border border-border-light">
+            <span className="text-text-secondary block">Pago</span>
+            <strong className="text-text-primary">{order.payment_method === 'transfer' ? 'Transferencia' : 'Efectivo'}</strong>
+          </div>
+          <div className="bg-card rounded-xl px-3 py-2 border border-border-light">
+            <span className="text-text-secondary block">Telefono cliente</span>
+            <strong className="text-text-primary">{order.customer_phone || 'No registrado'}</strong>
+          </div>
+        </div>
         {location && (
           <div className="flex gap-2 text-xs text-success bg-green-50 rounded-xl px-3 py-2">
             <Navigation size={14} />

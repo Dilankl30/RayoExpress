@@ -12,7 +12,6 @@ export type Screen =
   | 'addresses'
   | 'personal-info'
   | 'notification-settings'
-  | 'wallet'
   | 'driver'
   | 'store-admin'
   | 'admin'
@@ -65,19 +64,28 @@ export interface Address {
 export interface Promotion {
   id: string;
   title: string;
-  description: string;
+  description: string | null;
   type: 'restaurant' | 'super' | 'shipping' | 'coupon';
   discount: string;
-  code?: string;
-  store_id?: string;
-  store_name?: string;
-  store_emoji?: string;
+  code?: string | null;
+  store_id?: string | null;
+  store_name?: string | null;
+  store_emoji?: string | null;
   bg_color: string;
   text_color: string;
   emoji: string;
   expires_at: string;
   is_active: boolean;
   created_at: string;
+  discount_type?: 'percentage' | 'fixed';
+  discount_value?: number;
+  min_order?: number;
+  max_uses?: number;
+  uses_count?: number;
+  max_uses_per_customer?: number;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  active?: boolean;
 }
 
 export interface FavoriteItem {
@@ -172,16 +180,25 @@ export type Database = {
         Row: {
           id: string;
           title: string;
-          description: string;
-          type: string;
-          discount: string;
+          description: string | null;
+          type: string | null;
+          discount: string | null;
           code: string | null;
           store_id: string | null;
-          bg_color: string;
-          text_color: string;
-          emoji: string;
-          expires_at: string;
-          is_active: boolean;
+          bg_color: string | null;
+          text_color: string | null;
+          emoji: string | null;
+          expires_at: string | null;
+          is_active: boolean | null;
+          discount_type: 'percentage' | 'fixed';
+          discount_value: number;
+          min_order: number | null;
+          max_uses: number | null;
+          uses_count: number;
+          max_uses_per_customer: number | null;
+          starts_at: string | null;
+          ends_at: string | null;
+          active: boolean;
           created_at: string;
         };
       };

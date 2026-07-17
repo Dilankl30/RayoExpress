@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Bell, CheckCheck, X, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { useAuth } from '../../auth/context/AuthContext';
-import { useNotifications } from '../context/NotificationContext';
+import { useNotifications, type Notification } from '../context/NotificationContext';
 
 export function NotificationBell() {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
@@ -22,7 +22,7 @@ export function NotificationBell() {
     return `hace ${days}d`;
   };
 
-  const handleNotificationClick = (n: any) => {
+  const handleNotificationClick = (n: Notification) => {
     if (!n.read_at) {
       markAsRead(n.id);
     }
@@ -30,7 +30,7 @@ export function NotificationBell() {
 
     if (!user) return;
 
-    const orderId = n.data?.order_id;
+    const orderId = typeof n.data?.order_id === 'string' ? n.data.order_id : undefined;
     const stateParams = orderId ? { tab: 'orders', openOrderId: orderId } : { tab: 'orders' };
 
     if (user.role === 'store') {
