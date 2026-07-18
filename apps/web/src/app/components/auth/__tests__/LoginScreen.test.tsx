@@ -64,7 +64,7 @@ describe('LoginScreen', () => {
     const confirmInput = screen.getByLabelText('Confirmar clave');
     fireEvent.change(confirmInput, { target: { value: '123456' } });
     fireEvent.click(screen.getByText('Enviar código'));
-    expect(screen.getByText(/Supabase no est/)).toBeTruthy();
+    expect(screen.getByText(/El acceso real no est/)).toBeTruthy();
   });
 
   it('does not use demo login when mock mode is disabled', async () => {
@@ -76,7 +76,7 @@ describe('LoginScreen', () => {
     fireEvent.change(passwordInput, { target: { value: 'customer123' } });
     fireEvent.click(screen.getByText('Iniciar sesión'));
     await vi.waitFor(() => {
-      expect(screen.getByText(/Supabase no est/)).toBeTruthy();
+      expect(screen.getByText(/El acceso real no est/)).toBeTruthy();
     });
     expect(mockMockLogin).not.toHaveBeenCalled();
   });

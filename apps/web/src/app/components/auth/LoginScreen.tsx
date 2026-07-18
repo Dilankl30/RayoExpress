@@ -265,7 +265,7 @@ export function LoginScreen() {
       }
 
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no está configurado para iniciar sesiones reales.');
+        setError('El acceso real no está configurado para iniciar sesiones.');
         return;
       }
 
@@ -293,7 +293,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no está configurado para crear cuentas reales.');
+        setError('El acceso real no está configurado para crear cuentas.');
         return;
       }
 
@@ -327,7 +327,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        throw new Error('Supabase no está configurado para reenviar códigos reales.');
+        throw new Error('El acceso real no está configurado para reenviar códigos.');
       }
 
       const { error: resendError } = await supabase.auth.resend({
@@ -363,7 +363,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no está configurado para verificar códigos reales.');
+        setError('El acceso real no está configurado para verificar códigos.');
         return;
       }
 
@@ -392,7 +392,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no está configurado para recuperar cuentas reales.');
+        setError('El acceso real no está configurado para recuperar cuentas.');
         return;
       }
 
@@ -419,7 +419,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Supabase no está configurado para actualizar claves reales.');
+        setError('El acceso real no está configurado para actualizar claves.');
         return;
       }
 
@@ -449,7 +449,7 @@ export function LoginScreen() {
     resetMessages();
     try {
       if (!isSupabaseReady || !supabase) {
-        setError('Google necesita Supabase configurado.');
+        setError('Google necesita la autenticación real configurada.');
         return;
       }
 
@@ -741,7 +741,7 @@ export function LoginScreen() {
             </PrimaryButton>
 
             <p className="text-center text-[11px] font-medium leading-relaxed text-slate-500">
-              Si tu correo ya existe en Supabase Auth, recibirás el enlace para restablecer la clave.
+              Si tu correo ya existe en Rayo Express, recibirás el enlace para restablecer la clave.
             </p>
           </div>
         )}

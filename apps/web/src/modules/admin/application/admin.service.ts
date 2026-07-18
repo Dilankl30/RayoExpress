@@ -107,22 +107,22 @@ export interface UserDetail {
 const now = () => new Date().toISOString();
 
 const mockUsers: AdminUser[] = [
-  { id: 'u1', full_name: 'Carlos PÃ©rez', email: 'carlos@mail.com', phone: '0999999991', role: 'customer', is_suspended: false, created_at: now(), last_sign_in: null },
-  { id: 'u2', full_name: 'MarÃ­a GarcÃ­a', email: 'maria@mail.com', phone: '0999999992', role: 'customer', is_suspended: false, created_at: now(), last_sign_in: null },
-  { id: 'u3', full_name: 'Luis MartÃ­nez', email: 'luis@mail.com', phone: '0999999993', role: 'driver', is_suspended: false, created_at: now(), last_sign_in: null },
-  { id: 'u4', full_name: 'Ana RodrÃ­guez', email: 'ana@mail.com', phone: '0999999994', role: 'driver', is_suspended: false, created_at: now(), last_sign_in: null },
-  { id: 'u5', full_name: 'PizzerÃ­a Napoli', email: 'napoli@mail.com', phone: '0999999995', role: 'store', is_suspended: false, created_at: now(), last_sign_in: null },
+  { id: 'u1', full_name: 'Carlos Perez', email: 'carlos@mail.com', phone: '0999999991', role: 'customer', is_suspended: false, created_at: now(), last_sign_in: null },
+  { id: 'u2', full_name: 'Maria Garcia', email: 'maria@mail.com', phone: '0999999992', role: 'customer', is_suspended: false, created_at: now(), last_sign_in: null },
+  { id: 'u3', full_name: 'Luis Martinez', email: 'luis@mail.com', phone: '0999999993', role: 'driver', is_suspended: false, created_at: now(), last_sign_in: null },
+  { id: 'u4', full_name: 'Ana Rodriguez', email: 'ana@mail.com', phone: '0999999994', role: 'driver', is_suspended: false, created_at: now(), last_sign_in: null },
+  { id: 'u5', full_name: 'Pizzeria Napoli', email: 'napoli@mail.com', phone: '0999999995', role: 'store', is_suspended: false, created_at: now(), last_sign_in: null },
 ];
 
 const mockStores: AdminStore[] = [
   {
     store_id: 's1',
-    store_name: 'PizzerÃ­a Napoli',
+    store_name: 'Pizzeria Napoli',
     is_open: true,
-    emoji: 'ðŸ•',
+    emoji: '🍕',
     min_order: 5,
     delivery_fee: 1.5,
-    owner_name: 'Carlos PÃ©rez',
+    owner_name: 'Carlos Perez',
     owner_phone: '0999999991',
     owner_email: 'carlos@mail.com',
     created_at: now(),
@@ -135,10 +135,10 @@ const mockStores: AdminStore[] = [
     store_id: 's2',
     store_name: 'Sushi House',
     is_open: false,
-    emoji: 'ðŸ£',
+    emoji: '🍣',
     min_order: 10,
     delivery_fee: 2,
-    owner_name: 'MarÃ­a GarcÃ­a',
+    owner_name: 'Maria Garcia',
     owner_phone: '0999999992',
     owner_email: 'maria@mail.com',
     created_at: now(),
@@ -152,7 +152,7 @@ const mockStores: AdminStore[] = [
 const mockDrivers: AdminDriver[] = [
   {
     driver_id: 'd1',
-    full_name: 'Luis MartÃ­nez',
+    full_name: 'Luis Martinez',
     phone: '0999999993',
     is_suspended: false,
     is_online: true,
@@ -167,7 +167,7 @@ const mockDrivers: AdminDriver[] = [
   },
   {
     driver_id: 'd2',
-    full_name: 'Ana RodrÃ­guez',
+    full_name: 'Ana Rodriguez',
     phone: '0999999994',
     is_suspended: false,
     is_online: false,

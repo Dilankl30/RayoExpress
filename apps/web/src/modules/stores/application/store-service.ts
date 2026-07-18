@@ -9,6 +9,45 @@ type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'];
 type Category = Database['public']['Tables']['categories']['Row'];
 
+const CITY_ALIASES = [
+  ['coca', 'el coca', 'francisco de orellana', 'puerto francisco de orellana', 'orellana'],
+  ['quito', 'san francisco de quito'],
+  ['guayaquil', 'santiago de guayaquil'],
+];
+
+function normalizeCity(value?: string | null): string {
+  return (value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getCityAliasGroup(city: string): string[] | undefined {
+  return CITY_ALIASES.find((group) => group.includes(city));
+}
+
+function cityMatches(storeCity?: string | null, requestedCity?: string | null): boolean {
+  const requested = normalizeCity(requestedCity);
+  if (!requested) return true;
+
+  const store = normalizeCity(storeCity);
+  if (!store) return true;
+  if (store === requested || store.includes(requested) || requested.includes(store)) return true;
+
+  const requestedGroup = getCityAliasGroup(requested);
+  const storeGroup = getCityAliasGroup(store);
+  return Boolean(requestedGroup && storeGroup && requestedGroup === storeGroup);
+}
+
+function filterStoresByCity(stores: Store[], city?: string): Store[] {
+  if (!city?.trim()) return stores;
+  const filtered = stores.filter((store) => cityMatches(store.city, city));
+  return filtered.length > 0 ? filtered : stores;
+}
+
 export async function getStoresInBounds(northEast: [number, number], southWest: [number, number]): Promise<Store[]> {
   if (!isSupabaseReady) {
     return (mockStores as Store[]).filter(s => 
@@ -32,30 +71,27 @@ export async function getStoresInBounds(northEast: [number, number], southWest: 
 
 export async function getStores(city?: string): Promise<Store[]> {
   if (!isSupabaseReady) {
-    let list = mockStores as Store[];
-    if (city) list = list.filter((s) => s.city === city);
-    return list;
+    return filterStoresByCity(mockStores as Store[], city);
   }
   const supabase = getSupabase();
-  let query = supabase.from('stores').select('*');
-  if (city) query = query.eq('city', city);
-  const { data, error } = await query.order('name');
+  const { data, error } = await supabase.from('stores').select('*').order('name');
   if (error) throw error;
-  return data ?? [];
+  return filterStoresByCity(data ?? [], city);
 }
 
 export async function getStoresWithLocation(city?: string): Promise<Store[]> {
   if (!isSupabaseReady) {
-    let list = mockStores as Store[];
-    if (city) list = list.filter((s) => s.city === city);
-    return list.filter((s) => s.latitude !== null && s.longitude !== null);
+    return filterStoresByCity(mockStores as Store[], city).filter((s) => s.latitude !== null && s.longitude !== null);
   }
   const supabase = getSupabase();
-  let query = supabase.from('stores').select('*').not('latitude', 'is', null).not('longitude', 'is', null);
-  if (city) query = query.eq('city', city);
-  const { data, error } = await query.order('name');
+  const { data, error } = await supabase
+    .from('stores')
+    .select('*')
+    .not('latitude', 'is', null)
+    .not('longitude', 'is', null)
+    .order('name');
   if (error) throw error;
-  return data ?? [];
+  return filterStoresByCity(data ?? [], city);
 }
 
 export async function getStoreById(id: string): Promise<Store | null> {

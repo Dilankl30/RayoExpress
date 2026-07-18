@@ -4,7 +4,7 @@ import {
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, Trash2,
-  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X,
+  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X, Megaphone,
 } from 'lucide-react';
 import { getSupabase } from '../../../integrations/supabase/client';
 import {
@@ -64,6 +64,12 @@ const CoverageMapEditor = lazy(() =>
   })),
 );
 
+const HomeAdsManager = lazy(() =>
+  import('../../../modules/marketing/ui/HomeAdsManager').then((module) => ({
+    default: module.HomeAdsManager,
+  })),
+);
+
 function CoverageSectionFallback({
   error,
   reset,
@@ -106,7 +112,7 @@ function getRoleColor(role: string) {
   return PIE_COLORS[index >= 0 ? index : 0];
 }
 
-type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage';
+type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage' | 'ads';
 
 const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} /> },
@@ -117,6 +123,7 @@ const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'applications', label: 'Solicitudes', icon: <UserCheck size={16} /> },
   { key: 'reports', label: 'Reportes', icon: <TrendingUp size={16} /> },
   { key: 'coverage', label: 'Cobertura', icon: <MapPinned size={16} /> },
+  { key: 'ads', label: 'Publicidad', icon: <Megaphone size={16} /> },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -1601,6 +1608,17 @@ export function AdminDashboard() {
         {activeTab === 'users' && renderUsers()}
         {activeTab === 'reports' && renderReports()}
         {activeTab === 'coverage' && renderCoverage()}
+        {activeTab === 'ads' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <HomeAdsManager />
+          </Suspense>
+        )}
       </div>
 
       {deleteTarget && (

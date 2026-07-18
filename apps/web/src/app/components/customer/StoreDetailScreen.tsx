@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { motion } from 'motion/react';
 import { ArrowLeft, Clock, Truck, Heart, Share2, Search, Plus, Minus, ShoppingCart, MapPin, Phone } from 'lucide-react';
@@ -7,7 +7,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
-import { getStoreById, getProductsByStore } from '../../../modules/stores/application/store-service';
+import { getStoreById, getProductsByStore, getCategories } from '../../../modules/stores/application/store-service';
 import { checkIsFavorite, toggleFavorite } from '../../../modules/client/application/client-service';
 import { getFileUrl } from '../../../shared/storage/storage.service';
 import type { CartItem, Database, FavoriteItem } from '../../../shared/types';
@@ -21,6 +21,7 @@ L.Icon.Default.mergeOptions({
 
 type Store = Database['public']['Tables']['stores']['Row'];
 type Product = Database['public']['Tables']['products']['Row'] & { category?: string };
+type Category = Database['public']['Tables']['categories']['Row'];
 
 export function StoreDetailScreen() {
   const { navigate, user } = useAuth();
@@ -28,6 +29,7 @@ export function StoreDetailScreen() {
   const { addToCart, cartCount, updateQuantity, cart } = useCart();
   const [store, setStore] = useState<Store | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
+  const [categoryRows, setCategoryRows] = useState<Category[]>([]);
   const [activeCategory, setActiveCategory] = useState('Todo');
   const [search, setSearch] = useState('');
   const [quantities, setQuantities] = useState<Record<string, number>>({});
@@ -47,9 +49,10 @@ export function StoreDetailScreen() {
 
   const loadStore = async () => {
     try {
-      const [storeData, productsData] = await Promise.all([
+      const [storeData, productsData, categoriesData] = await Promise.all([
         getStoreById(storeId),
         getProductsByStore(storeId),
+        getCategories(),
       ]);
       if (storeData?.photo_url) {
         getFileUrl('product-images', storeData.photo_url).then(setStorePhotoUrl).catch(() => {});
@@ -63,6 +66,7 @@ export function StoreDetailScreen() {
       setProductImageUrls(imgMap);
       setStore(storeData);
       setProducts(productsData);
+      setCategoryRows(categoriesData);
       setLiked(user ? await checkIsFavorite(user.id, storeId, 'store') : false);
     } catch {
       setLoadError('No pudimos cargar la tienda. Intenta de nuevo.');
@@ -71,7 +75,28 @@ export function StoreDetailScreen() {
     }
   };
 
-  const categories = ['Todo', ...new Set(products.map((p) => p.category_id || p.category || '').filter(Boolean))];
+  const categoryNameById = useMemo(() => {
+    const map = new Map<string, string>();
+    categoryRows.forEach((category) => map.set(category.id, category.name));
+    return map;
+  }, [categoryRows]);
+
+  const categories = useMemo(() => {
+    const seen = new Set<string>();
+    const tabs = [{ id: 'Todo', label: 'Todo' }];
+
+    products.forEach((product) => {
+      const id = product.category_id || product.category || '';
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      tabs.push({
+        id,
+        label: product.category_id ? categoryNameById.get(product.category_id) || 'Sin categoría' : id,
+      });
+    });
+
+    return tabs;
+  }, [products, categoryNameById]);
 
   const filtered = products.filter((item) => {
     if (!item) return false;
@@ -144,7 +169,7 @@ export function StoreDetailScreen() {
       <div className="min-h-screen bg-surface flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <p className="text-4xl mb-3">😕</p>
-          <p className="text-text-primary font-bold mb-1">Algo salio mal</p>
+          <p className="text-text-primary font-bold mb-1">Algo salió mal</p>
           <p className="text-sm text-text-secondary mb-4">{loadError}</p>
           <button onClick={() => { setLoadError(null); setLoading(true); loadStore(); }} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
             Reintentar
@@ -253,7 +278,7 @@ export function StoreDetailScreen() {
           <div className="bg-surface-hover rounded-xl flex items-center gap-2 px-3 py-2.5 md:mt-4">
             <Search size={15} className="text-text-secondary" />
             <input
-              aria-label="Buscar en el menu"
+              aria-label="Buscar en el menú"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Buscar en el menú..."
@@ -268,13 +293,13 @@ export function StoreDetailScreen() {
           <div className="flex gap-0 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
             {categories.map((cat) => (
               <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
+                key={cat.id}
+                onClick={() => setActiveCategory(cat.id)}
                 className="px-4 py-3 text-sm whitespace-nowrap flex-shrink-0 transition-all relative"
-                style={{ color: activeCategory === cat ? 'var(--brand)' : '#6B7280' }}
+                style={{ color: activeCategory === cat.id ? 'var(--brand)' : '#6B7280' }}
               >
-                {cat}
-                {activeCategory === cat && (
+                {cat.label}
+                {activeCategory === cat.id && (
                   <motion.div
                     layoutId="category-indicator"
                     className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full"

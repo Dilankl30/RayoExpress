@@ -18,6 +18,32 @@ describe('getStores', () => {
     expect(stores[0]).toHaveProperty('id');
     expect(stores[0]).toHaveProperty('name');
   });
+
+  it('does not hide stores when the selected city uses a local alias', async () => {
+    const stores = await getStores('Coca');
+    expect(stores.length).toBeGreaterThan(0);
+  });
+
+  it('matches Supabase stores using city aliases instead of exact city equality', async () => {
+    mockSupabaseReady.value = true;
+    const mockOrder = vi.fn().mockResolvedValue({
+      data: [
+        { id: 'store-el-coca', name: 'Tienda El Coca', city: 'El Coca' },
+        { id: 'store-quito', name: 'Tienda Quito', city: 'Quito' },
+      ],
+      error: null,
+    });
+    const mockSelect = vi.fn().mockReturnValue({ order: mockOrder });
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect });
+    mockGetSupabase.mockReturnValue({ from: mockFrom });
+
+    const stores = await getStores('Coca');
+
+    expect(stores).toHaveLength(1);
+    expect(stores[0].id).toBe('store-el-coca');
+    expect(mockFrom).toHaveBeenCalledWith('stores');
+    mockSupabaseReady.value = false;
+  });
 });
 
 describe('getCategories', () => {

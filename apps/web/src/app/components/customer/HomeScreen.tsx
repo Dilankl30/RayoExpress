@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   MapPin, ShoppingCart, Search, ChevronRight, LocateFixed,
@@ -16,7 +16,9 @@ import { NotificationBell } from '../../../modules/notifications/ui/Notification
 import { getStores, getStoresInBounds, getCategories, getProductsByStores } from '../../../modules/stores/application/store-service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { resolvePreferredLocation } from '../../../modules/client/application/client-service';
+import { DEFAULT_HOME_ADS, getHomeAds } from '../../../modules/marketing/application/home-ads.service';
 import { STATUS_LABELS, STATUS_ICONS } from '../../../modules/orders/domain/order-status.machine';
+import { getFileUrl } from '../../../shared/storage/storage.service';
 import type { Address, Database } from '../../../shared/types';
 import {
   getActiveCoverageZone,
@@ -46,11 +48,6 @@ type CustomerOrder = {
   store?: StoreSummary | null;
 };
 
-const banners = [
-  { id: '1', title: '¡Envío GRATIS!', sub: 'En tu primer pedido · Código RAYO15', bg: 'linear-gradient(135deg, #FFD400 0%, #FF8C00 100%)', text: '#4C1D95' },
-  { id: '2', title: '20% OFF Restaurantes', sub: 'Solo hoy hasta las 22:00', bg: 'linear-gradient(135deg, #6D28D9 0%, #4C1D95 100%)', text: '#FFFFFF' },
-  { id: '3', title: 'Súper Express 24h', sub: 'Entrega en 15 minutos', bg: 'linear-gradient(135deg, #4C1D95 0%, #7C3AED 100%)', text: '#FFD400' },
-];
 
 const inactiveOrderStatuses = ['delivered', 'cancelled', 'refunded'];
 
@@ -78,14 +75,17 @@ function MapInstanceSaver({ setMap }: { setMap: (map: L.Map) => void }) {
 
 export function HomeScreen() {
   const { navigate, user } = useAuth();
+  const routeNavigate = useNavigate();
   const { cartCount } = useCart();
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState('');
   const [activeBanner, setActiveBanner] = useState(0);
+  const [homeAds, setHomeAds] = useState(DEFAULT_HOME_ADS);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [stores, setStores] = useState<Store[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [homeProducts, setHomeProducts] = useState<Product[]>([]);
+  const [homeProductImages, setHomeProductImages] = useState<Record<string, string | null>>({});
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -102,6 +102,13 @@ export function HomeScreen() {
   const [userCoords, setUserCoords] = useState<[number, number] | null>(null);
   const [selectedStoreOnMap, setSelectedStoreOnMap] = useState<Store | null>(null);
   const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
+
+  const activeHomeAds = useMemo(() => {
+    const ads = homeAds.filter((ad) => ad.active);
+    return ads.length > 0 ? ads : DEFAULT_HOME_ADS;
+  }, [homeAds]);
+
+  const activeAd = activeHomeAds[activeBanner] ?? activeHomeAds[0];
 
   useEffect(() => {
     const loadCoverage = async () => {
@@ -147,9 +154,26 @@ export function HomeScreen() {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % banners.length), 3500);
-    return () => clearInterval(interval);
+    let mounted = true;
+    void getHomeAds().then((ads) => {
+      if (!mounted) return;
+      setHomeAds(ads);
+      setActiveBanner(0);
+    });
+    return () => {
+      mounted = false;
+    };
   }, []);
+
+  useEffect(() => {
+    if (activeBanner >= activeHomeAds.length) setActiveBanner(0);
+  }, [activeBanner, activeHomeAds.length]);
+
+  useEffect(() => {
+    if (activeHomeAds.length <= 1) return undefined;
+    const interval = setInterval(() => setActiveBanner((prev) => (prev + 1) % activeHomeAds.length), 3500);
+    return () => clearInterval(interval);
+  }, [activeHomeAds.length]);
 
   useEffect(() => {
     loadData();
@@ -179,12 +203,13 @@ export function HomeScreen() {
     return resolved;
   };
 
-  const loadData = async () => {
+  const loadData = async (cityOverride?: string | null) => {
     setLoading(true);
     setLoadError(null);
     try {
-      const resolvedLocation = manualCity ? null : await resolveCurrentLocation();
-      const activeCity = manualCity || resolvedLocation?.city || userCity;
+      const selectedManualCity = cityOverride !== undefined ? cityOverride : manualCity;
+      const resolvedLocation = selectedManualCity ? null : await resolveCurrentLocation();
+      const activeCity = selectedManualCity || resolvedLocation?.city || userCity;
       const storesData = await getStores(activeCity || undefined);
       const [catsData] = await Promise.all([getCategories()]);
       setStores(storesData);
@@ -195,7 +220,19 @@ export function HomeScreen() {
       if (storeIds.length > 0) {
         try {
           const allProducts = await getProductsByStores(storeIds);
-          setHomeProducts(allProducts.filter((product) => product.is_active !== false).slice(0, 24));
+          const activeProducts = allProducts.filter((product) => product.is_active !== false).slice(0, 24);
+          const imageEntries = await Promise.all(
+            activeProducts.map(async (product) => {
+              if (!product.image_url) return [product.id, null] as const;
+              try {
+                return [product.id, await getFileUrl('product-images', product.image_url)] as const;
+              } catch {
+                return [product.id, null] as const;
+              }
+            }),
+          );
+          setHomeProducts(activeProducts);
+          setHomeProductImages(Object.fromEntries(imageEntries));
           for (const product of allProducts) {
             if (product.category_id && product.store_id) {
               if (!map[product.category_id]) map[product.category_id] = new Set();
@@ -204,10 +241,12 @@ export function HomeScreen() {
           }
         } catch {
           setHomeProducts([]);
+          setHomeProductImages({});
           // Fallback o ignorar error
         }
       } else {
         setHomeProducts([]);
+        setHomeProductImages({});
       }
       setCategoryStoreMap(map);
     } catch {
@@ -221,7 +260,7 @@ export function HomeScreen() {
     setManualCity(city);
     setUserCity(city);
     setShowCityPicker(false);
-    void loadData();
+    void loadData(city);
   };
 
   const loadActiveOrder = async () => {
@@ -255,6 +294,15 @@ export function HomeScreen() {
   };
 
   const handleSelectStore = useCallback((id: string) => navigate('store-detail', { storeId: id }), [navigate]);
+
+  const handleSelectAd = useCallback((targetPath: string) => {
+    if (!targetPath) return;
+    if (/^https?:\/\//i.test(targetPath)) {
+      window.open(targetPath, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    routeNavigate(targetPath.startsWith('/') ? targetPath : `/${targetPath}`);
+  }, [routeNavigate]);
 
   const filteredStores = stores.filter((store) => {
     const matchSearch = store.name.toLowerCase().includes(search.toLowerCase());
@@ -298,7 +346,7 @@ export function HomeScreen() {
           <span className="text-4xl mb-3 block">😕</span>
           <p className="text-text-primary font-bold mb-1">Error</p>
           <p className="text-sm text-text-secondary mb-4">{loadError}</p>
-          <button onClick={loadData} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
+          <button onClick={() => void loadData()} className="px-6 py-2.5 rounded-xl text-white font-medium" style={{ backgroundColor: 'var(--brand)' }}>
             Reintentar
           </button>
         </div>
@@ -389,32 +437,47 @@ export function HomeScreen() {
           <div className="relative rounded-2xl overflow-hidden" style={{ height: 120 }}>
             <AnimatePresence mode="wait">
               <motion.div
-                key={activeBanner}
-                className="absolute inset-0 flex flex-col justify-center px-5"
-                style={{ background: banners[activeBanner].bg }}
+                key={activeAd.id}
+                className="absolute inset-0 cursor-pointer overflow-hidden"
+                style={{ background: activeAd.bg }}
+                onClick={() => handleSelectAd(activeAd.target_path)}
                 initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -50 }}
                 transition={{ duration: 0.4 }}
               >
-                <p className="font-bold mb-1" style={{ color: banners[activeBanner].text, fontSize: 17 }}>
-                  {banners[activeBanner].title}
-                </p>
-                <p className="text-sm opacity-80" style={{ color: banners[activeBanner].text }}>
-                  {banners[activeBanner].sub}
-                </p>
-                <div className="mt-2">
-                  <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ backgroundColor: 'rgba(255,255,255,0.3)', color: banners[activeBanner].text }}>
-                    Aprovechar →
-                  </span>
+                {activeAd.media_type === 'image' && activeAd.media_url && (
+                  <img src={activeAd.media_url} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                )}
+                {activeAd.media_type === 'video' && activeAd.media_url && (
+                  <video src={activeAd.media_url} className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline />
+                )}
+                {activeAd.media_type !== 'none' && activeAd.media_url && (
+                  <div className="absolute inset-0 bg-black/35" />
+                )}
+                <div className="relative z-10 flex h-full flex-col justify-center px-5">
+                  <p className="font-bold mb-1" style={{ color: activeAd.text_color, fontSize: 17 }}>
+                    {activeAd.title}
+                  </p>
+                  <p className="text-sm opacity-80" style={{ color: activeAd.text_color }}>
+                    {activeAd.subtitle}
+                  </p>
+                  <div className="mt-2">
+                    <span className="text-xs px-3 py-1 rounded-full font-medium" style={{ backgroundColor: 'rgba(255,255,255,0.3)', color: activeAd.text_color }}>
+                      {activeAd.cta_label}
+                    </span>
+                  </div>
                 </div>
               </motion.div>
             </AnimatePresence>
             <div className="absolute bottom-2.5 right-4 flex gap-1.5">
-              {banners.map((_, index) => (
+              {activeHomeAds.map((ad, index) => (
                 <button
-                  key={index}
-                  onClick={() => setActiveBanner(index)}
+                  key={ad.id}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setActiveBanner(index);
+                  }}
                   className="rounded-full h-1.5 transition-all"
                   style={{
                     width: index === activeBanner ? 20 : 6,
@@ -425,7 +488,6 @@ export function HomeScreen() {
             </div>
           </div>
         </div>
-
         {categories.length > 0 && (
           <div className="mt-5">
             <div className="flex items-center justify-between mb-3">
@@ -472,7 +534,7 @@ export function HomeScreen() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
               {filteredProducts.map((product) => {
                 const store = storeById.get(product.store_id);
-                const image = product.image_url?.startsWith('http') ? product.image_url : null;
+                const image = homeProductImages[product.id] ?? null;
 
                 return (
                   <button
@@ -803,7 +865,7 @@ export function HomeScreen() {
           onSaved={(addresses) => {
             const selected = addresses.find((address) => address.is_default) ?? addresses[0];
             if (selected?.line1) setUserAddress(selected.line1);
-            void loadData();
+            void loadData(null);
           }}
         />
       )}

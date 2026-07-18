@@ -6,9 +6,17 @@ export type BucketName =
   | 'delivery-evidence'
   | 'receipts'
   | 'driver-documents'
-  | 'application-documents';
+  | 'application-documents'
+  | 'marketing-media';
 
-export type AllowedMimeType = 'image/jpeg' | 'image/png' | 'image/webp' | 'application/pdf';
+export type AllowedMimeType =
+  | 'image/jpeg'
+  | 'image/png'
+  | 'image/webp'
+  | 'application/pdf'
+  | 'video/mp4'
+  | 'video/webm'
+  | 'video/quicktime';
 
 const BUCKET_CONFIG: Record<BucketName, { maxMb: number; allowed: AllowedMimeType[] }> = {
   'product-images': { maxMb: 5, allowed: ['image/jpeg', 'image/png', 'image/webp'] },
@@ -17,6 +25,10 @@ const BUCKET_CONFIG: Record<BucketName, { maxMb: number; allowed: AllowedMimeTyp
   'receipts': { maxMb: 10, allowed: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] },
   'driver-documents': { maxMb: 10, allowed: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] },
   'application-documents': { maxMb: 10, allowed: ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'] },
+  'marketing-media': {
+    maxMb: 25,
+    allowed: ['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm', 'video/quicktime'],
+  },
 };
 
 const SIGNED_URL_CACHE = new Map<string, { url: string; expiresAt: number }>();
@@ -26,7 +38,15 @@ function validateFile(file: File, bucket: BucketName): string | null {
   const maxBytes = config.maxMb * 1024 * 1024;
   if (file.size > maxBytes) return `El archivo excede el límite de ${config.maxMb} MB`;
   if (!config.allowed.includes(file.type as AllowedMimeType)) {
-    const names: Record<string, string> = { 'image/jpeg': 'JPG', 'image/png': 'PNG', 'image/webp': 'WebP', 'application/pdf': 'PDF' };
+    const names: Record<string, string> = {
+      'image/jpeg': 'JPG',
+      'image/png': 'PNG',
+      'image/webp': 'WebP',
+      'application/pdf': 'PDF',
+      'video/mp4': 'MP4',
+      'video/webm': 'WebM',
+      'video/quicktime': 'MOV',
+    };
     const allowed = config.allowed.map((t) => names[t] || t).join(', ');
     return `Formato no permitido. Usa: ${allowed}`;
   }
@@ -116,7 +136,7 @@ export async function getFileUrl(
   if (!path) return null;
   if (!isSupabaseReady) return path;
 
-  const isPublic = bucket === 'product-images' || bucket === 'avatars';
+  const isPublic = bucket === 'product-images' || bucket === 'avatars' || bucket === 'marketing-media';
 
   if (isPublic) {
     return getPublicUrl(bucket, path);
