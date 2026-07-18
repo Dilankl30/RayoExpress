@@ -392,14 +392,14 @@ export function CartScreen() {
                     <button
                       key={pm.id}
                       onClick={() => setPayMethod(pm.id)}
-                      className="flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl text-sm transition-all"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold transition-all"
                       style={{
                         backgroundColor: isActive ? 'var(--brand)' : '#F9FAFB',
                         border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
                       }}
                     >
-                      <Icon size={20} style={{ color: isActive ? '#FFFFFF' : pm.color }} />
-                      <span style={{ color: isActive ? '#FFFFFF' : '#6B7280', fontSize: 10 }}>{pm.label}</span>
+                      <Icon size={20} className="flex-shrink-0" style={{ color: isActive ? '#FFFFFF' : pm.color }} />
+                      <span className="leading-none" style={{ color: isActive ? '#FFFFFF' : '#374151', fontSize: 12 }}>{pm.label}</span>
                     </button>
                   );
                 })}

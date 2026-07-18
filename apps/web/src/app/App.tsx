@@ -3,6 +3,7 @@ import { AppProviders } from './providers';
 import { ResponsiveLayout } from './layouts/ResponsiveLayout';
 import { screenRoutes } from './router';
 import { ErrorBoundary } from '../shared/components/ErrorBoundary';
+import { AppStartupSplash } from '../shared/components/AppStartupSplash';
 import { ToastProvider } from '../shared/components/Toast';
 
 export default function App() {
@@ -11,6 +12,7 @@ export default function App() {
       <ErrorBoundary>
         <AppProviders>
           <ToastProvider>
+            <AppStartupSplash />
             <ResponsiveLayout>
               <Routes>
                 {screenRoutes.map((route) => (

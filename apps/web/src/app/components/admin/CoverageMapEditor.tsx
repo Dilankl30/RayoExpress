@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Circle, MapContainer, Marker, Polygon, Polyline, Popup, TileLayer, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { CircleDashed, MapPinned, PencilLine, Trash2, Undo2 } from 'lucide-react';
+import { CircleDashed, MapPinned, PencilLine, Plus, Trash2, Undo2 } from 'lucide-react';
 
 export interface CoverageCityDraft {
   id: string;
@@ -64,6 +64,16 @@ function getCircleBounds(city: CoverageCityDraft) {
     [city.center[0] - latRadius, city.center[1] - lngRadius],
     [city.center[0] + latRadius, city.center[1] + lngRadius],
   ]);
+}
+
+function getNextPolygonPoint(city: CoverageCityDraft): [number, number] {
+  const base = city.boundary.length > 0 ? getCenterForPolygon(city.boundary) : city.center;
+  const offset = 0.0035 + city.boundary.length * 0.0008;
+  return [base[0] + offset, base[1] + offset];
+}
+
+function replaceBoundaryPoint(points: [number, number][], index: number, nextPoint: [number, number]) {
+  return points.map((point, pointIndex) => (pointIndex === index ? nextPoint : point));
 }
 
 function ZoneViewport({ city, stores }: { city: CoverageCityDraft; stores: CoverageStorePoint[] }) {
@@ -219,6 +229,18 @@ export function CoverageMapEditor({
   const polylinePoints = city.boundary.length >= 2 ? city.boundary : [];
   const storesWithCoords = stores.filter((store) => typeof store.latitude === 'number' && typeof store.longitude === 'number');
 
+  const handleAddPoint = () => {
+    const polygonCity: CoverageCityDraft = city.shape === 'polygon'
+      ? city
+      : { ...city, shape: 'polygon', boundary: [] };
+
+    onChange({
+      shape: 'polygon',
+      boundary: [...polygonCity.boundary, getNextPolygonPoint(polygonCity)],
+    });
+    setIsPlacingPoints(false);
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
@@ -252,6 +274,14 @@ export function CoverageMapEditor({
         >
           <MapPinned size={14} />
           {isPlacingPoints ? 'Colocando puntos' : 'Colocar puntos'}
+        </button>
+        <button
+          type="button"
+          onClick={handleAddPoint}
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border border-border-light bg-surface text-text-secondary"
+        >
+          <Plus size={14} />
+          Anadir punto
         </button>
         <button
           type="button"
@@ -312,7 +342,18 @@ export function CoverageMapEditor({
 
             {city.shape === 'circle' && (
               <>
-                <Marker position={city.center} icon={leafletIcon} />
+                <Marker
+                  position={city.center}
+                  icon={leafletIcon}
+                  draggable
+                  eventHandlers={{
+                    dragend: (event) => {
+                      const marker = event.target as L.Marker;
+                      const latLng = marker.getLatLng();
+                      onChange({ center: [latLng.lat, latLng.lng] });
+                    },
+                  }}
+                />
                 <Circle
                   center={city.center}
                   radius={Math.max(city.radius_km, 0.5) * 1000}
@@ -330,9 +371,22 @@ export function CoverageMapEditor({
                   <Polygon positions={polygonPoints} pathOptions={{ color: '#6D28D9', fillColor: '#A855F7', fillOpacity: 0.18 }} />
                 )}
                 {city.boundary.map((point, index) => (
-                  <Marker key={`${point[0]}-${point[1]}-${index}`} position={point} icon={leafletIcon} />
+                  <Marker
+                    key={`${point[0]}-${point[1]}-${index}`}
+                    position={point}
+                    icon={leafletIcon}
+                    draggable
+                    eventHandlers={{
+                      dragend: (event) => {
+                        const marker = event.target as L.Marker;
+                        const latLng = marker.getLatLng();
+                        onChange({ boundary: replaceBoundaryPoint(city.boundary, index, [latLng.lat, latLng.lng]) });
+                      },
+                    }}
+                  >
+                    <Popup>Punto {index + 1}. Arrastralo para ajustar la cobertura.</Popup>
+                  </Marker>
                 ))}
-                <Marker position={center} icon={leafletIcon} />
               </>
             )}
 
@@ -369,7 +423,7 @@ export function CoverageMapEditor({
           </MapContainer>
           {city.shape === 'polygon' && (
             <div className="pointer-events-none absolute left-3 top-3 z-[1000] rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-text-primary shadow">
-              {isPlacingPoints ? 'Haz clic para agregar puntos' : 'Activa "Colocar puntos"'}
+              {isPlacingPoints ? 'Haz clic en el mapa o usa Anadir punto' : 'Usa Anadir punto y arrastra los marcadores'}
             </div>
           )}
           <div className="pointer-events-none absolute inset-0 z-[900] rounded-2xl ring-2 ring-white/75 shadow-[inset_0_0_0_1px_rgba(109,40,217,0.18)]" />
@@ -377,7 +431,7 @@ export function CoverageMapEditor({
       </div>
 
       <p className="text-xs text-text-secondary">
-        Haz clic sobre el mapa para mover el centro o agregar puntos al polígono. La cobertura se guarda por ciudad y se mantiene compatible con el modo anterior.
+        Usa Anadir punto para crear la cobertura y arrastra cada marcador para ajustar el poligono. La cobertura se guarda por ciudad y se mantiene compatible con el modo anterior.
       </p>
     </div>
   );

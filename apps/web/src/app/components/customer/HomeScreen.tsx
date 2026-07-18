@@ -86,6 +86,7 @@ export function HomeScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [homeProducts, setHomeProducts] = useState<Product[]>([]);
   const [homeProductImages, setHomeProductImages] = useState<Record<string, string | null>>({});
+  const [storePhotoUrls, setStorePhotoUrls] = useState<Record<string, string | null>>({});
   const [categoryStoreMap, setCategoryStoreMap] = useState<Record<string, Set<string>>>({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -214,6 +215,17 @@ export function HomeScreen() {
       const [catsData] = await Promise.all([getCategories()]);
       setStores(storesData);
       setCategories(catsData);
+      const storePhotoEntries = await Promise.all(
+        storesData.map(async (store) => {
+          if (!store.photo_url) return [store.id, null] as const;
+          try {
+            return [store.id, await getFileUrl('product-images', store.photo_url)] as const;
+          } catch {
+            return [store.id, null] as const;
+          }
+        }),
+      );
+      setStorePhotoUrls(Object.fromEntries(storePhotoEntries));
 
       const map: Record<string, Set<string>> = {};
       const storeIds = storesData.map((s) => s.id);
@@ -250,6 +262,7 @@ export function HomeScreen() {
       }
       setCategoryStoreMap(map);
     } catch {
+      setStorePhotoUrls({});
       setLoadError('No pudimos cargar la información. Revisa tu conexión.');
     } finally {
       setLoading(false);
@@ -738,7 +751,15 @@ export function HomeScreen() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-2xl shadow-sm border border-purple-100/50">
+                        {storePhotoUrls[selectedStoreOnMap.id] && (
+                          <img
+                            src={storePhotoUrls[selectedStoreOnMap.id] ?? ''}
+                            alt={selectedStoreOnMap.name}
+                            className="h-12 w-12 flex-shrink-0 rounded-xl border border-purple-100/50 bg-purple-50 object-cover shadow-sm"
+                            loading="lazy"
+                          />
+                        )}
+                        <div className={`w-12 h-12 rounded-xl bg-purple-50 flex items-center justify-center text-2xl shadow-sm border border-purple-100/50 ${storePhotoUrls[selectedStoreOnMap.id] ? 'hidden' : ''}`}>
                           {selectedStoreOnMap.emoji || '🏪'}
                         </div>
                         <div className="text-left">
@@ -821,7 +842,15 @@ export function HomeScreen() {
                   transition={{ delay: index * 0.05 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <div className="w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: store.cover_color ? `${store.cover_color}20` : '#F3F4F6', fontSize: 30 }}>
+                  {storePhotoUrls[store.id] && (
+                    <img
+                      src={storePhotoUrls[store.id] ?? ''}
+                      alt={store.name}
+                      className="h-16 w-16 flex-shrink-0 rounded-xl border border-border-light bg-surface object-cover shadow-sm"
+                      loading="lazy"
+                    />
+                  )}
+                  <div className={`w-16 h-16 rounded-xl flex items-center justify-center flex-shrink-0 ${storePhotoUrls[store.id] ? 'hidden' : ''}`} style={{ backgroundColor: store.cover_color ? `${store.cover_color}20` : '#F3F4F6', fontSize: 30 }}>
                     {store.emoji || '🏪'}
                   </div>
                   <div className="flex-1 min-w-0">
