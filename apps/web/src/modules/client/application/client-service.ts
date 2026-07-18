@@ -10,6 +10,8 @@ import type { Address, Database, FavoriteItem } from '../../../shared/types';
 
 type FavoriteRow = Database['public']['Tables']['favorites']['Row'];
 
+export const MAX_CUSTOMER_ADDRESSES = 3;
+
 function normalizeFavorite(row: FavoriteRow): FavoriteItem {
   return {
     id: row.item_id,
@@ -31,8 +33,23 @@ export async function getAddresses(userId: string): Promise<Address[]> {
 }
 
 export async function createAddress(userId: string, address: Omit<Address, 'id'>): Promise<Address[]> {
-  if (!isSupabaseReady) return addMockAddress(userId, address) as Address[];
+  if (!isSupabaseReady) {
+    if (getMockAddresses(userId).length >= MAX_CUSTOMER_ADDRESSES) {
+      throw new Error(`Solo puedes guardar hasta ${MAX_CUSTOMER_ADDRESSES} ubicaciones.`);
+    }
+    return addMockAddress(userId, address) as Address[];
+  }
   const supabase = getSupabase();
+  const { count, error: countError } = await supabase
+    .from('addresses')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (countError) throw countError;
+  if ((count ?? 0) >= MAX_CUSTOMER_ADDRESSES) {
+    throw new Error(`Solo puedes guardar hasta ${MAX_CUSTOMER_ADDRESSES} ubicaciones.`);
+  }
+
   if (address.is_default) {
     const { error: reset } = await supabase.from('addresses').update({ is_default: false }).eq('user_id', userId);
     if (reset) throw reset;

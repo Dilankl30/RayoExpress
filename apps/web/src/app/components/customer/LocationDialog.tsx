@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, Plus, Search, X } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import { ArrowLeft, Check, Loader2, LocateFixed, MapPin, X } from 'lucide-react';
+import { Circle, MapContainer, Marker, Polygon, TileLayer, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
   createAddress,
   getAddresses,
   markDefaultAddress,
+  MAX_CUSTOMER_ADDRESSES,
 } from '../../../modules/client/application/client-service';
 import { detectCityCached } from '../../../shared/lib/city';
 import type { Address } from '../../../shared/types';
@@ -18,10 +19,10 @@ import {
   parseCoverageAreaConfig,
   parseCoverageZonesConfig,
   type CoverageAreaConfig,
+  type CoverageZoneConfig,
   type CoverageZonesConfig,
 } from '../../../shared/utils/coverage-area';
 
-// Fix Leaflet marker icons for Vite
 delete (L.Icon.Default.prototype as unknown as Record<string, unknown>)._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
@@ -29,8 +30,7 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
 });
 
-// Default coords: Guayaquil
-const DEFAULT_CENTER: [number, number] = [-2.1706, -79.9223];
+const DEFAULT_CENTER: [number, number] = [-0.4632, -76.9892];
 
 function LocationPicker({ onPick }: { onPick: (lat: number, lng: number) => void }) {
   useMapEvents({
@@ -54,25 +54,30 @@ function emitAddressUpdated(addresses: Address[]) {
   window.dispatchEvent(new CustomEvent(ADDRESS_UPDATED_EVENT, { detail: addresses }));
 }
 
-function parseCoordinate(value: string, min: number, max: number): number | undefined {
-  const cleanValue = value.trim().replace(',', '.');
-  if (!cleanValue) return undefined;
-  const coordinate = Number(cleanValue);
-  if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) return Number.NaN;
-  return Number(coordinate.toFixed(6));
-}
-
 function getLocationErrorMessage(error: GeolocationPositionError) {
   if (error.code === error.PERMISSION_DENIED) {
-    return 'El navegador bloqueó el GPS. Activa el permiso de ubicación o guarda la dirección manualmente.';
+    return 'El navegador bloqueó el GPS. Activa el permiso de ubicación o selecciona un punto en el mapa.';
   }
   if (error.code === error.POSITION_UNAVAILABLE) {
-    return 'No pudimos detectar tu ubicación actual. Revisa el GPS o escribe la dirección manual.';
+    return 'No pudimos detectar tu ubicación actual. Revisa el GPS o selecciona un punto en el mapa.';
   }
   if (error.code === error.TIMEOUT) {
-    return 'La ubicación tardó demasiado. Intenta otra vez o escribe la dirección manual.';
+    return 'La ubicación tardó demasiado. Intenta otra vez o selecciona un punto en el mapa.';
   }
-  return 'No pudimos obtener tu ubicación actual. Puedes guardar la dirección manualmente.';
+  return 'No pudimos obtener tu ubicación actual. Puedes seleccionar un punto en el mapa.';
+}
+
+function zoneFromLegacy(area: CoverageAreaConfig | null): CoverageZoneConfig | null {
+  if (!area) return null;
+  return {
+    id: 'legacy',
+    city_name: area.city_name,
+    center: area.center,
+    radius_km: area.radius_km,
+    is_active: true,
+    shape: 'circle',
+    boundary: [],
+  };
 }
 
 export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialogProps) {
@@ -80,11 +85,6 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [locating, setLocating] = useState(false);
-  const [title, setTitle] = useState('');
-  const [line1, setLine1] = useState('');
-  const [details, setDetails] = useState('');
-  const [manualLat, setManualLat] = useState('');
-  const [manualLng, setManualLng] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [showMap, setShowMap] = useState(false);
   const [mapPickLat, setMapPickLat] = useState<number | null>(null);
@@ -92,6 +92,14 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
   const mapCenter = useRef<[number, number]>(DEFAULT_CENTER);
   const [coverageArea, setCoverageArea] = useState<CoverageAreaConfig | null>(null);
   const [coverageZones, setCoverageZones] = useState<CoverageZonesConfig | null>(null);
+
+  const defaultAddress = useMemo(() => addresses.find((address) => address.is_default), [addresses]);
+  const canSaveMore = addresses.length < MAX_CUSTOMER_ADDRESSES;
+  const addressLimitMessage = `Solo puedes guardar hasta ${MAX_CUSTOMER_ADDRESSES} ubicaciones. Elimina una para registrar otra.`;
+  const activeZone = useMemo(
+    () => getActiveCoverageZone(coverageZones) ?? zoneFromLegacy(coverageArea),
+    [coverageArea, coverageZones],
+  );
 
   useEffect(() => {
     const loadCoverage = async () => {
@@ -101,17 +109,8 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
         const zones = parseCoverageZonesConfig(zonesData?.value);
         if (zones) {
           setCoverageZones(zones);
-          const activeZone = getActiveCoverageZone(zones);
-          if (activeZone) {
-            setCoverageArea({
-              center: [activeZone.center[0], activeZone.center[1]],
-              radius_km: activeZone.radius_km,
-              city_name: activeZone.city_name,
-            });
-            if (!mapPickLat) {
-              mapCenter.current = activeZone.center;
-            }
-          }
+          const active = getActiveCoverageZone(zones);
+          if (active && mapPickLat === null) mapCenter.current = active.center;
           return;
         }
 
@@ -119,52 +118,14 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
         const legacy = parseCoverageAreaConfig(data?.value);
         if (legacy) {
           setCoverageArea(legacy);
-          if (!mapPickLat) {
-            mapCenter.current = legacy.center;
-          }
+          if (mapPickLat === null) mapCenter.current = legacy.center;
         }
-      } catch { /* noop */ }
+      } catch {
+        // Coverage is optional while the app is being configured.
+      }
     };
     void loadCoverage();
   }, [mapPickLat]);
-
-  const checkCoordinatesInCoverage = (lat: number, lng: number): { inside: boolean; msg?: string } => {
-    if (coverageZones) {
-      const result = isPointInAnyCoverageZone(lat, lng, coverageZones);
-      if (!result.inside) {
-        const city = result.zone?.city_name ?? 'la zona activa';
-        return {
-          inside: false,
-          msg: `⚠️ Esta ubicación está fuera de la cobertura de RayoExpress para ${city}.`,
-        };
-      }
-      return { inside: true };
-    }
-
-    if (!coverageArea) return { inside: true };
-
-    const result = isPointInAnyCoverageZone(lat, lng, {
-      version: 2,
-      active_city_id: 'legacy',
-      cities: [{
-        id: 'legacy',
-        city_name: coverageArea.city_name,
-        center: coverageArea.center,
-        radius_km: coverageArea.radius_km,
-        is_active: true,
-      }],
-    });
-
-    if (!result.inside) {
-      return {
-        inside: false,
-        msg: `⚠️ Esta ubicación está fuera de la zona de cobertura de RayoExpress (${coverageArea.radius_km} km de rango en ${coverageArea.city_name}).`,
-      };
-    }
-    return { inside: true };
-  };
-
-  const defaultAddress = useMemo(() => addresses.find((address) => address.is_default), [addresses]);
 
   useEffect(() => {
     if (!open) return;
@@ -192,6 +153,42 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
     emitAddressUpdated(items);
   };
 
+  const checkCoordinatesInCoverage = (lat: number, lng: number): { inside: boolean; msg?: string } => {
+    if (coverageZones) {
+      const result = isPointInAnyCoverageZone(lat, lng, coverageZones);
+      if (!result.inside) {
+        const city = result.zone?.city_name ?? 'la zona activa';
+        return {
+          inside: false,
+          msg: `Esta ubicación está fuera de la cobertura de RayoExpress para ${city}.`,
+        };
+      }
+      return { inside: true };
+    }
+
+    if (!coverageArea) return { inside: true };
+
+    const result = isPointInAnyCoverageZone(lat, lng, {
+      version: 2,
+      active_city_id: 'legacy',
+      cities: [{
+        id: 'legacy',
+        city_name: coverageArea.city_name,
+        center: coverageArea.center,
+        radius_km: coverageArea.radius_km,
+        is_active: true,
+      }],
+    });
+
+    if (!result.inside) {
+      return {
+        inside: false,
+        msg: `Esta ubicación está fuera de la zona de cobertura de RayoExpress (${coverageArea.radius_km} km en ${coverageArea.city_name}).`,
+      };
+    }
+    return { inside: true };
+  };
+
   const handleSelectAddress = async (address: Address) => {
     setSaving(true);
     setError(null);
@@ -206,66 +203,59 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
     }
   };
 
-  const handleSaveManual = async () => {
-    if (!line1.trim()) return;
+  const handleMapPick = useCallback((lat: number, lng: number) => {
+    setMapPickLat(Number(lat.toFixed(6)));
+    setMapPickLng(Number(lng.toFixed(6)));
+    mapCenter.current = [lat, lng];
+    setError(null);
+  }, []);
+
+  const handleSaveMapPoint = async () => {
+    if (mapPickLat === null || mapPickLng === null) {
+      setError('Selecciona un punto en el mapa.');
+      return;
+    }
+    if (!canSaveMore) {
+      setError(addressLimitMessage);
+      return;
+    }
+
     setSaving(true);
     setError(null);
     try {
-      const lat = parseCoordinate(manualLat, -90, 90);
-      const lng = parseCoordinate(manualLng, -180, 180);
-      if (Number.isNaN(lat) || Number.isNaN(lng)) {
-        setError('Revisa las coordenadas. La latitud debe estar entre -90 y 90, y la longitud entre -180 y 180.');
-        return;
-      }
-      if ((lat === undefined && lng !== undefined) || (lat !== undefined && lng === undefined)) {
-        setError('Ingresa latitud y longitud, o deja ambos campos vacíos.');
+      const check = checkCoordinatesInCoverage(mapPickLat, mapPickLng);
+      if (!check.inside) {
+        setError(check.msg || 'Ubicación fuera de la zona de cobertura.');
         return;
       }
 
-      if (lat !== undefined && lng !== undefined) {
-        const check = checkCoordinatesInCoverage(lat, lng);
-        if (!check.inside) {
-          setError(check.msg || 'Ubicación fuera de la zona de cobertura.');
-          return;
-        }
-      }
-
+      const city = await detectCityCached(mapPickLat, mapPickLng);
+      const label = city || activeZone?.city_name || 'Punto seleccionado';
       const next = await createAddress(userId, {
-        title: title.trim() || 'Dirección guardada',
-        line1: line1.trim(),
-        details: details.trim(),
+        title: 'Ubicación seleccionada',
+        line1: `${label} (${mapPickLat.toFixed(6)}, ${mapPickLng.toFixed(6)})`,
+        details: 'Seleccionada en el mapa',
         is_default: true,
-        ...(lat !== undefined && lng !== undefined ? { lat, lng } : {}),
+        lat: mapPickLat,
+        lng: mapPickLng,
       });
       publishAddresses(next);
-      setTitle('');
-      setLine1('');
-      setDetails('');
-      setManualLat('');
-      setManualLng('');
       onClose();
-    } catch {
-      setError('No pudimos guardar la dirección.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No pudimos guardar la ubicación seleccionada.');
     } finally {
       setSaving(false);
     }
   };
 
-  const handleMapPick = useCallback((lat: number, lng: number) => {
-    setMapPickLat(lat);
-    setMapPickLng(lng);
-    setManualLat(lat.toFixed(6));
-    setManualLng(lng.toFixed(6));
-    mapCenter.current = [lat, lng];
-    setTitle((prev) => prev || 'Dirección seleccionada');
-    setLine1((prev) => prev || `${lat.toFixed(4)}, ${lng.toFixed(4)}`);
-  }, []);
-
   const handleCurrentLocation = async () => {
     setError(null);
+    if (!canSaveMore) {
+      setError(addressLimitMessage);
+      return;
+    }
     if (typeof navigator === 'undefined' || !('geolocation' in navigator)) {
-      setTitle((current) => current || 'Mi ubicación');
-      setError('Este navegador no permite obtener la ubicación actual. Guarda la dirección manualmente.');
+      setError('Este navegador no permite obtener la ubicación actual. Selecciona un punto en el mapa.');
       return;
     }
 
@@ -294,15 +284,14 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           });
           publishAddresses(next);
           onClose();
-        } catch {
-          setError('No pudimos guardar tu ubicación actual.');
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'No pudimos guardar tu ubicación actual.');
         } finally {
           setLocating(false);
         }
       },
       (positionError) => {
         setLocating(false);
-        setTitle((current) => current || 'Mi ubicación');
         setError(getLocationErrorMessage(positionError));
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
@@ -334,7 +323,8 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
             </button>
             <div>
               <h2 className="text-xl font-bold text-text-primary">Ingresa tu dirección</h2>
-              <p className="text-sm text-text-secondary">Usa tu ubicación actual o guarda una dirección.</p>
+              <p className="text-sm text-text-secondary">Usa tu ubicación actual o selecciona un punto en el mapa.</p>
+              <p className="text-xs text-text-secondary mt-1">{addresses.length}/{MAX_CUSTOMER_ADDRESSES} ubicaciones guardadas</p>
             </div>
           </div>
         </div>
@@ -346,9 +336,15 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
             </div>
           )}
 
+          {!canSaveMore && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+              {addressLimitMessage}
+            </div>
+          )}
+
           <button
             onClick={handleCurrentLocation}
-            disabled={locating || saving}
+            disabled={locating || saving || !canSaveMore}
             className="w-full bg-surface rounded-2xl p-4 flex items-center gap-3 text-left hover:bg-brand-light transition-colors disabled:opacity-60"
           >
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--brand-light)' }}>
@@ -361,7 +357,7 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           </button>
 
           <button
-            onClick={() => { setShowMap(!showMap); if (!showMap) { setError(null); } }}
+            onClick={() => { setShowMap(!showMap); if (!showMap) setError(null); }}
             className="w-full bg-surface rounded-2xl p-4 flex items-center gap-3 text-left hover:bg-brand-light transition-colors"
           >
             <div className="w-11 h-11 rounded-2xl flex items-center justify-center" style={{ backgroundColor: mapPickLat ? '#F0FDF4' : 'var(--brand-light)' }}>
@@ -377,79 +373,37 @@ export function LocationDialog({ open, userId, onClose, onSaved }: LocationDialo
           </button>
 
           {showMap && (
-            <div className="rounded-2xl overflow-hidden border border-border-light z-0" style={{ height: 280 }}>
-              <MapContainer center={mapCenter.current} zoom={coverageArea || coverageZones ? 13 : 15} className="h-full w-full" scrollWheelZoom={true}>
-                <TileLayer
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
-                  url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
-                />
-                <LocationPicker onPick={handleMapPick} />
-                {mapPickLat && mapPickLng && (
-                  <Marker position={[mapPickLat, mapPickLng]} />
-                )}
-              </MapContainer>
-            </div>
-          )}
-
-          <section>
-            <p className="text-sm font-bold text-text-primary mb-3">Guardar una dirección manual</p>
             <div className="space-y-3">
-              <input
-                aria-label="Nombre de la dirección"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="Nombre: Casa, trabajo, local..."
-                className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
-              />
-              <div className="bg-surface rounded-2xl px-4 py-3 flex items-center gap-2 border border-transparent focus-within:border-brand">
-                <Search size={17} className="text-text-secondary" />
-                <input
-                  aria-label="Dirección"
-                  value={line1}
-                  onChange={(event) => setLine1(event.target.value)}
-                  placeholder="Dirección o punto de referencia"
-                  className="flex-1 bg-transparent text-sm outline-none text-text-primary placeholder:text-text-secondary"
-                />
+              <div className="rayo-map-frame relative rounded-2xl overflow-hidden border border-border-light shadow-xl" style={{ height: 300 }}>
+                <MapContainer center={mapCenter.current} zoom={activeZone ? 13 : 15} className="h-full w-full" scrollWheelZoom>
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                    url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+                  />
+                  <LocationPicker onPick={handleMapPick} />
+                  {activeZone?.shape === 'polygon' && activeZone.boundary && activeZone.boundary.length >= 3 ? (
+                    <Polygon positions={activeZone.boundary} pathOptions={{ color: '#6D28D9', fillColor: '#A855F7', fillOpacity: 0.16 }} />
+                  ) : activeZone ? (
+                    <Circle center={activeZone.center} radius={Math.max(activeZone.radius_km, 0.5) * 1000} pathOptions={{ color: '#6D28D9', fillColor: '#A855F7', fillOpacity: 0.14 }} />
+                  ) : null}
+                  {mapPickLat && mapPickLng && <Marker position={[mapPickLat, mapPickLng]} />}
+                </MapContainer>
+                <div className="pointer-events-none absolute inset-0 z-[900] rounded-2xl ring-2 ring-white/80 shadow-[inset_0_0_0_1px_rgba(109,40,217,0.18)]" />
+                <div className="pointer-events-none absolute left-3 top-3 z-[1000] rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-text-primary shadow">
+                  Toca el mapa para elegir tu punto
+                </div>
               </div>
-              <input
-                aria-label="Detalles de dirección"
-                value={details}
-                onChange={(event) => setDetails(event.target.value)}
-                placeholder="Departamento, referencia, instrucciones"
-                className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
-              />
-              <div className="grid grid-cols-2 gap-3">
-                <input
-                  aria-label="Latitud"
-                  value={manualLat}
-                  onChange={(event) => setManualLat(event.target.value)}
-                  placeholder="Latitud opcional"
-                  inputMode="decimal"
-                  className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
-                />
-                <input
-                  aria-label="Longitud"
-                  value={manualLng}
-                  onChange={(event) => setManualLng(event.target.value)}
-                  placeholder="Longitud opcional"
-                  inputMode="decimal"
-                  className="w-full bg-surface rounded-2xl px-4 py-3 text-sm outline-none text-text-primary placeholder:text-text-secondary border border-transparent focus:border-brand"
-                />
-              </div>
-              <p className="text-xs text-text-secondary">
-                Las coordenadas son opcionales. Se completan al usar el GPS o seleccionar en el mapa.
-              </p>
               <button
-                onClick={handleSaveManual}
-                disabled={!line1.trim() || saving}
+                onClick={handleSaveMapPoint}
+                disabled={saving || mapPickLat === null || mapPickLng === null || !canSaveMore}
                 className="w-full py-3.5 rounded-2xl text-white font-bold flex items-center justify-center gap-2 disabled:opacity-50"
                 style={{ backgroundColor: 'var(--brand)' }}
               >
-                {saving ? <Loader2 size={18} className="animate-spin" /> : <Plus size={18} />}
-                Guardar dirección
+                {saving ? <Loader2 size={18} className="animate-spin" /> : <MapPin size={18} />}
+                Guardar punto seleccionado
               </button>
             </div>
-          </section>
+          )}
 
           <section>
             <div className="flex items-center justify-between mb-3">

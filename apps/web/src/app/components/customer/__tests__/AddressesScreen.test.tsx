@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, cleanup, fireEvent } from '@testing-library/react';
+import { render, screen, cleanup } from '@testing-library/react';
 
 const { mockNavigate, mockUser, mockGetAddresses, mockCreateAddress, mockRemoveAddress } = vi.hoisted(() => ({
   mockNavigate: vi.fn(),
@@ -14,6 +14,7 @@ vi.mock('../../../../modules/auth/context/AuthContext', () => ({
 }));
 
 vi.mock('../../../../modules/client/application/client-service', () => ({
+  MAX_CUSTOMER_ADDRESSES: 3,
   getAddresses: (...args: unknown[]) => mockGetAddresses(...args),
   createAddress: (...args: unknown[]) => mockCreateAddress(...args),
   removeAddress: (...args: unknown[]) => mockRemoveAddress(...args),
@@ -43,18 +44,14 @@ describe('AddressesScreen', () => {
     expect(await screen.findByText('Av. Siempre Viva 123')).toBeTruthy();
   });
 
-  it('opens dialog and adds new address', async () => {
+  it('opens location dialog with GPS and map options', async () => {
     mockGetAddresses.mockResolvedValue([]);
-    mockCreateAddress.mockResolvedValue([{ id: 'a1', title: 'Dirección guardada', line1: 'Calle Nueva 456', details: '', is_default: true }]);
     renderScreen();
     await screen.findByText('No tienes direcciones guardadas');
     const addBtn = screen.getAllByText('Agregar dirección')[0];
     addBtn.click();
     await screen.findByText('Ingresa tu dirección');
-    const input = screen.getByLabelText('Dirección');
-    fireEvent.change(input, { target: { value: 'Calle Nueva 456' } });
-    const saveBtn = screen.getByText('Guardar dirección');
-    saveBtn.click();
-    expect(mockCreateAddress).toHaveBeenCalled();
+    expect(screen.getByText('Mi ubicación actual')).toBeTruthy();
+    expect(screen.getByText('Seleccionar en el mapa')).toBeTruthy();
   });
 });

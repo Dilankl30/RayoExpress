@@ -130,7 +130,7 @@ export function createMockOrder(params: CreateMockOrderParams, userId: string) {
   const deliveryFee = 0;
   const discount = params.couponCode === 'RAYO15' ? Math.min(subtotal * 0.15, 5) : 0;
   const tax = (subtotal - discount) * 0.12;
-  const tip = params.tip || 0;
+  const tip = 0;
   const total = subtotal + deliveryFee - discount + tax + tip;
   const orderId = `order-${Date.now()}`;
 

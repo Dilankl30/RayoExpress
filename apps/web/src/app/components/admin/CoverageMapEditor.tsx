@@ -194,6 +194,7 @@ export function CoverageMapEditor({
   stores?: CoverageStorePoint[];
 }) {
   const [mapReady, setMapReady] = useState(false);
+  const [isPlacingPoints, setIsPlacingPoints] = useState(false);
 
   const center = useMemo(() => {
     if (!city) return DEFAULT_CENTER;
@@ -203,6 +204,7 @@ export function CoverageMapEditor({
 
   useEffect(() => {
     setMapReady(false);
+    setIsPlacingPoints(false);
   }, [city?.id]);
 
   if (!city) {
@@ -222,7 +224,10 @@ export function CoverageMapEditor({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          onClick={() => onChange({ shape: 'circle', boundary: [] })}
+          onClick={() => {
+            setIsPlacingPoints(false);
+            onChange({ shape: 'circle', boundary: [] });
+          }}
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border ${city.shape === 'circle' ? 'border-brand bg-brand text-white' : 'border-border-light bg-surface text-text-secondary'}`}
         >
           <CircleDashed size={14} />
@@ -230,11 +235,23 @@ export function CoverageMapEditor({
         </button>
         <button
           type="button"
-          onClick={() => onChange({ shape: 'polygon' })}
+          onClick={() => {
+            setIsPlacingPoints(true);
+            onChange({ shape: 'polygon' });
+          }}
           className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border ${city.shape === 'polygon' ? 'border-brand bg-brand text-white' : 'border-border-light bg-surface text-text-secondary'}`}
         >
           <PencilLine size={14} />
           Polígono
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsPlacingPoints((current) => !current)}
+          disabled={city.shape !== 'polygon'}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold border disabled:opacity-50 disabled:cursor-not-allowed ${city.shape === 'polygon' && isPlacingPoints ? 'border-brand bg-brand text-white' : 'border-border-light bg-surface text-text-secondary'}`}
+        >
+          <MapPinned size={14} />
+          {isPlacingPoints ? 'Colocando puntos' : 'Colocar puntos'}
         </button>
         <button
           type="button"
@@ -276,7 +293,7 @@ export function CoverageMapEditor({
         </div>
       )}
 
-      <div className="rounded-2xl overflow-hidden border border-border-light bg-surface">
+      <div className="rayo-map-frame relative rounded-2xl overflow-hidden border border-border-light bg-surface shadow-xl">
         <div className="h-[380px] w-full">
           <MapContainer
             key={city.id}
@@ -287,11 +304,11 @@ export function CoverageMapEditor({
             whenReady={() => setMapReady(true)}
           >
             <TileLayer
-              attribution="&copy; OpenStreetMap contributors"
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
             />
             <ZoneViewport city={city} stores={stores} />
-            <MapClickLayer city={city} enabled={mapReady} onChange={onChange} />
+            <MapClickLayer city={city} enabled={mapReady && (city.shape === 'circle' || isPlacingPoints)} onChange={onChange} />
 
             {city.shape === 'circle' && (
               <>
@@ -350,6 +367,12 @@ export function CoverageMapEditor({
               </Marker>
             ))}
           </MapContainer>
+          {city.shape === 'polygon' && (
+            <div className="pointer-events-none absolute left-3 top-3 z-[1000] rounded-full bg-white/90 px-3 py-1.5 text-xs font-semibold text-text-primary shadow">
+              {isPlacingPoints ? 'Haz clic para agregar puntos' : 'Activa "Colocar puntos"'}
+            </div>
+          )}
+          <div className="pointer-events-none absolute inset-0 z-[900] rounded-2xl ring-2 ring-white/75 shadow-[inset_0_0_0_1px_rgba(109,40,217,0.18)]" />
         </div>
       </div>
 

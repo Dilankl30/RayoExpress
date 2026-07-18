@@ -328,6 +328,11 @@ export function HomeScreen() {
       .slice(0, 12);
   }, [activeCategory, filteredStores, homeProducts, search, storeById]);
 
+  const selectedCategory = useMemo(
+    () => categories.find((category) => category.id === activeCategory) ?? null,
+    [activeCategory, categories],
+  );
+
   if (loading) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center">
@@ -492,35 +497,62 @@ export function HomeScreen() {
           <div className="mt-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-text-primary font-semibold">Categorías</h3>
-              <button className="text-sm flex items-center gap-1" style={{ color: 'var(--brand)' }}>
-                Ver todo <ChevronRight size={14} />
-              </button>
+              {activeCategory && (
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory(null)}
+                  className="text-sm font-semibold"
+                  style={{ color: 'var(--brand)' }}
+                >
+                  Limpiar
+                </button>
+              )}
             </div>
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3">
-              {categories.map((category) => {
-                const isActive = activeCategory === category.id;
-                return (
-                  <button
-                    key={category.id}
-                    onClick={() => setActiveCategory(isActive ? null : category.id)}
-                    className="flex flex-col items-center gap-1.5"
-                  >
-                    <motion.div
-                      className="w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center shadow-sm"
-                      style={{
-                        backgroundColor: isActive ? 'var(--brand)' : (category.bg_color || '#F3F4F6'),
-                        border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
-                      }}
-                      whileTap={{ scale: 0.9 }}
+            <div className="rounded-2xl border border-border-light bg-card p-3 shadow-sm">
+              <label htmlFor="home-category-filter" className="text-xs font-bold text-text-secondary">
+                Filtrar por categoría
+              </label>
+              <div className="relative mt-2">
+                <select
+                  id="home-category-filter"
+                  value={activeCategory ?? ''}
+                  onChange={(event) => setActiveCategory(event.target.value || null)}
+                  className="w-full appearance-none rounded-xl bg-surface px-3 py-3 pr-9 text-sm font-semibold text-text-primary outline-none"
+                >
+                  <option value="">Todas las categorías</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>{category.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={16} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary" />
+              </div>
+
+              <div className="mt-3 flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory(null)}
+                  className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold shadow-sm ${!activeCategory ? 'text-white' : 'text-text-secondary bg-surface-hover'}`}
+                  style={!activeCategory ? { backgroundColor: 'var(--brand)' } : {}}
+                >
+                  <span>✨</span>
+                  <span>Todas</span>
+                </button>
+                {categories.slice(0, 8).map((category) => {
+                  const isActive = activeCategory === category.id;
+                  return (
+                    <button
+                      key={category.id}
+                      type="button"
+                      onClick={() => setActiveCategory(isActive ? null : category.id)}
+                      className={`flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold shadow-sm ${isActive ? 'text-white' : 'text-text-secondary bg-surface-hover'}`}
+                      style={isActive ? { backgroundColor: 'var(--brand)' } : {}}
                     >
-                      <span className="text-2xl md:text-3xl">{category.emoji || '📦'}</span>
-                    </motion.div>
-                    <span className="text-center text-[10px] md:text-xs" style={{ color: isActive ? 'var(--brand)' : '#6B7280' }}>
-                      {category.name}
-                    </span>
-                  </button>
-                );
-              })}
+                      <span>{category.emoji || '📦'}</span>
+                      <span>{category.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}
@@ -528,7 +560,7 @@ export function HomeScreen() {
         {filteredProducts.length > 0 && (
           <div className="mt-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-text-primary font-semibold">Productos disponibles</h3>
+              <h3 className="text-text-primary font-semibold">{selectedCategory ? `Productos de ${selectedCategory.name}` : 'Productos disponibles'}</h3>
               <span className="text-xs text-text-secondary">{filteredProducts.length} productos</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3">
@@ -581,7 +613,7 @@ export function HomeScreen() {
           </div>
 
           {showMap ? (
-            <div className="rounded-2xl overflow-hidden border border-border-light z-0 mb-4 relative shadow-md" style={{ height: 420 }}>
+            <div className="rayo-map-frame rounded-3xl overflow-hidden border border-white/80 z-0 mb-4 relative shadow-2xl bg-surface" style={{ height: 420 }}>
               <MapContainer center={userCoords || (coverageArea?.center || [-0.4632, -76.9892])} zoom={userCoords ? 14 : 13} className="h-full w-full" zoomControl={false}>
                 <TileLayer
                   attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'

@@ -282,7 +282,7 @@ export function ExploreScreen() {
       </div>
 
       {/* MAP CONTAINER */}
-      <div className="flex-1 w-full relative z-0" style={{ minHeight: 'calc(100vh - 240px)' }}>
+      <div className="rayo-map-frame flex-1 w-full relative z-0 bg-white" style={{ minHeight: 'calc(100vh - 240px)' }}>
         {loading ? (
           <div className="absolute inset-0 bg-white/60 backdrop-blur-sm z-10 flex items-center justify-center">
             <div className="text-center">

@@ -7,9 +7,9 @@ import {
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { useCart } from '../../../modules/cart/context/CartContext';
 import { createOrder } from '../../../modules/orders/application/order-service';
-import { savePaymentReceipt } from '../../../modules/payments/application/payment.service';
 import { getAddresses } from '../../../modules/client/application/client-service';
 import { applyCoupon as validateCoupon, type CouponValidation } from '../../../modules/client/application/promotions-service';
+import { DEFAULT_CHECKOUT_PRICING, getCheckoutPricing, type CheckoutPricing } from '../../../modules/app/application/app-config.service';
 import type { Address } from '../../../shared/types';
 import { LocationDialog } from './LocationDialog';
 
@@ -24,7 +24,6 @@ export function CartScreen() {
   const [coupon, setCoupon] = useState('');
   const [couponResult, setCouponResult] = useState<CouponValidation | null>(null);
   const [couponChecking, setCouponChecking] = useState(false);
-  const [tip, setTip] = useState<number>(0);
   const [payMethod, setPayMethod] = useState('cash');
   const [note, setNote] = useState('');
   const [address, setAddress] = useState('Av. Amazonas, Quito');
@@ -36,12 +35,28 @@ export function CartScreen() {
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState('');
   const [addressCoords, setAddressCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [checkoutPricing, setCheckoutPricing] = useState<CheckoutPricing>(DEFAULT_CHECKOUT_PRICING);
 
-  const delivery = cartTotal > 0 ? 1.50 : 0;
+  const delivery = cartTotal > 0 ? checkoutPricing.deliveryFee : 0;
   const discount = couponResult?.valid ? couponResult.discount : 0;
   const taxableSubtotal = Math.max(cartTotal - discount, 0);
-  const tax = taxableSubtotal * 0.12;
-  const total = Math.max(cartTotal + delivery + tax - discount + tip, 0);
+  const tax = taxableSubtotal * checkoutPricing.taxRate;
+  const total = Math.max(cartTotal + delivery + tax - discount, 0);
+  const taxPercent = Number((checkoutPricing.taxRate * 100).toFixed(2));
+
+  useEffect(() => {
+    let active = true;
+    getCheckoutPricing()
+      .then((pricing) => {
+        if (active) setCheckoutPricing(pricing);
+      })
+      .catch(() => {
+        if (active) setCheckoutPricing(DEFAULT_CHECKOUT_PRICING);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -95,7 +110,7 @@ export function CartScreen() {
     setError('');
     setPlacing(true);
     try {
-      const result = await createOrder({
+      await createOrder({
         storeId: cart[0].storeId || '',
         productIds: cart.map((i) => i.id),
         quantities: cart.map((i) => i.quantity),
@@ -103,11 +118,10 @@ export function CartScreen() {
         paymentMethod: payMethod as 'cash' | 'transfer',
         couponCode: couponResult?.valid ? (couponResult.code ?? coupon.trim().toUpperCase()) : undefined,
         notes: [note, replacement ? `Agotados: ${replacement}` : '', billingName ? `Factura: ${billingName} ${billingId}` : '', cashAmount ? `Cambio para ${cashAmount}` : ''].filter(Boolean).join(' | ') || undefined,
-        tip,
+        tip: 0,
         deliveryLat: addressCoords?.lat ?? undefined,
         deliveryLng: addressCoords?.lng ?? undefined,
       });
-      await savePaymentReceipt(result.order_id, payMethod, result.total, null);
       clearCart();
       navigate('tracking');
     } catch (err: unknown) {
@@ -246,9 +260,10 @@ export function CartScreen() {
               <input
                 aria-label="Direccion de entrega"
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                readOnly
+                onClick={() => setShowLocationDialog(true)}
                 placeholder="Tu dirección"
-                className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-secondary"
+                className="w-full bg-surface rounded-xl px-3 py-2.5 text-sm text-text-primary outline-none placeholder:text-text-secondary cursor-pointer"
               />
             </div>
 
@@ -353,24 +368,6 @@ export function CartScreen() {
               )}
             </div>
 
-            <div className="mx-4 mt-3 bg-card rounded-2xl p-4 shadow-sm">
-              <p className="text-sm text-text-primary font-medium mb-3">Propina para el repartidor</p>
-              <div className="flex gap-2">
-                {[0, 0.5, 1, 1.5, 2].map((t) => (
-                  <button
-                    key={t}
-                    onClick={() => setTip(t)}
-                    className="flex-1 py-2 rounded-xl text-sm transition-all"
-                    style={{
-                      backgroundColor: tip === t ? 'var(--brand)' : '#F3F4F6',
-                      color: tip === t ? '#FFFFFF' : '#6B7280',
-                    }}
-                  >
-                    {t === 0 ? 'Sin' : `$${t.toFixed(2)}`}
-                  </button>
-                ))}
-              </div>
-            </div>
             </div>
 
               {/* Right column: summary + payment */}
@@ -392,8 +389,8 @@ export function CartScreen() {
                         border: isActive ? '2px solid var(--brand)' : '2px solid transparent',
                       }}
                     >
-                      <Icon size={20} style={{ color: isActive ? 'var(--brand)' : '#9CA3AF' }} />
-                      <span style={{ color: isActive ? 'var(--brand)' : '#6B7280', fontSize: 10 }}>{pm.label}</span>
+                      <Icon size={20} style={{ color: isActive ? '#FFFFFF' : pm.color }} />
+                      <span style={{ color: isActive ? '#FFFFFF' : '#6B7280', fontSize: 10 }}>{pm.label}</span>
                     </button>
                   );
                 })}
@@ -435,12 +432,8 @@ export function CartScreen() {
                   </div>
                 )}
                 <div className="flex justify-between text-text-secondary">
-                  <span>IVA (12%)</span>
+                  <span>IVA ({taxPercent}%)</span>
                   <span>${tax.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-text-secondary">
-                  <span>Propina</span>
-                  <span>${tip.toFixed(2)}</span>
                 </div>
                 <div className="h-px bg-border my-1" />
                 <div className="flex justify-between font-bold text-text-primary">

@@ -12,7 +12,14 @@ import {
   Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-import { getDriverHiringEnabled, setDriverHiringEnabled } from '../../../modules/app/application/app-config.service';
+import {
+  DEFAULT_CHECKOUT_PRICING,
+  getCheckoutPricing,
+  getDriverHiringEnabled,
+  setCheckoutPricing,
+  setDriverHiringEnabled,
+  type CheckoutPricing,
+} from '../../../modules/app/application/app-config.service';
 import { getAdminDashboardSummary } from '../../../modules/admin/application/admin-analytics.service';
 import {
   searchUsers, toggleSuspend, deleteUser, getAllStores, toggleStoreStatus, getUserDetail,
@@ -245,6 +252,12 @@ export function AdminDashboard() {
   const [recentUsers, setRecentUsers] = useState<RecentUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [driverHiringEnabled, setDriverHiringEnabledState] = useState(true);
+  const [checkoutPricing, setCheckoutPricingState] = useState<CheckoutPricing>(DEFAULT_CHECKOUT_PRICING);
+  const [checkoutPricingDraft, setCheckoutPricingDraft] = useState({
+    deliveryFee: String(DEFAULT_CHECKOUT_PRICING.deliveryFee),
+    taxRatePercent: String(DEFAULT_CHECKOUT_PRICING.taxRate * 100),
+  });
+  const [savingCheckoutPricing, setSavingCheckoutPricing] = useState(false);
 
   // stores tab
   const [stores, setStores] = useState<AdminStore[]>([]);
@@ -375,6 +388,23 @@ export function AdminDashboard() {
       .catch(() => setDriverHiringEnabledState(true));
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    getCheckoutPricing()
+      .then((pricing) => {
+        if (!active) return;
+        setCheckoutPricingState(pricing);
+        setCheckoutPricingDraft({
+          deliveryFee: String(pricing.deliveryFee),
+          taxRatePercent: String(Number((pricing.taxRate * 100).toFixed(2))),
+        });
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const handleToggleDriverHiring = async () => {
     const next = !driverHiringEnabled;
     setDriverHiringEnabledState(next);
@@ -382,6 +412,38 @@ export function AdminDashboard() {
       await setDriverHiringEnabled(next);
     } catch {
       setDriverHiringEnabledState(!next);
+    }
+  };
+
+  const handleSaveCheckoutPricing = async () => {
+    const deliveryFee = Number(checkoutPricingDraft.deliveryFee);
+    const taxRatePercent = Number(checkoutPricingDraft.taxRatePercent);
+
+    if (
+      !Number.isFinite(deliveryFee) ||
+      deliveryFee < 0 ||
+      !Number.isFinite(taxRatePercent) ||
+      taxRatePercent < 0 ||
+      taxRatePercent > 100
+    ) {
+      alert('Revisa la tarifa de envío y el IVA.');
+      return;
+    }
+
+    const next = {
+      deliveryFee: Number(deliveryFee.toFixed(2)),
+      taxRate: Number((taxRatePercent / 100).toFixed(4)),
+    };
+
+    setSavingCheckoutPricing(true);
+    try {
+      await setCheckoutPricing(next);
+      setCheckoutPricingState(next);
+    } catch (error) {
+      console.error('Error saving checkout pricing:', error);
+      alert('No pudimos guardar los costos del pedido.');
+    } finally {
+      setSavingCheckoutPricing(false);
     }
   };
 
@@ -1266,6 +1328,52 @@ export function AdminDashboard() {
           <p className="text-xs text-text-secondary">
             La cobertura se configura manualmente por ciudad. Puedes dibujar radios o polígonos y mantener una ciudad activa por zona.
           </p>
+        </div>
+
+        <div className="rounded-2xl border border-border-light bg-card p-4 shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 className="font-bold text-text-primary">Costos de pedidos</h3>
+              <p className="text-sm text-text-secondary">Define el envío y el IVA que se usan al confirmar pedidos.</p>
+            </div>
+            <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700">
+              Envío ${checkoutPricing.deliveryFee.toFixed(2)} · IVA {(checkoutPricing.taxRate * 100).toFixed(2)}%
+            </span>
+          </div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="text-xs font-semibold text-text-secondary">
+              Tarifa de envío
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={checkoutPricingDraft.deliveryFee}
+                onChange={(event) => setCheckoutPricingDraft((prev) => ({ ...prev, deliveryFee: event.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm text-text-primary outline-none focus:border-purple-500"
+              />
+            </label>
+            <label className="text-xs font-semibold text-text-secondary">
+              IVA (%)
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.01"
+                value={checkoutPricingDraft.taxRatePercent}
+                onChange={(event) => setCheckoutPricingDraft((prev) => ({ ...prev, taxRatePercent: event.target.value }))}
+                className="mt-1 w-full rounded-xl border border-border-light bg-white px-3 py-2 text-sm text-text-primary outline-none focus:border-purple-500"
+              />
+            </label>
+            <button
+              type="button"
+              onClick={handleSaveCheckoutPricing}
+              disabled={savingCheckoutPricing}
+              className="self-end rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              style={{ backgroundColor: 'var(--brand)' }}
+            >
+              {savingCheckoutPricing ? 'Guardando...' : 'Guardar costos'}
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">

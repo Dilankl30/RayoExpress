@@ -202,7 +202,7 @@ export function isPointInAnyCoverageZone(lat: number, lng: number, config: Cover
       bestZone = zone;
       bestDistance = distanceKm;
     }
-    if (distanceKm <= zone.radius_km) {
+    if (isPointInCoverageZone(lat, lng, zone)) {
       return { inside: true, zone, distanceKm };
     }
   }

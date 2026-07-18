@@ -273,3 +273,49 @@
   box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.15), 0 8px 16px -6px rgba(15, 23, 42, 0.15) !important;
   z-index: 99999 !important;
 }
+
+.rayo-map-frame {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+.rayo-map-frame .leaflet-container {
+  background: #f8fafc;
+  font-family: inherit;
+}
+
+.rayo-map-frame .leaflet-control-attribution {
+  bottom: -32px !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.rayo-map-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.86),
+    inset 0 -34px 34px rgba(255, 255, 255, 0.94);
+}
+
+.rayo-map-frame::before {
+  content: 'RayoExpress';
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  z-index: 1000;
+  pointer-events: none;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0;
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+}

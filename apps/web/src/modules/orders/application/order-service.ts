@@ -88,7 +88,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     p_payment_method: params.paymentMethod,
     p_coupon_code: params.couponCode ?? null,
     p_notes: params.notes ?? null,
-    p_tip: params.tip ?? 0,
+    p_tip: 0,
     p_delivery_lat: params.deliveryLat ?? null,
     p_delivery_lng: params.deliveryLng ?? null,
   });
