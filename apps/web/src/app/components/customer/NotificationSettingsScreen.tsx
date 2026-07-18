@@ -1,24 +1,53 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Bell } from 'lucide-react';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
-
-const DEFAULT_SETTINGS: Record<string, boolean> = {
-  Promociones: true,
-  Cupones: true,
-  Encuestas: true,
-  Novedades: true,
-  Desafíos: true,
-  'Pedidos confirmados': false,
-  'Estado del pedido': true,
-  'Ofertas exclusivas': false,
-};
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  NOTIFICATION_PREFERENCE_GROUPS,
+  getNotificationPreferences,
+  saveNotificationPreferences,
+  type NotificationPreferenceKey,
+  type NotificationPreferences,
+} from '../../../modules/notifications/application/notification-preferences.service';
 
 export function NotificationSettingsScreen() {
-  const { navigate } = useAuth();
-  const [enabled, setEnabled] = useState<Record<string, boolean>>(DEFAULT_SETTINGS);
+  const { navigate, user } = useAuth();
+  const [enabled, setEnabled] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<NotificationPreferenceKey | null>(null);
 
-  const toggle = (label: string) => {
-    setEnabled((prev) => ({ ...prev, [label]: !prev[label] }));
+  useEffect(() => {
+    let active = true;
+
+    const load = async () => {
+      if (!user?.id) {
+        setLoading(false);
+        return;
+      }
+
+      const preferences = await getNotificationPreferences(user.id);
+      if (active) {
+        setEnabled(preferences);
+        setLoading(false);
+      }
+    };
+
+    void load();
+
+    return () => {
+      active = false;
+    };
+  }, [user?.id]);
+
+  const toggle = async (key: NotificationPreferenceKey) => {
+    if (!user?.id) return;
+
+    const next = { ...enabled, [key]: !enabled[key] };
+    setEnabled(next);
+    setSavingKey(key);
+    const saved = await saveNotificationPreferences(user.id, next);
+    setEnabled(saved);
+    setSavingKey(null);
   };
 
   return (
@@ -37,52 +66,45 @@ export function NotificationSettingsScreen() {
               <Bell size={24} style={{ color: 'var(--brand)' }} />
             </div>
             <div>
-              <p className="text-text-primary font-medium">Preferencias de notificación</p>
-              <p className="text-xs text-text-secondary">Controla qué notificaciones deseas recibir</p>
+              <p className="text-text-primary font-medium">Preferencias de notificacion</p>
+              <p className="text-xs text-text-secondary">Controla que notificaciones deseas recibir</p>
             </div>
           </div>
+          {loading && <p className="text-xs text-text-secondary">Cargando preferencias...</p>}
         </div>
 
-        {['Promociones y ofertas', 'Pedidos', 'Otros'].map((group) => {
-          const items = Object.entries(DEFAULT_SETTINGS).filter(([label]) => {
-            if (group === 'Promociones y ofertas') return ['Promociones', 'Cupones', 'Ofertas exclusivas'].includes(label);
-            if (group === 'Pedidos') return ['Pedidos confirmados', 'Estado del pedido'].includes(label);
-            return ['Encuestas', 'Novedades', 'Desafíos'].includes(label);
-          });
-
-          if (items.length === 0) return null;
-
-          return (
-            <div key={group} className="bg-card rounded-2xl p-5 shadow-sm mb-3">
-              <h3 className="text-sm font-bold text-text-primary mb-3">{group}</h3>
-              <div className="space-y-4">
-                {items.map(([label]) => (
-                  <div key={label} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-sm text-text-primary">{label}</p>
-                    </div>
-                    <button
-                      onClick={() => toggle(label)}
-                      aria-label={label}
-                      role="switch"
-                      aria-checked={enabled[label]}
-                      className="relative w-12 h-7 rounded-full transition-colors flex-shrink-0"
-                      style={{ backgroundColor: enabled[label] ? 'var(--brand)' : '#D1D5DB' }}
-                    >
-                      <span
-                        className="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform"
-                        style={{ transform: enabled[label] ? 'translateX(20px)' : 'translateX(0)' }}
-                      />
-                    </button>
+        {NOTIFICATION_PREFERENCE_GROUPS.map((group) => (
+          <div key={group.title} className="bg-card rounded-2xl p-5 shadow-sm mb-3">
+            <h3 className="text-sm font-bold text-text-primary mb-3">{group.title}</h3>
+            <div className="space-y-4">
+              {group.items.map((item) => (
+                <div key={item.key} className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-text-primary">{item.label}</p>
+                    <p className="text-xs text-text-secondary">{item.description}</p>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={() => void toggle(item.key)}
+                    disabled={loading || savingKey === item.key}
+                    aria-label={item.label}
+                    role="switch"
+                    aria-checked={enabled[item.key]}
+                    className="relative w-12 h-7 rounded-full transition-colors flex-shrink-0 disabled:opacity-60"
+                    style={{ backgroundColor: enabled[item.key] ? 'var(--brand)' : '#D1D5DB' }}
+                  >
+                    <span
+                      className="absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow transition-transform"
+                      style={{ transform: enabled[item.key] ? 'translateX(20px)' : 'translateX(0)' }}
+                    />
+                  </button>
+                </div>
+              ))}
             </div>
-          );
-        })}
+          </div>
+        ))}
 
         <p className="text-xs text-text-secondary text-center mt-6 px-4">
-          Recibirás notificaciones de tu pedido en curso sin importar estas preferencias.
+          Recibiras notificaciones criticas de tu pedido en curso aunque desactives comunicaciones opcionales.
         </p>
       </div>
     </div>

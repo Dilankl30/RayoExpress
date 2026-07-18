@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, useRef, type ReactNode } from 'react';
 import { getNotifications, markAsRead, markAllAsRead } from '../application/notification-service';
 import { isSupabaseReady, getSupabase } from '../../../integrations/supabase/client';
+import { registerPushDevice } from '../application/push-registration.service';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 export interface Notification {
@@ -30,6 +31,7 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
   const userIdRef = useRef<string | null>(userId);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef = useRef<ReturnType<ReturnType<typeof getSupabase>['channel']> | null>(null);
+  const pushRegistrationRef = useRef<string | null>(null);
   userIdRef.current = userId;
 
   const refresh = useCallback(async () => {
@@ -43,6 +45,11 @@ export function NotificationProvider({ children, userId }: { children: ReactNode
 
   useEffect(() => {
     refresh();
+
+    if (userId && pushRegistrationRef.current !== userId) {
+      pushRegistrationRef.current = userId;
+      void registerPushDevice(userId);
+    }
 
     if (isSupabaseReady) {
       try {
