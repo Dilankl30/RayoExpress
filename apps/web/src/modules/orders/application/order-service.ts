@@ -29,6 +29,50 @@ export interface CreateOrderResult {
   status: string;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function assertRealOrderIdentifiers(params: CreateOrderParams) {
+  if (!UUID_RE.test(params.storeId) || params.productIds.some((id) => !UUID_RE.test(id))) {
+    throw new Error('Tu carrito tiene productos antiguos. Vacíalo y agrega los productos nuevamente.');
+  }
+}
+
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    const message = record.message ?? record.details ?? record.hint ?? record.code;
+    if (typeof message === 'string') return message;
+  }
+  return 'Error al crear pedido';
+}
+
+function normalizeCreateOrderError(error: unknown): Error {
+  const raw = extractErrorMessage(error);
+  const lower = raw.toLowerCase();
+
+  if (lower.includes('invalid input syntax for type uuid')) {
+    return new Error('Tu carrito tiene productos antiguos. Vacíalo y agrega los productos nuevamente.');
+  }
+  if (raw.includes('UNAUTHENTICATED')) return new Error('Tu sesión expiró. Inicia sesión nuevamente para pedir.');
+  if (raw.includes('ACCOUNT_SUSPENDED')) return new Error('Tu cuenta está suspendida. Contacta a soporte.');
+  if (raw.includes('STORE_NOT_FOUND')) return new Error('La tienda ya no está disponible.');
+  if (raw.includes('STORE_CLOSED')) return new Error('La tienda está cerrada. Intenta con otra tienda disponible.');
+  if (raw.includes('PRODUCT_NOT_FOUND')) return new Error('Uno de los productos ya no está disponible. Actualiza tu carrito.');
+  if (raw.includes('INSUFFICIENT_STOCK')) return new Error(raw.replace('INSUFFICIENT_STOCK: ', ''));
+  if (raw.includes('MIN_ORDER')) return new Error(raw.replace('MIN_ORDER: ', ''));
+  if (raw.includes('COUPON_INVALID')) return new Error('El cupón no es válido o ya expiró.');
+  if (raw.includes('COUPON_LIMIT')) return new Error('Este cupón ya llegó a su límite de uso.');
+  if (raw.includes('COUPON_USED')) return new Error('Ya usaste este cupón.');
+  if (raw.includes('COUPON_STORE')) return new Error('Este cupón pertenece a otra tienda.');
+  if (lower.includes('row-level security') || lower.includes('permission denied')) {
+    return new Error('No tienes permiso para crear este pedido. Vuelve a iniciar sesión.');
+  }
+
+  return new Error(raw || 'Error al crear pedido');
+}
+
 async function recordCouponRedemption(couponCode: string | undefined, orderId: string) {
   const normalizedCode = couponCode?.trim().toUpperCase();
   if (!normalizedCode || !orderId) return;
@@ -79,6 +123,7 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     };
   }
 
+  assertRealOrderIdentifiers(params);
   const supabase = getSupabase();
   const { data, error } = await supabase.rpc('create_order', {
     p_store_id: params.storeId,
@@ -93,9 +138,9 @@ export async function createOrder(params: CreateOrderParams): Promise<CreateOrde
     p_delivery_lng: params.deliveryLng ?? null,
   });
 
-  if (error) throw error;
+  if (error) throw normalizeCreateOrderError(error);
   const result = data as unknown as CreateOrderResult;
-  await recordCouponRedemption(params.couponCode, result.order_id);
+  recordCouponRedemption(params.couponCode, result.order_id).catch(() => {});
   return result;
 }
 

@@ -9,6 +9,8 @@ import type { ReactNode } from 'react';
 const item1: CartItem = { id: 'p1', name: 'Whopper', price: 5.99, quantity: 1, emoji: '🍔', storeId: 's1', storeName: 'BK' };
 const item2: CartItem = { id: 'p2', name: 'Papas', price: 2.99, quantity: 2, emoji: '🍟', storeId: 's1', storeName: 'BK' };
 
+const itemFromOtherStore: CartItem = { id: 'p3', name: 'Pizza', price: 8.5, quantity: 1, emoji: 'pizza', storeId: 's2', storeName: 'Pizza Rayo' };
+
 function renderCart() {
   function Wrapper({ children }: { children: ReactNode }) {
     return (
@@ -49,6 +51,15 @@ describe('addToCart', () => {
     act(() => { result.current.addToCart({ ...item1, quantity: 2 }); });
     expect(result.current.cart).toHaveLength(1);
     expect(result.current.cart[0].quantity).toBe(3);
+  });
+
+  it('replaces the cart when adding a product from another store', () => {
+    const { result } = renderCart();
+    act(() => { result.current.addToCart(item1); });
+    act(() => { result.current.addToCart(itemFromOtherStore); });
+    expect(result.current.cart).toHaveLength(1);
+    expect(result.current.cart[0].id).toBe('p3');
+    expect(result.current.cartStore).toBe('s2');
   });
 });
 

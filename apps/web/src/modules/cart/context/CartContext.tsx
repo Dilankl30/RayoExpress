@@ -52,13 +52,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addToCart = useCallback((item: CartItem) => {
     setCart((prev) => {
+      const normalizedItem = { ...item, quantity: item.quantity || 1 };
+      const currentStoreId = prev[0]?.storeId;
+      if (currentStoreId && normalizedItem.storeId && currentStoreId !== normalizedItem.storeId) {
+        return [normalizedItem];
+      }
+
       const existing = prev.find((i) => i.id === item.id);
       if (existing) {
         return prev.map((i) =>
           i.id === item.id ? { ...i, quantity: i.quantity + item.quantity } : i
         );
       }
-      return [...prev, { ...item, quantity: item.quantity || 1 }];
+      return [...prev, normalizedItem];
     });
   }, []);
 

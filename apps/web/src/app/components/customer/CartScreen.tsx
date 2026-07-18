@@ -107,11 +107,20 @@ export function CartScreen() {
       setError('Ingresa una dirección de entrega');
       return;
     }
+    const storeId = cart[0]?.storeId || '';
+    if (!storeId) {
+      setError('Tu carrito no tiene una tienda válida. Vacíalo y agrega los productos nuevamente.');
+      return;
+    }
+    if (cart.some((item) => item.storeId !== storeId)) {
+      setError('Tu carrito mezcla productos de diferentes tiendas. Vacíalo y agrega productos de una sola tienda.');
+      return;
+    }
     setError('');
     setPlacing(true);
     try {
       await createOrder({
-        storeId: cart[0].storeId || '',
+        storeId,
         productIds: cart.map((i) => i.id),
         quantities: cart.map((i) => i.quantity),
         deliveryAddress: address,
