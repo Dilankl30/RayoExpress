@@ -13,6 +13,10 @@ export interface PublicOrder {
   discount_amount: number;
   total: number;
   driver_name: string | null;
+  store_lat: number | null;
+  store_lng: number | null;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -109,9 +113,18 @@ type TrackingRow = {
   discount_amount: number;
   total: number;
   driver_name: string | null;
+  store_lat: number | null;
+  store_lng: number | null;
+  delivery_lat: number | null;
+  delivery_lng: number | null;
   created_at: string;
   updated_at: string;
 };
+
+function toFiniteNumber(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 function mapTrackingRow(row: TrackingRow): PublicOrder {
   return {
@@ -125,6 +138,10 @@ function mapTrackingRow(row: TrackingRow): PublicOrder {
     discount_amount: Number(row.discount_amount ?? 0),
     total: Number(row.total ?? 0),
     driver_name: row.driver_name,
+    store_lat: toFiniteNumber(row.store_lat),
+    store_lng: toFiniteNumber(row.store_lng),
+    delivery_lat: toFiniteNumber(row.delivery_lat),
+    delivery_lng: toFiniteNumber(row.delivery_lng),
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
@@ -144,6 +161,10 @@ function mockPublicOrder(code: string): PublicOrder | null {
       discount_amount: 0,
       total: 24,
       driver_name: 'Juan Carlos',
+      store_lat: -0.4632,
+      store_lng: -76.9892,
+      delivery_lat: -0.466,
+      delivery_lng: -76.987,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -174,7 +195,7 @@ export async function getPublicOrderByTrackingCode(
   const { data, error } = await supabase
     .from('order_tracking')
     .select(
-      'tracking_code, status, store_name, order_description, product_total, service_fee, other_charges, discount_amount, total, driver_name, created_at, updated_at',
+      'tracking_code, status, store_name, order_description, product_total, service_fee, other_charges, discount_amount, total, driver_name, store_lat, store_lng, delivery_lat, delivery_lng, created_at, updated_at',
     )
     .eq('tracking_code', code)
     .maybeSingle();

@@ -253,7 +253,21 @@ export type Database = {
           discount_amount: number;
           total: number;
           driver_name: string | null;
+          store_lat: number | null;
+          store_lng: number | null;
+          delivery_lat: number | null;
+          delivery_lng: number | null;
           created_at: string;
+          updated_at: string;
+        };
+      };
+
+      courier_positions: {
+        Row: {
+          tracking_code: string;
+          order_id: string;
+          lat: number;
+          lng: number;
           updated_at: string;
         };
       };

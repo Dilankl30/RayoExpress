@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { Search, Package, Clock, Bike, MapPin, MessageCircle, ChevronRight } from 'lucide-react';
 import { getPublicOrderByTrackingCode, normalizeTrackingCode, subscribeToPublicOrderTracking, type PublicOrder } from '../../../modules/orders/application/tracking-public.service';
+import { estimateArrivalWindow, formatArrivalWindow, getCourierPosition, shouldShowMap, subscribeToCourierPosition, type CourierPosition } from '../../../modules/orders/application/courier-public.service';
+import { haversineKm, toCoordinatePair } from '../../../shared/utils/coordinates';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import logo from '../../../imports/image-1.png';
+
+const PublicOrderMap = lazy(() =>
+  import('./PublicOrderMap').then((m) => ({ default: m.PublicOrderMap })),
+);
 
 const RECENT_KEY = 'rayoexpress-tracking-recent';
 
@@ -49,7 +55,9 @@ export function PublicTrackingScreen() {
   const [recent, setRecent] = useState<string[]>(() => loadRecent());
   const [live, setLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const [courier, setCourier] = useState<CourierPosition | null>(null);
   const subRef = useRef<{ unsubscribe(): void } | null>(null);
+  const courierSubRef = useRef<{ unsubscribe(): void } | null>(null);
 
   const stopLive = () => {
     try {
@@ -58,7 +66,14 @@ export function PublicTrackingScreen() {
       /* noop */
     }
     subRef.current = null;
+    try {
+      courierSubRef.current?.unsubscribe();
+    } catch {
+      /* noop */
+    }
+    courierSubRef.current = null;
     setLive(false);
+    setCourier(null);
   };
 
   const startLive = (base: PublicOrder) => {
@@ -80,6 +95,23 @@ export function PublicTrackingScreen() {
     }
   };
 
+  const startCourier = (trackingCode: string, seed: CourierPosition | null) => {
+    try {
+      courierSubRef.current?.unsubscribe();
+    } catch {
+      /* noop */
+    }
+    try {
+      courierSubRef.current = subscribeToCourierPosition(
+        trackingCode,
+        (pos) => setCourier(pos),
+        { initial: seed },
+      );
+    } catch {
+      courierSubRef.current = null;
+    }
+  };
+
   const search = async (raw: string) => {
     const normalized = normalizeTrackingCode(raw);
     if (!normalized) {
@@ -93,6 +125,18 @@ export function PublicTrackingScreen() {
       const result = await getPublicOrderByTrackingCode(normalized);
       setOrder(result);
       startLive(result);
+      // GPS solo cuando el pedido está en ruta; si no hay posición, no rompe.
+      if (shouldShowMap(result.status)) {
+        try {
+          const pos = await getCourierPosition(normalized);
+          setCourier(pos);
+          startCourier(normalized, pos);
+        } catch {
+          setCourier(null);
+        }
+      } else {
+        setCourier(null);
+      }
       saveRecent(normalized);
       setRecent(loadRecent());
       // Actualiza URL sin recargar para poder compartir
@@ -120,6 +164,31 @@ export function PublicTrackingScreen() {
     // Carga inicial desde URL /seguimiento/:trackingCode (solo una vez)
   }, []);
 
+  // Activa/detiene el GPS según el estado en vivo (ej: pasa a en camino).
+  const trackingCode = order?.tracking_code ?? null;
+  const statusKey = order?.status ?? null;
+  useEffect(() => {
+    if (!trackingCode || !statusKey) return;
+    if (shouldShowMap(statusKey)) {
+      if (!courierSubRef.current) {
+        getCourierPosition(trackingCode)
+          .then((pos) => {
+            setCourier(pos);
+            startCourier(trackingCode, pos);
+          })
+          .catch(() => {});
+      }
+    } else {
+      try {
+        courierSubRef.current?.unsubscribe();
+      } catch {
+        /* noop */
+      }
+      courierSubRef.current = null;
+      setCourier(null);
+    }
+  }, [trackingCode, statusKey]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     void search(code);
@@ -130,6 +199,14 @@ export function PublicTrackingScreen() {
   const eta = order ? estimateEta(status) : 0;
   const isDelivered = status === 'delivered';
   const isCancelled = status === 'cancelled';
+  const mapShown = !!order && shouldShowMap(status);
+  const storeCoords = toCoordinatePair(order?.store_lat, order?.store_lng);
+  const destCoords = toCoordinatePair(order?.delivery_lat, order?.delivery_lng);
+  const courierCoords = toCoordinatePair(courier?.lat, courier?.lng);
+  const distKm = courierCoords && destCoords ? haversineKm(courierCoords, destCoords) : null;
+  const arrival = order ? estimateArrivalWindow(status, distKm) : null;
+  const arrivalLabel = arrival ? formatArrivalWindow(arrival) : '';
+  const hasMapPoints = !!(storeCoords || destCoords || courierCoords);
 
   return (
     <div className="min-h-screen bg-surface">
@@ -201,8 +278,14 @@ export function PublicTrackingScreen() {
                       <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> En vivo
                     </span>
                   )}
-                  {!isDelivered && !isCancelled && (
-                    <span className="flex items-center gap-1 text-xs text-text-secondary"><Clock size={12} /> ~{eta} min</span>
+                  {mapShown && arrivalLabel ? (
+                    <span className="flex items-center gap-1 text-xs font-semibold" style={{ color: 'var(--brand)' }}>
+                      <Clock size={12} /> Llegada estimada: {arrivalLabel}
+                    </span>
+                  ) : (
+                    !isDelivered && !isCancelled && (
+                      <span className="flex items-center gap-1 text-xs text-text-secondary"><Clock size={12} /> ~{eta} min</span>
+                    )
                   )}
                 </div>
               </div>
@@ -240,17 +323,36 @@ export function PublicTrackingScreen() {
               </div>
             </div>
 
-            {/* Mapa (Fase 4: GPS real. Por ahora placeholder) */}
-            <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin size={16} style={{ color: 'var(--brand)' }} />
-                <p className="text-sm font-semibold text-text-primary">Ubicación del pedido</p>
+            {/* Mapa: solo cuando el pedido está en ruta (Fase 4) */}
+            {mapShown && (
+              <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
+                <div className="flex items-center gap-2 mb-2">
+                  <MapPin size={16} style={{ color: 'var(--brand)' }} />
+                  <p className="text-sm font-semibold text-text-primary">Ubicación del pedido</p>
+                </div>
+                {hasMapPoints ? (
+                  <Suspense
+                    fallback={
+                      <div className="rounded-xl bg-surface border border-border-light p-6 text-center">
+                        <p className="text-xs text-text-secondary">Cargando mapa…</p>
+                      </div>
+                    }
+                  >
+                    <PublicOrderMap
+                      store={storeCoords}
+                      dest={destCoords}
+                      courier={courierCoords}
+                      storeName={order.store_name}
+                    />
+                  </Suspense>
+                ) : (
+                  <div className="rounded-xl bg-surface border border-border-light p-6 text-center">
+                    <p className="text-3xl">🗺️</p>
+                    <p className="text-xs text-text-secondary mt-2">Estamos actualizando la ubicación de tu pedido.</p>
+                  </div>
+                )}
               </div>
-              <div className="rounded-xl bg-surface border border-border-light p-6 text-center">
-                <p className="text-3xl">🗺️</p>
-                <p className="text-xs text-text-secondary mt-2">Estamos actualizando la ubicación de tu pedido.</p>
-              </div>
-            </div>
+            )}
 
             {/* Repartidor */}
             {order.driver_name && (
