@@ -16,7 +16,7 @@ describe('LiquidationsTab (Fase 6)', () => {
       expect(screen.getByText('Juan Carlos')).toBeTruthy();
     });
     expect(screen.getByText('Pedro López')).toBeTruthy();
-    expect(screen.getByText('Por repartidor')).toBeTruthy();
+    expect(screen.getByText('Por repartidor (hoy)')).toBeTruthy();
   });
 });
 
