@@ -4,7 +4,7 @@ import {
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, Trash2,
-  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X, Megaphone, Plus,
+  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X, Megaphone, Plus, Calculator,
 } from 'lucide-react';
 import { getSupabase } from '../../../integrations/supabase/client';
 import {
@@ -79,6 +79,18 @@ const PaymentsTab = lazy(() =>
   })),
 );
 
+const LiquidationsTab = lazy(() =>
+  import('../../../modules/admin/ui/LiquidationsTab').then((module) => ({
+    default: module.LiquidationsTab,
+  })),
+);
+
+const DailyEconomy = lazy(() =>
+  import('../../../modules/admin/ui/DailyEconomy').then((module) => ({
+    default: module.DailyEconomy,
+  })),
+);
+
 const CoverageMapEditor = lazy(() =>
   import('./CoverageMapEditor').then((module) => ({
     default: module.CoverageMapEditor,
@@ -146,6 +158,7 @@ const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'coverage', label: 'Cobertura', icon: <MapPinned size={16} /> },
   { key: 'ads', label: 'Publicidad', icon: <Megaphone size={16} /> },
   { key: 'payments', label: 'Pagos', icon: <DollarSign size={16} /> },
+  { key: 'liquidations', label: 'Liquidación', icon: <Calculator size={16} /> },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -623,6 +636,16 @@ export function AdminDashboard() {
           {driverHiringEnabled ? 'Visible' : 'Oculto'}
         </button>
       </div>
+
+      <Suspense
+        fallback={
+          <div className="bg-card rounded-2xl p-4 shadow-sm flex justify-center py-8">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <DailyEconomy />
+      </Suspense>
 
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-2xl p-4 shadow-sm">
@@ -1765,6 +1788,17 @@ export function AdminDashboard() {
             }
           >
             <PaymentsTab />
+          </Suspense>
+        )}
+        {activeTab === 'liquidations' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <LiquidationsTab />
           </Suspense>
         )}
       </div>
