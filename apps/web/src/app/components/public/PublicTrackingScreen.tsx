@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router';
 import { Search, Package, Clock, Bike, MapPin, MessageCircle, ChevronRight } from 'lucide-react';
-import { getPublicOrderByTrackingCode, normalizeTrackingCode, type PublicOrder } from '../../../modules/orders/application/tracking-public.service';
+import { getPublicOrderByTrackingCode, normalizeTrackingCode, subscribeToPublicOrderTracking, type PublicOrder } from '../../../modules/orders/application/tracking-public.service';
 import { ORDER_FLOW, STATUS_LABELS, STATUS_ICONS, getStepIndex, type OrderStatus } from '../../../modules/orders/domain/order-status.machine';
 import logo from '../../../imports/image-1.png';
 
@@ -47,6 +47,38 @@ export function PublicTrackingScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [recent, setRecent] = useState<string[]>(() => loadRecent());
+  const [live, setLive] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const subRef = useRef<{ unsubscribe(): void } | null>(null);
+
+  const stopLive = () => {
+    try {
+      subRef.current?.unsubscribe();
+    } catch {
+      /* noop */
+    }
+    subRef.current = null;
+    setLive(false);
+  };
+
+  const startLive = (base: PublicOrder) => {
+    stopLive();
+    try {
+      const sub = subscribeToPublicOrderTracking(
+        base.tracking_code,
+        (fresh) => {
+          setOrder(fresh);
+          setLastUpdated(new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        },
+        { initial: base, onError: () => setLive(false) },
+      );
+      subRef.current = sub;
+      setLive(true);
+      setLastUpdated(new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch {
+      setLive(false);
+    }
+  };
 
   const search = async (raw: string) => {
     const normalized = normalizeTrackingCode(raw);
@@ -60,6 +92,7 @@ export function PublicTrackingScreen() {
     try {
       const result = await getPublicOrderByTrackingCode(normalized);
       setOrder(result);
+      startLive(result);
       saveRecent(normalized);
       setRecent(loadRecent());
       // Actualiza URL sin recargar para poder compartir
@@ -69,6 +102,7 @@ export function PublicTrackingScreen() {
         /* noop */
       }
     } catch (e) {
+      stopLive();
       setOrder(null);
       setError(e instanceof Error ? e.message : 'No pudimos consultar tu pedido.');
     } finally {
@@ -82,6 +116,7 @@ export function PublicTrackingScreen() {
       setCode(fromUrl.toUpperCase());
       void search(fromUrl);
     }
+    return () => stopLive();
     // Carga inicial desde URL /seguimiento/:trackingCode (solo una vez)
   }, []);
 
@@ -160,10 +195,20 @@ export function PublicTrackingScreen() {
             <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
               <div className="flex items-center justify-between">
                 <p className="font-mono font-bold text-sm" style={{ color: 'var(--brand)' }}>Pedido #{order.tracking_code}</p>
-                {!isDelivered && !isCancelled && (
-                  <span className="flex items-center gap-1 text-xs text-text-secondary"><Clock size={12} /> ~{eta} min</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {live && !isDelivered && !isCancelled && (
+                    <span className="flex items-center gap-1 text-[11px] font-semibold text-green-700">
+                      <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> En vivo
+                    </span>
+                  )}
+                  {!isDelivered && !isCancelled && (
+                    <span className="flex items-center gap-1 text-xs text-text-secondary"><Clock size={12} /> ~{eta} min</span>
+                  )}
+                </div>
               </div>
+              {lastUpdated && (
+                <p className="text-[11px] text-text-secondary mt-1">Actualizado: {lastUpdated}</p>
+              )}
               <div className="flex items-center gap-3 mt-3">
                 <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl" style={{ backgroundColor: '#EDE9FE' }}>
                   {STATUS_ICONS[status] || '📦'}
@@ -249,7 +294,7 @@ export function PublicTrackingScreen() {
               <p className="text-xs text-text-secondary mt-1">Escríbenos por WhatsApp con tu código {order.tracking_code}.</p>
               <button
                 type="button"
-                onClick={() => setCode('')}
+                onClick={() => { stopLive(); setOrder(null); setCode(''); }}
                 className="mt-3 w-full py-2.5 rounded-xl border border-border text-sm font-medium text-text-secondary flex items-center justify-center gap-1"
               >
                 Consultar otro pedido <ChevronRight size={14} />

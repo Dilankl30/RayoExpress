@@ -240,6 +240,24 @@ export type Database = {
         };
       };
 
+      order_tracking: {
+        Row: {
+          tracking_code: string;
+          order_id: string;
+          status: string;
+          store_name: string | null;
+          order_description: string | null;
+          product_total: number;
+          service_fee: number;
+          other_charges: number;
+          discount_amount: number;
+          total: number;
+          driver_name: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+
       promotions: {
         Row: {
           id: string;
