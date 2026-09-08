@@ -216,32 +216,6 @@ export async function updateOrderStatusAdmin(
   }).catch(() => {});
 }
 
-export async function markOrderPaid(
-  orderId: string,
-  method: 'cash' | 'transfer',
-  accountId?: string,
-): Promise<void> {
-  if (!isSupabaseReady) return;
-
-  const supabase = getSupabase();
-  const { data: authData } = await supabase.auth.getUser();
-  const adminUserId = authData.user?.id;
-
-  const { error } = await supabase
-    .from('orders')
-    .update({ payment_status: 'paid', payment_method: method, receiving_account_id: accountId || null, updated_by: adminUserId || null })
-    .eq('id', orderId);
-  if (error) throw error;
-
-  await logAuditEvent({
-    userId: adminUserId || '',
-    action: 'order_payment_marked',
-    entityType: 'order',
-    entityId: orderId,
-    details: { method, accountId },
-  }).catch(() => {});
-}
-
 export function generateWhatsAppMessageForOrder(
   trackingCode: string,
   description: string,

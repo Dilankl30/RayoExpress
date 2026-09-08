@@ -73,6 +73,12 @@ const CreateOrderModal = lazy(() =>
   })),
 );
 
+const PaymentsTab = lazy(() =>
+  import('../../../modules/admin/ui/PaymentsTab').then((module) => ({
+    default: module.PaymentsTab,
+  })),
+);
+
 const CoverageMapEditor = lazy(() =>
   import('./CoverageMapEditor').then((module) => ({
     default: module.CoverageMapEditor,
@@ -139,6 +145,7 @@ const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'reports', label: 'Reportes', icon: <TrendingUp size={16} /> },
   { key: 'coverage', label: 'Cobertura', icon: <MapPinned size={16} /> },
   { key: 'ads', label: 'Publicidad', icon: <Megaphone size={16} /> },
+  { key: 'payments', label: 'Pagos', icon: <DollarSign size={16} /> },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -1747,6 +1754,17 @@ export function AdminDashboard() {
             }
           >
             <HomeAdsManager />
+          </Suspense>
+        )}
+        {activeTab === 'payments' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <PaymentsTab />
           </Suspense>
         )}
       </div>
