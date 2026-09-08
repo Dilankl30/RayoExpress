@@ -31,7 +31,7 @@ type Order = Database['public']['Tables']['orders']['Row'] & {
 };
 
 const ORDER_HISTORY_KEY = 'rayoexpress-orders';
-const TERMINAL_STATUSES = ['delivered', 'cancelled', 'refunded'];
+const TERMINAL_STATUSES = ['delivered', 'cancelled'];
 
 // Mock coordinates for demo when real coords are missing
 const MOCK_STORE_COORDS: [number, number] = [-0.4632, -76.9892]; // El Coca
@@ -52,8 +52,9 @@ function saveOrderHistory(orderId: string) {
 }
 
 function estimateEta(status: OrderStatus) {
-  if (status === 'pending' || status === 'accepted') return 35;
+  if (status === 'confirmed') return 35;
   if (status === 'preparing') return 25;
+  if (status === 'ready') return 20;
   if (status === 'picked_up') return 18;
   if (status === 'on_the_way') return 12;
   if (status === 'arrived') return 3;

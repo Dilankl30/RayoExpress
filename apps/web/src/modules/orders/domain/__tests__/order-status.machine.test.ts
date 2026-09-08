@@ -7,16 +7,16 @@ describe('order-status.machine', () => {
       expect(canTransition('arrived', 'delivered', 'customer')).toBe(true);
     });
 
-    it('allows store to accept pending order', () => {
-      expect(canTransition('pending', 'accepted', 'store')).toBe(true);
+    it(' allows admin to confirm order', () => {
+      expect(canTransition('confirmed', 'preparing', 'admin')).toBe(true);
     });
 
-    it('allows driver to mark on_the_way as arrived', () => {
+    it(' allows driver to mark on_the_way as arrived', () => {
       expect(canTransition('on_the_way', 'arrived', 'driver')).toBe(true);
     });
 
-    it('rejects driver accepting pending order', () => {
-      expect(canTransition('pending', 'accepted', 'driver')).toBe(false);
+    it('rejects driver confirming pending order', () => {
+      expect(canTransition('confirmed', 'preparing', 'driver')).toBe(false);
     });
 
     it('rejects customer cancelling preparing order', () => {
@@ -24,45 +24,40 @@ describe('order-status.machine', () => {
     });
 
     it('allows admin any valid transition', () => {
-      expect(canTransition('pending', 'cancelled', 'admin')).toBe(true);
-      expect(canTransition('delivered', 'refunded', 'admin')).toBe(true);
-      expect(canTransition('cancelled', 'refunded', 'admin')).toBe(true);
+      expect(canTransition('confirmed', 'preparing', 'admin')).toBe(true);
+      expect(canTransition('delivered', 'cancelled', 'admin')).toBe(false);
     });
 
-    it('allows store to prepare accepted order', () => {
-      expect(canTransition('accepted', 'preparing', 'store')).toBe(true);
-    });
-
-    it('rejects refunded transitions', () => {
-      expect(canTransition('refunded', 'pending', 'admin')).toBe(false);
+    it('allows store to prepare order', () => {
+      expect(canTransition('confirmed', 'preparing', 'store')).toBe(true);
     });
   });
 
   describe('getAvailableTransitions', () => {
-    it('returns available transitions for store on pending', () => {
-      const transitions = getAvailableTransitions('pending', 'store');
-      expect(transitions).toEqual(['accepted', 'cancelled']);
+    it('returns available transitions for store on confirmed', () => {
+      const transitions = getAvailableTransitions('confirmed', 'store');
+      expect(transitions).toEqual(['preparing', 'cancelled']);
     });
 
-    it('returns empty for refunded status', () => {
-      const transitions = getAvailableTransitions('refunded', 'admin');
+    it('returns empty for cancelled status', () => {
+      const transitions = getAvailableTransitions('cancelled', 'admin');
       expect(transitions).toEqual([]);
     });
 
-    it('returns arrived transitions for customer (delivered)', () => {
+    it('returns arrived transitions for customer', () => {
       const transitions = getAvailableTransitions('arrived', 'customer');
       expect(transitions).toEqual(['delivered']);
     });
 
-    it('returns refunded transitions for admin on delivered', () => {
+    it('returns empty for admin on delivered', () => {
       const transitions = getAvailableTransitions('delivered', 'admin');
-      expect(transitions).toEqual(['refunded']);
+      expect(transitions).toEqual([]);
     });
   });
 
   describe('getStepIndex', () => {
-    it('returns 0 for pending', () => {
-      expect(getStepIndex('pending')).toBe(0);
+    it('returns 0 for confirmed', () => {
+      expect(getStepIndex('confirmed')).toBe(0);
     });
 
     it('returns 3 for picked_up', () => {
@@ -76,10 +71,6 @@ describe('order-status.machine', () => {
     it('returns -1 for cancelled', () => {
       expect(getStepIndex('cancelled')).toBe(-1);
     });
-
-    it('returns -1 for refunded', () => {
-      expect(getStepIndex('refunded')).toBe(-1);
-    });
   });
 
   describe('ORDER_FLOW', () => {
@@ -87,15 +78,15 @@ describe('order-status.machine', () => {
       expect(ORDER_FLOW).toHaveLength(7);
     });
 
-    it('starts with pending and ends with delivered', () => {
-      expect(ORDER_FLOW[0]).toBe('pending');
+    it('starts with confirmed and ends with delivered', () => {
+      expect(ORDER_FLOW[0]).toBe('confirmed');
       expect(ORDER_FLOW[ORDER_FLOW.length - 1]).toBe('delivered');
     });
   });
 
   describe('STATUS_LABELS', () => {
     it('has labels for all statuses', () => {
-      const allStatuses = ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived', 'delivered', 'cancelled', 'refunded'];
+      const allStatuses = ['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'arrived', 'delivered', 'cancelled'];
       for (const s of allStatuses) {
         expect(STATUS_LABELS[s as keyof typeof STATUS_LABELS]).toBeDefined();
       }

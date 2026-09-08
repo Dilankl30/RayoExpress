@@ -7,6 +7,7 @@ import type { Role } from '../../shared/types';
 export { screenPathMap } from './screenPathMap';
 
 const LandingScreen = lazy(() => import('../components/public/LandingScreen').then(m => ({ default: m.LandingScreen })));
+const PublicTrackingScreen = lazy(() => import('../components/public/PublicTrackingScreen').then(m => ({ default: m.PublicTrackingScreen })));
 const LoginScreen = lazy(() => import('../components/auth/LoginScreen').then(m => ({ default: m.LoginScreen })));
 const HomeScreen = lazy(() => import('../components/customer/HomeScreen').then(m => ({ default: m.HomeScreen })));
 const ExploreScreen = lazy(() => import('../components/customer/ExploreScreen').then(m => ({ default: m.ExploreScreen })));
@@ -67,6 +68,8 @@ const roleRoutes: Record<Role, string[]> = {
 
 export const screenRoutes: RouteObject[] = [
   { path: '/', element: <Lazy><LandingScreen /></Lazy> },
+  { path: '/seguimiento', element: <Lazy><PublicTrackingScreen /></Lazy> },
+  { path: '/seguimiento/:trackingCode', element: <Lazy><PublicTrackingScreen /></Lazy> },
   { path: '/login', element: <Lazy><LoginScreen /></Lazy> },
   { path: '/register-store', element: <Lazy><StoreApplicationScreen /></Lazy> },
   {

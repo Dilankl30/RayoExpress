@@ -139,6 +139,13 @@ export function LandingScreen() {
 
             <div className="flex items-center gap-3">
               <button
+                onClick={() => navigate('seguimiento')}
+                className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-brand transition-colors"
+              >
+                <Package size={16} />
+                Rastrear pedido
+              </button>
+              <button
                 onClick={() => navigate('login')}
                 className="hidden sm:flex items-center gap-1.5 text-sm font-medium text-text-primary hover:text-brand transition-colors"
               >
@@ -240,7 +247,15 @@ export function LandingScreen() {
                    >
                      Buscar
                    </button>
-                 </form>
+                  </form>
+
+                  <button
+                    onClick={() => navigate('seguimiento')}
+                    className="mb-8 text-sm font-medium hover:underline"
+                    style={{ color: 'var(--brand)' }}
+                  >
+                    ¿Tienes un código? Rastrea tu pedido aquí →
+                  </button>
  
                  <div className="flex flex-wrap gap-6 items-center">
                    <button

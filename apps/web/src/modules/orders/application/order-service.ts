@@ -374,7 +374,7 @@ export async function updateOrderStatus(orderId: string, status: string, role?: 
   if (!validateOrderStatus(status)) throw new Error(`Estado de pedido inválido: ${status}`);
   if (role) {
     const current = await getOrderById(orderId);
-    if (current && !canTransition(current.status, status, role)) {
+    if (current && !canTransition(current.status as any, status as any, role)) {
       throw new Error(`Rol '${role}' no puede cambiar el pedido de '${current.status}' a '${status}'`);
     }
   }

@@ -78,15 +78,15 @@ describe('updateOrderStatus', () => {
     await expect(updateOrderStatus('order-1', 'invalid_status')).rejects.toThrow('Estado de pedido inválido');
   });
 
-  it('throws when role cannot transition', async () => {
-    mockGetMockOrders.mockReturnValue([{ id: 'order-1', status: 'pending' }]);
-    await expect(updateOrderStatus('order-1', 'preparing', 'customer')).rejects.toThrow(/no puede cambiar/);
-  });
+it('throws when role cannot transition', async () => {
+     mockGetMockOrders.mockReturnValue([{ id: 'order-1', status: 'confirmed' }]);
+     await expect(updateOrderStatus('order-1', 'preparing', 'customer')).rejects.toThrow(/no puede cambiar/);
+   });
 
-  it('allows valid transition', async () => {
-    const result = await updateOrderStatus('order-1', 'accepted', 'store');
-    expect(result).toEqual({ id: 'order-1', status: 'accepted' });
-  });
+it('allows valid transition', async () => {
+     const result = await updateOrderStatus('order-1', 'preparing', 'store');
+     expect(result).toEqual({ id: 'order-1', status: 'preparing' });
+   });
 });
 
 describe('assignDriver', () => {

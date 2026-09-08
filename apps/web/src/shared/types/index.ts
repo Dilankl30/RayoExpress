@@ -1,6 +1,7 @@
 export type Screen =
   | 'landing'
   | 'login'
+  | 'seguimiento'
   | 'home'
   | 'super'
   | 'store-detail'
@@ -41,15 +42,16 @@ export interface UserProfile {
 }
 
 export type OrderStatus =
-  | 'pending'
-  | 'accepted'
+  | 'confirmed'
   | 'preparing'
+  | 'ready'
   | 'picked_up'
   | 'on_the_way'
   | 'arrived'
   | 'delivered'
-  | 'cancelled'
-  | 'refunded';
+  | 'cancelled';
+
+export type PaymentStatus = 'pending' | 'paid';
 
 export interface Address {
   id: string;
@@ -158,24 +160,86 @@ export type Database = {
         Row: {
           id: string;
           customer_id: string;
-          store_id: string;
+          store_id: string | null;
           driver_id: string | null;
           status: OrderStatus;
-          payment_method: 'cash' | 'transfer' | 'card';
+          payment_method: 'cash' | 'transfer';
+          payment_status: PaymentStatus;
           transfer_receipt_url: string | null;
-          subtotal: number;
-          delivery_fee: number;
-          discount: number;
+          product_total: number;
+          service_fee: number;
+          other_charges: number;
+          discount_amount: number;
           tax: number;
           tip: number;
           total: number;
           delivery_address: string;
-          customer_delivery_code: string | null;
+          delivery_reference?: string | null;
+          customer_name?: string | null;
+          customer_phone?: string | null;
+          store_name?: string | null;
+          store_address?: string | null;
+          order_description?: string | null;
+          tracking_code: string | null;
+          receiving_account_id: string | null;
+          driver_advance: number;
+          notes: string | null;
+          created_by: string | null;
+          updated_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+
+      bank_accounts: {
+        Row: {
+          id: string;
+          name: string;
+          bank_name: string;
+          account_type: string;
+          account_number: string;
+          holder_name: string;
+          holder_id: string | null;
+          is_active: boolean;
+          is_default: boolean;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+      };
+
+      driver_liquidations: {
+        Row: {
+          id: string;
+          driver_id: string;
+          period_start: string;
+          period_end: string;
+          total_service_fees: number;
+          driver_share: number;
+          admin_share: number;
+          total_advances: number;
+          payments_received: number;
+          previous_balance: number;
+          net_payable: number;
+          status: string;
+          paid_at: string | null;
+          paid_by: string | null;
           notes: string | null;
           created_at: string;
           updated_at: string;
         };
       };
+
+      order_status_history: {
+        Row: {
+          id: string;
+          order_id: string;
+          status: OrderStatus;
+          changed_by: string | null;
+          created_at: string;
+        };
+      };
+
       promotions: {
         Row: {
           id: string;
