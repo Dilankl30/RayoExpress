@@ -85,7 +85,7 @@ describe('validation/index', () => {
 describe('validation/service-validators', () => {
   describe('validateOrderStatus', () => {
     it('accepts valid statuses', () => {
-      expect(validateOrderStatus('pending')).toBe(true);
+      expect(validateOrderStatus('confirmed')).toBe(true);
       expect(validateOrderStatus('delivered')).toBe(true);
       expect(validateOrderStatus('cancelled')).toBe(true);
     });

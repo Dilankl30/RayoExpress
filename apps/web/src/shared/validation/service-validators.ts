@@ -2,15 +2,7 @@ import type { OrderStatus } from '../../modules/orders/domain/order-status.machi
 
 export function validateOrderStatus(status: string): status is OrderStatus {
   const valid: OrderStatus[] = [
-    'pending',
-    'accepted',
-    'preparing',
-    'picked_up',
-    'on_the_way',
-    'arrived',
-    'delivered',
-    'cancelled',
-    'refunded',
+    'confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'arrived', 'delivered', 'cancelled',
   ];
   return valid.includes(status as OrderStatus);
 }

@@ -381,8 +381,8 @@ export function StoreDashboard() {
                       )}
                       <div className="flex gap-2 mt-2 flex-wrap">
                         {transitions.map((t) => {
-                          const isCancel = t === 'cancelled';
-                          const isAccept = t === 'accepted';
+const isCancel = t === 'cancelled';
+                           const isAccept = t === 'preparing' || t === 'ready' || t === 'picked_up';
                           return (
                             <button key={t} onClick={() => handleStatusAction(order.id, t)} disabled={actionLoading === order.id}
                               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium disabled:opacity-50 ${

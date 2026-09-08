@@ -1,6 +1,7 @@
 export const screenPathMap: Record<string, string> = {
   landing: '/',
   login: '/login',
+  seguimiento: '/seguimiento',
   'register-store': '/register-store',
   'register-driver': '/register-driver',
   home: '/home',

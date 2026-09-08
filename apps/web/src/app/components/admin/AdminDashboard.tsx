@@ -4,7 +4,7 @@ import {
   BarChart3, LogOut, RefreshCw, Download, Search,
   ChevronRight, Phone, Star, Clock,
   UserCheck, UserX, Trash2,
-  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X, Megaphone,
+  CheckCircle, AlertTriangle, MapPinned, Mail, CalendarDays, X, Megaphone, Plus, Calculator,
 } from 'lucide-react';
 import { getSupabase } from '../../../integrations/supabase/client';
 import {
@@ -44,12 +44,14 @@ import { ErrorBoundary } from '../../../shared/components/ErrorBoundary';
 const PIE_COLORS = ['var(--brand)', '#22C55E', '#F59E0B', '#3B82F6', '#EF4444'];
 const STATUS_STYLES: Record<string, string> = {
   delivered: 'bg-success-light text-success', cancelled: 'bg-danger-light text-danger',
-  pending: 'bg-warning-light text-warning', preparing: 'bg-blue-100 text-blue-700',
-  in_transit: 'bg-purple-100 text-purple-700',
+  confirmed: 'bg-blue-100 text-blue-700', preparing: 'bg-yellow-100 text-yellow-700',
+  ready: 'bg-indigo-100 text-indigo-700', picked_up: 'bg-orange-100 text-orange-700',
+  on_the_way: 'bg-purple-100 text-purple-700', arrived: 'bg-pink-100 text-pink-700',
 };
 const STATUS_LABELS: Record<string, string> = {
-  delivered: 'Entregado', cancelled: 'Cancelado', pending: 'Pendiente',
-  preparing: 'Preparando', in_transit: 'En camino',
+  delivered: 'Entregado', cancelled: 'Cancelado', confirmed: 'Confirmado',
+  preparing: 'Preparando', ready: 'Listo', picked_up: 'Recogido',
+  on_the_way: 'En camino', arrived: 'Llegó',
 };
 const ROLE_STYLES: Record<string, string> = {
   customer: 'bg-purple-100 text-purple-700', driver: 'bg-blue-100 text-blue-700',
@@ -62,6 +64,30 @@ const ROLE_LABELS: Record<string, string> = {
 const AdminApplications = lazy(() =>
   import('../../../modules/admin/ui/AdminApplications').then((module) => ({
     default: module.AdminApplications,
+  })),
+);
+
+const CreateOrderModal = lazy(() =>
+  import('../../../modules/admin/ui/CreateOrderModal').then((module) => ({
+    default: module.CreateOrderModal,
+  })),
+);
+
+const PaymentsTab = lazy(() =>
+  import('../../../modules/admin/ui/PaymentsTab').then((module) => ({
+    default: module.PaymentsTab,
+  })),
+);
+
+const LiquidationsTab = lazy(() =>
+  import('../../../modules/admin/ui/LiquidationsTab').then((module) => ({
+    default: module.LiquidationsTab,
+  })),
+);
+
+const DailyEconomy = lazy(() =>
+  import('../../../modules/admin/ui/DailyEconomy').then((module) => ({
+    default: module.DailyEconomy,
   })),
 );
 
@@ -119,7 +145,7 @@ function getRoleColor(role: string) {
   return PIE_COLORS[index >= 0 ? index : 0];
 }
 
-type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage' | 'ads';
+type Tab = 'dashboard' | 'orders' | 'stores' | 'drivers' | 'users' | 'applications' | 'reports' | 'coverage' | 'ads' | 'payments' | 'liquidations';
 
 const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'dashboard', label: 'Dashboard', icon: <BarChart3 size={16} /> },
@@ -131,6 +157,8 @@ const TABS: { key: Tab; label: string; icon: ReactNode }[] = [
   { key: 'reports', label: 'Reportes', icon: <TrendingUp size={16} /> },
   { key: 'coverage', label: 'Cobertura', icon: <MapPinned size={16} /> },
   { key: 'ads', label: 'Publicidad', icon: <Megaphone size={16} /> },
+  { key: 'payments', label: 'Pagos', icon: <DollarSign size={16} /> },
+  { key: 'liquidations', label: 'Liquidación', icon: <Calculator size={16} /> },
 ];
 
 const TZ_OPTS: Intl.DateTimeFormatOptions = { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
@@ -283,6 +311,10 @@ export function AdminDashboard() {
   // activity
   const [activity, setActivity] = useState<ActivityItem[]>([]);
 
+  // create order modal
+  const [showCreateOrder, setShowCreateOrder] = useState(false);
+  const [ordersReloadKey, setOrdersReloadKey] = useState(0);
+
   // coverage tab
   const [coverageZones, setCoverageZones] = useState<CoverageZonesConfig>(buildCoverageZonesConfig([
     { id: 'coca', city_name: 'Puerto Francisco de Orellana (El Coca)', center: [-0.4632, -76.9892], radius_km: 5, is_active: true, shape: 'circle', boundary: [] },
@@ -354,7 +386,7 @@ export function AdminDashboard() {
         const activeOrders = summary.kpis.activeOrders;
         const totalDrivers = summary.user_counts.drivers;
         const totalUsers = summary.user_counts.customers + summary.user_counts.stores + summary.user_counts.drivers + summary.user_counts.admins;
-        const pendingOrders = summary.recent_orders.filter((order) => ['pending', 'accepted', 'preparing', 'picked_up', 'on_the_way', 'arrived'].includes(order.status)).length;
+        const pendingOrders = summary.recent_orders.filter((order) => ['confirmed', 'preparing', 'ready', 'picked_up', 'on_the_way', 'arrived'].includes(order.status)).length;
         setKpis({
           totalSales: summary.kpis.salesToday,
           totalOrders: activeOrders,
@@ -380,7 +412,7 @@ export function AdminDashboard() {
       } catch { /* noop */ } finally { setLoading(false); }
     };
     load();
-  }, [period]);
+  }, [period, ordersReloadKey]);
 
   useEffect(() => {
     getDriverHiringEnabled()
@@ -605,6 +637,16 @@ export function AdminDashboard() {
         </button>
       </div>
 
+      <Suspense
+        fallback={
+          <div className="bg-card rounded-2xl p-4 shadow-sm flex justify-center py-8">
+            <div className="w-8 h-8 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+          </div>
+        }
+      >
+        <DailyEconomy />
+      </Suspense>
+
       <div className="grid lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-2xl p-4 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -740,6 +782,16 @@ export function AdminDashboard() {
 
   const renderOrders = () => (
     <div className="space-y-2">
+      <div className="flex justify-end mb-2">
+        <button
+          type="button"
+          onClick={() => setShowCreateOrder(true)}
+          className="px-4 py-2 rounded-xl text-white text-sm font-semibold flex items-center gap-2"
+          style={{ backgroundColor: 'var(--brand)' }}
+        >
+          <Plus size={16} /> Nuevo Pedido
+        </button>
+      </div>
       {recentOrders.length > 0 ? recentOrders.map((order) => (
         <div key={order.id} className="bg-card rounded-2xl p-4 shadow-sm">
           <div className="flex justify-between items-start mb-2">
@@ -1727,6 +1779,28 @@ export function AdminDashboard() {
             <HomeAdsManager />
           </Suspense>
         )}
+        {activeTab === 'payments' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <PaymentsTab />
+          </Suspense>
+        )}
+        {activeTab === 'liquidations' && (
+          <Suspense
+            fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            }
+          >
+            <LiquidationsTab />
+          </Suspense>
+        )}
       </div>
 
       {deleteTarget && (
@@ -1760,7 +1834,13 @@ export function AdminDashboard() {
           </div>
         </div>
       )}
-      {renderUserDetailModal()}
+      {showCreateOrder && (
+    <CreateOrderModal
+      onClose={() => setShowCreateOrder(false)}
+      onOrderCreated={() => { setShowCreateOrder(false); setOrdersReloadKey((k) => k + 1); }}
+    />
+  )}
+  {renderUserDetailModal()}
     </div>
   );
 }

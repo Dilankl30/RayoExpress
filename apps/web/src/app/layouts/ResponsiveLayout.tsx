@@ -11,10 +11,11 @@ export function ResponsiveLayout({ children }: { children: ReactNode }) {
   const location = useLocation();
   const path = location.pathname;
   const isPublic = isPublicPath(path);
+  const isTrackingPublic = path === '/seguimiento' || path.startsWith('/seguimiento/');
   const isDashboard = isDashboardPath(path);
   const isCustomer = !!user && user.role === 'customer';
 
-  if (isPublic) {
+  if (isPublic || isTrackingPublic) {
     return <div className="min-h-screen">{children}</div>;
   }
 
