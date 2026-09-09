@@ -271,7 +271,7 @@ export function PublicTrackingScreen() {
             {/* Estado destacado */}
             <div className="bg-card rounded-2xl p-4 shadow-sm border border-border-light">
               <div className="flex items-center justify-between">
-                <p className="font-mono font-bold text-sm" style={{ color: 'var(--brand)' }}>Pedido #{order.tracking_code}</p>
+                <p className="font-mono font-bold text-[13px] whitespace-nowrap" style={{ color: 'var(--brand)' }}>Pedido #{order.tracking_code}</p>
                 <div className="flex items-center gap-2">
                   {live && !isDelivered && !isCancelled && (
                     <span className="flex items-center gap-1 text-[11px] font-semibold text-green-700">

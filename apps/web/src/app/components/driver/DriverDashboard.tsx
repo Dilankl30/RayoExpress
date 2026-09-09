@@ -23,7 +23,7 @@ import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { NotificationBell } from '../../../modules/notifications/ui/NotificationBell';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
-import { getSupabase } from '../../../integrations/supabase/client';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import {
   claimDriverOrder,
   getAvailableDriverOrders,
@@ -181,7 +181,7 @@ export function DriverDashboard() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !isSupabaseReady) return;
     const supabase = getSupabase();
     const channel = supabase
       .channel('driver-orders-updates')

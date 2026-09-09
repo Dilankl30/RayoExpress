@@ -10,7 +10,7 @@ import { toggleStoreOpen } from '../../../modules/stores/application/store-setti
 import { getStoreByOwner, getStoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { getStoreOrders, updateOrderStatus, getOrderById } from '../../../modules/orders/application/order-service';
 import { createOrderChangeRequest } from '../../../modules/orders/application/order-change.service';
-import { getSupabase } from '../../../integrations/supabase/client';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import type { OrderSummary, StoreDashboardStats } from '../../../modules/stores/application/store-analytics.service';
 import { STATUS_LABELS, STATUS_ICONS, getAvailableTransitions } from '../../../modules/orders/domain/order-status.machine';
 import type { OrderStatus } from '../../../modules/orders/domain/order-status.machine';
@@ -113,7 +113,7 @@ export function StoreDashboard() {
 
   // Real-time subscription to orders table
   useEffect(() => {
-    if (!storeId || activeTab !== 'orders') return;
+    if (!storeId || activeTab !== 'orders' || !isSupabaseReady) return;
     const supabase = getSupabase();
     const channel = supabase
       .channel(`store-orders-rt-${storeId}`)

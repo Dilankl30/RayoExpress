@@ -1731,20 +1731,20 @@ export function AdminDashboard() {
     <div className="min-h-screen bg-surface flex flex-col pb-16 lg:pb-0">
       <header className="bg-card border-b border-border px-4 py-4">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-text-secondary">Panel de control</p>
-            <h1 className="text-lg font-bold text-text-primary">Admin Dashboard</h1>
+            <h1 className="text-base sm:text-lg font-bold text-text-primary truncate">Admin Dashboard</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
             <select aria-label="Periodo" value={period} onChange={(e) => setPeriod(e.target.value)}
-              className="text-sm border rounded-lg px-3 py-1.5 text-text-secondary bg-card">
+              className="text-xs sm:text-sm border rounded-lg px-2 sm:px-3 py-1.5 text-text-secondary bg-card max-w-[124px] sm:max-w-none">
               <option value="24h">Últimas 24h</option>
               <option value="7d">Últimos 7 días</option>
               <option value="30d">Últimos 30 días</option>
               <option value="90d">Últimos 90 días</option>
             </select>
             <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary" aria-label="Actualizar"><RefreshCw size={18} /></button>
-            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-secondary" aria-label="Descargar"><Download size={18} /></button>
+            <button className="hidden sm:block p-2 rounded-lg hover:bg-surface-hover text-text-secondary" aria-label="Descargar"><Download size={18} /></button>
             <button onClick={logout} className="p-2 rounded-lg hover:bg-danger-light text-red-400" aria-label="Cerrar sesión"><LogOut size={18} /></button>
           </div>
         </div>

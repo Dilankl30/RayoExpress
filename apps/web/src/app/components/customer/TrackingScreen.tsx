@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../../../modules/auth/context/AuthContext';
 import { OrderChat } from '../../../modules/chat/ui/OrderChat';
-import { getSupabase } from '../../../integrations/supabase/client';
+import { getSupabase, isSupabaseReady } from '../../../integrations/supabase/client';
 import { getLatestOrderLocation, type DriverLocation } from '../../../modules/delivery/application/driver.service';
 import { getMyOrders } from '../../../modules/orders/application/order-service';
 import { getPendingChangeForOrder, respondToOrderChangeRequest, type OrderChangeRequest } from '../../../modules/orders/application/order-change.service';
@@ -192,7 +192,7 @@ export function TrackingScreen() {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!user?.id) return;
+    if (!user?.id || !isSupabaseReady) return;
     const supabase = getSupabase();
     const channel = supabase
       .channel('order-updates')
@@ -206,6 +206,7 @@ export function TrackingScreen() {
       setDriverLocation(null);
       return;
     }
+    if (!isSupabaseReady) return;
     const supabase = getSupabase();
     const channel = supabase
       .channel(`driver-location-${activeOrder.id}`)
@@ -236,6 +237,11 @@ export function TrackingScreen() {
       }
     };
     void loadChange();
+    if (!isSupabaseReady) {
+      return () => {
+        cancelled = true;
+      };
+    }
     const supabase = getSupabase();
     const channel = supabase
       .channel(`order-change-${activeOrder.id}`)
