@@ -157,14 +157,14 @@ export async function createOrderAdmin(params: AdminCreateOrderParams): Promise<
       created_by: adminUserId,
       updated_by: adminUserId,
     })
-    .select('id')
+    .select('id, tracking_code')
     .single();
   if (error) throw error;
 
   const orderId = (data as { id: string }).id;
-  const trackingCode = `RE-${String(Math.floor(Math.random() * 900000) + 100000)}`;
-
-  await supabase.from('orders').update({ tracking_code: trackingCode }).eq('id', orderId);
+  // El trigger trg_generate_tracking_code asigna el código en el INSERT.
+  const trackingCode = (data as { tracking_code?: string | null }).tracking_code
+    ?? `RE-${String(Math.floor(Math.random() * 900000) + 100000)}`;
 
   await logAuditEvent({
     userId: adminUserId,

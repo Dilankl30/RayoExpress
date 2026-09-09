@@ -17,6 +17,19 @@ CREATE TABLE IF NOT EXISTS public.bank_accounts (
 
 ALTER TABLE public.bank_accounts ENABLE ROW LEVEL SECURITY;
 
+-- FK desde orders (la columna se creó en 042 sin referencia).
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'orders_receiving_account_id_fkey'
+  ) THEN
+    ALTER TABLE public.orders
+      ADD CONSTRAINT orders_receiving_account_id_fkey
+      FOREIGN KEY (receiving_account_id) REFERENCES public.bank_accounts(id);
+  END IF;
+END;
+$$;
+
 -- RLS Policies
 DROP POLICY IF EXISTS "bank_accounts_admin_all" ON public.bank_accounts;
 CREATE POLICY "bank_accounts_admin_all" ON public.bank_accounts

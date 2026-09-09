@@ -1,5 +1,10 @@
 -- RayoExpress | Migration 042: Order financial fields + tracking code
 -- Separar valor productos vs servicio para control administrativo
+-- NOTA: el FK de receiving_account_id -> bank_accounts se crea en 043
+-- (la tabla aún no existe en este punto).
+
+-- Secuencia para códigos RE-XXXXXX (la usa el trigger de esta migración).
+CREATE SEQUENCE IF NOT EXISTS public.tracking_code_seq START 100000;
 
 ------------------------------------------------------------
 -- Columnas financieras en orders
@@ -9,7 +14,7 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS service_fee numeric(10,2) DEF
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS other_charges numeric(10,2) DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS discount_amount numeric(10,2) DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status text DEFAULT 'pending' CHECK (payment_status IN ('pending','paid'));
-ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS receiving_account_id uuid REFERENCES public.bank_accounts(id);
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS receiving_account_id uuid;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS driver_advance numeric(10,2) DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_code text UNIQUE;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_by uuid REFERENCES public.profiles(id);
@@ -33,8 +38,11 @@ RETURNS trigger AS $$
 DECLARE
     v_next bigint;
 BEGIN
-    SELECT COALESCE(nextval('tracking_code_seq'), 0) INTO v_next;
-    NEW.tracking_code := 'RE-' || LPAD(v_next::text, 6, '0');
+    -- Solo genera si la app no asignó uno (respeta códigos preexistentes).
+    IF NEW.tracking_code IS NULL THEN
+        SELECT COALESCE(nextval('tracking_code_seq'), 0) INTO v_next;
+        NEW.tracking_code := 'RE-' || LPAD(v_next::text, 6, '0');
+    END IF;
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -48,29 +56,6 @@ CREATE TRIGGER trg_generate_tracking_code
     FOR EACH ROW
     EXECUTE FUNCTION public.generate_tracking_code();
 
-------------------------------------------------------------
--- Auditoría: registrar quién creó/modificó pedidos
-------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.audit_order_change()
-RETURNS trigger AS $$
-BEGIN
-    IF TG_OP = 'INSERT' THEN
-        INSERT INTO public.order_status_history (order_id, status, changed_by, created_at)
-        VALUES (NEW.id, NEW.status, NEW.created_by, now());
-        RETURN NEW;
-    ELSIF TG_OP = 'UPDATE' THEN
-        IF OLD.status IS DISTINCT FROM NEW.status OR OLD.total IS DISTINCT FROM NEW.total THEN
-            INSERT INTO public.order_status_history (order_id, status, changed_by, created_at)
-            VALUES (NEW.id, NEW.status, NEW.updated_by, now());
-        END IF;
-        RETURN NEW;
-    END IF;
-    RETURN NULL;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-DROP TRIGGER IF EXISTS trg_audit_order_changes ON public.orders;
-CREATE TRIGGER trg_audit_order_changes
-    AFTER INSERT OR UPDATE ON public.orders
-    FOR EACH ROW
-    EXECUTE FUNCTION public.audit_order_change();
+-- NOTA: no se crea trigger propio de auditoría: el trigger existente
+-- on_order_status_change (log_order_status_change) ya registra INSERTs y
+-- cambios de estado en order_status_history.
