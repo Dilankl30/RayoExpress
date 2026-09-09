@@ -19,6 +19,29 @@ interface AuthContextType {
   setUser: (u: UserProfile | null) => void;
 }
 
+const MOCK_SESSION_KEY = 'rayoexpress-mock-session';
+
+function readMockSession(): UserProfile | null {
+  try {
+    const raw = localStorage.getItem(MOCK_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as UserProfile;
+    if (!parsed || typeof parsed.id !== 'string' || typeof parsed.role !== 'string') return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeMockSession(user: UserProfile | null) {
+  try {
+    if (user) localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(user));
+    else localStorage.removeItem(MOCK_SESSION_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 const AuthContext = createContext<AuthContextType | null>(null);
 
 function screenFromPath(pathname: string): Screen {
@@ -48,7 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const cred = mockCredentials[email.toLowerCase()];
     if (!cred || cred.password !== password) return null;
     const mu = mockUser(email.toLowerCase());
-    if (mu) setUser(mu);
+    if (mu) {
+      setUser(mu);
+      writeMockSession(mu);
+    }
     navigate(roleToScreen(cred.role));
     return cred.role;
   }, [navigate, roleToScreen]);
@@ -79,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await supabase.auth.signOut();
     }
     setUser(null);
+    writeMockSession(null);
     try { localStorage.removeItem('rayoexpress-cart'); } catch { /* ignore */ }
     window.dispatchEvent(new CustomEvent('cart:clear'));
     setScreen('landing');
@@ -92,6 +119,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const boot = async () => {
       if (!isSupabaseReady || !supabase) {
+        // Modo demo: restaura la sesión mock para sobrevivir recargas
+        // (igual que Supabase persiste la sesión real).
+        setUser(readMockSession());
         setLoading(false);
         return;
       }

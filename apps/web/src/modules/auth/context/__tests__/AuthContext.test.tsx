@@ -138,6 +138,52 @@ describe('setUser', () => {
   });
 });
 
+describe('mock session persistence', () => {
+  const KEY = 'rayoexpress-mock-session';
+
+  function installMemoryStorage() {
+    const store: Record<string, string> = {};
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => (k in store ? store[k] : null),
+      setItem: (k: string, v: string) => {
+        store[k] = String(v);
+      },
+      removeItem: (k: string) => {
+        delete store[k];
+      },
+      clear: () => {
+        for (const k of Object.keys(store)) delete store[k];
+      },
+    });
+  }
+
+  beforeEach(() => {
+    vi.unstubAllGlobals();
+    installMemoryStorage();
+  });
+
+  it('persists mock login across provider boots (reload survival)', async () => {
+    const first = renderAuth();
+    await act(async () => { await first.result.current.mockLogin('admin@rayo.com', 'admin123'); });
+    expect(first.result.current.user!.role).toBe('admin');
+    first.unmount();
+
+    const second = renderAuth();
+    expect(second.result.current.user).not.toBeNull();
+    expect(second.result.current.user!.role).toBe('admin');
+    second.unmount();
+    localStorage.removeItem(KEY);
+  });
+
+  it('clears the persisted session on logout', async () => {
+    const { result } = renderAuth();
+    await act(async () => { await result.current.mockLogin('driver@rayo.com', 'driver123'); });
+    expect(localStorage.getItem(KEY)).not.toBeNull();
+    await act(async () => { await result.current.logout(); });
+    expect(localStorage.getItem(KEY)).toBeNull();
+  });
+});
+
 describe('useAuth without provider', () => {
   it('throws outside AuthProvider', () => {
     expect(() => renderHook(() => useAuth())).toThrow('useAuth must be used within AuthProvider');
